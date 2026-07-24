@@ -1,9 +1,18 @@
 """SQLite persistence for the local content workflow index."""
 
 import sqlite3
+from dataclasses import dataclass
 from pathlib import Path
 
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
+
+
+@dataclass(frozen=True)
+class Pillar:
+    """A proposed editorial pillar stored in the local index."""
+
+    name: str
+    approved: bool
 
 
 class Database:
@@ -103,6 +112,53 @@ class Database:
         """Return the number of indexed posts."""
         with self._connect() as connection:
             return connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0]
+
+    def list_published_posts(self) -> list[tuple[str, str]]:
+        """Return stable identifiers and text for imported published posts."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT COALESCE(external_id, CAST(id AS TEXT)), title "
+                "FROM posts WHERE status = 'published' ORDER BY id"
+            ).fetchall()
+        return [(row[0], row[1]) for row in rows]
+
+    def upsert_pillar(self, name: str) -> None:
+        """Record a proposal without changing an existing approval decision."""
+        with self._connect() as connection:
+            connection.execute("INSERT OR IGNORE INTO pillars (name) VALUES (?)", (name,))
+
+    def list_pillars(self) -> list[Pillar]:
+        """List proposed pillars in deterministic name order."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT name, approved FROM pillars ORDER BY name"
+            ).fetchall()
+        return [Pillar(row["name"], bool(row["approved"])) for row in rows]
+
+    def approve_pillar(self, name: str, maximum_approved: int = 5) -> None:
+        """Approve a proposal, rejecting approval number six and beyond."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT approved FROM pillars WHERE name = ?", (name,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Pillar {name!r} does not exist")
+            if row["approved"]:
+                return
+            approved_count = connection.execute(
+                "SELECT COUNT(*) FROM pillars WHERE approved = 1"
+            ).fetchone()[0]
+            if approved_count >= maximum_approved:
+                raise ValueError(f"Cannot approve more than {maximum_approved} pillars (at most five)")
+            connection.execute("UPDATE pillars SET approved = 1 WHERE name = ?", (name,))
+
+    def pillar_is_approved(self, name: str) -> bool:
+        """Return whether an existing pillar has an approval decision."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT approved FROM pillars WHERE name = ?", (name,)
+            ).fetchone()
+        return bool(row and row["approved"])
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path)

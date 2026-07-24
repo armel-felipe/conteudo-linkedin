@@ -28,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_subparsers(dest="history_command").add_parser(
         "import", help="Import external posts without publishing"
     )
+    pillars = commands.add_parser("pillars", help="Propose and approve editorial pillars")
+    pillar_commands = pillars.add_subparsers(dest="pillars_command")
+    pillar_commands.add_parser("propose", help="Propose pillars from published history")
+    approval = pillar_commands.add_parser("approve", help="Approve one proposed pillar")
+    approval.add_argument("name")
     return parser
 
 
@@ -36,6 +41,26 @@ def main(argv: Sequence[str] | None = None) -> None:
     load_env(repository_root / ".env")
     parser = build_parser()
     arguments = parser.parse_args(argv)
+
+    if arguments.command == "pillars":
+        from content_ops.db import Database
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+        document_path = repository_root / "docs" / "pillars.md"
+        if arguments.pillars_command == "propose":
+            proposals = write_pillar_proposals(
+                document_path, database, database.list_published_posts()
+            )
+            print(f"Proposed {len(proposals)} pillars in {document_path.relative_to(repository_root)}.")
+        elif arguments.pillars_command == "approve":
+            try:
+                approve_pillar(document_path, database, arguments.name)
+            except ValueError as error:
+                parser.error(str(error))
+            print(f"Approved pillar: {arguments.name}")
+        return
 
     if (arguments.command, arguments.history_command) != ("history", "import"):
         return
