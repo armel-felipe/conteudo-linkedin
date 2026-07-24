@@ -50,8 +50,10 @@ def propose_pillars(posts: Iterable[str | tuple[str, str]], limit: int = 5) -> l
         if post_id in seen_ids:
             continue
         seen_ids.add(post_id)
-        terms = set(_useful_terms(text))
-        name = next((label for label, keywords in TOPIC_RULES if terms & keywords), None)
+        terms = _useful_terms(text)
+        name = next(
+            (label for label, keywords in TOPIC_RULES if set(terms) & keywords), None
+        )
         if name is None:
             name = _fallback_name(terms, fallback_terms)
         if name:
@@ -73,8 +75,9 @@ def write_pillar_proposals(
 ) -> list[PillarProposal]:
     """Persist transparent proposals in SQLite and render the editorial record."""
     proposals = propose_pillars(posts, limit=limit)
-    for proposal in proposals:
-        database.upsert_pillar(proposal.name)
+    database.replace_pillars(
+        [(proposal.name, proposal.count, proposal.evidence_ids) for proposal in proposals]
+    )
     _write_document(Path(path), proposals, database)
     return proposals
 
@@ -109,8 +112,10 @@ def _useful_terms(text: str) -> list[str]:
     ]
 
 
-def _fallback_name(terms: set[str], frequencies: Counter[str]) -> str | None:
-    selected = sorted(terms, key=lambda term: (-frequencies[term], term))[:2]
+def _fallback_name(terms: Sequence[str], frequencies: Counter[str]) -> str | None:
+    # Keep terms as observed tokens so ranking uses their actual frequency;
+    # dict preserves first occurrence while removing duplicate name candidates.
+    selected = sorted(dict.fromkeys(terms), key=lambda term: (-frequencies[term], term))[:2]
     if not selected:
         return None
     if len(selected) == 1:

@@ -1,5 +1,6 @@
 """SQLite persistence for the local content workflow index."""
 
+import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +14,8 @@ class Pillar:
 
     name: str
     approved: bool
+    count: int
+    evidence_ids: tuple[str, ...]
 
 
 class Database:
@@ -40,6 +43,8 @@ class Database:
                     id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE,
                     approved INTEGER NOT NULL DEFAULT 0,
+                    count INTEGER NOT NULL DEFAULT 0,
+                    evidence_ids TEXT NOT NULL DEFAULT '[]',
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
 
@@ -60,6 +65,17 @@ class Database:
                 );
                 """
             )
+            pillar_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(pillars)")
+            }
+            if "count" not in pillar_columns:
+                connection.execute(
+                    "ALTER TABLE pillars ADD COLUMN count INTEGER NOT NULL DEFAULT 0"
+                )
+            if "evidence_ids" not in pillar_columns:
+                connection.execute(
+                    "ALTER TABLE pillars ADD COLUMN evidence_ids TEXT NOT NULL DEFAULT '[]'"
+                )
 
     def upsert_post(self, external_id: str, title: str, status: str | PostStatus) -> None:
         """Insert or update an externally identified post without duplication."""
@@ -131,9 +147,50 @@ class Database:
         """List proposed pillars in deterministic name order."""
         with self._connect() as connection:
             rows = connection.execute(
-                "SELECT name, approved FROM pillars ORDER BY name"
+                "SELECT name, approved, count, evidence_ids FROM pillars ORDER BY name"
             ).fetchall()
-        return [Pillar(row["name"], bool(row["approved"])) for row in rows]
+        return [
+            Pillar(
+                row["name"],
+                bool(row["approved"]),
+                row["count"],
+                tuple(json.loads(row["evidence_ids"])),
+            )
+            for row in rows
+        ]
+
+    def replace_pillars(
+        self, pillars: list[tuple[str, int, tuple[str, ...]]]
+    ) -> None:
+        """Synchronize the proposal set while retaining approval for matching names.
+
+        Approval belongs to a pillar in the current proposal set. A reproposal
+        with the same name preserves its prior approval; absent names are removed,
+        even if approved, so SQLite exactly mirrors the rendered editorial record.
+        """
+        names = [name for name, _, _ in pillars]
+        if len(names) != len(set(names)):
+            raise ValueError("Pillar names must be unique")
+
+        with self._connect() as connection:
+            for name, count, evidence_ids in pillars:
+                connection.execute(
+                    """
+                    INSERT INTO pillars (name, count, evidence_ids)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(name) DO UPDATE SET
+                        count = excluded.count,
+                        evidence_ids = excluded.evidence_ids
+                    """,
+                    (name, count, json.dumps(evidence_ids, ensure_ascii=False)),
+                )
+            if names:
+                placeholders = ", ".join("?" for _ in names)
+                connection.execute(
+                    f"DELETE FROM pillars WHERE name NOT IN ({placeholders})", names
+                )
+            else:
+                connection.execute("DELETE FROM pillars")
 
     def approve_pillar(self, name: str, maximum_approved: int = 5) -> None:
         """Approve a proposal, rejecting approval number six and beyond."""

@@ -36,6 +36,13 @@ class PillarProposalTests(unittest.TestCase):
 
         self.assertEqual(proposals[0].name, "Liderança e remota")
 
+    def test_fallback_ranks_terms_by_their_actual_occurrences(self):
+        from content_ops.pillars import propose_pillars
+
+        proposals = propose_pillars([("post-1", "Produto produto produto remoto")])
+
+        self.assertEqual(proposals[0].name, "Produto e remoto")
+
 
 class PillarPersistenceTests(unittest.TestCase):
     def setUp(self):
@@ -65,6 +72,56 @@ class PillarPersistenceTests(unittest.TestCase):
         self.assertIn("# Pilares editoriais", document)
         self.assertIn("evidence_ids: linkedin:a, linkedin:b", document)
         self.assertIn("approved: true", document)
+
+    def test_persists_name_approval_count_and_evidence_ids(self):
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path,
+            self.database,
+            [("linkedin:a", "Python para dados"), ("linkedin:b", "Dados em Python")],
+        )
+        approve_pillar(self.path, self.database, "Python e dados")
+
+        pillar = self.database.list_pillars()[0]
+
+        self.assertEqual(pillar.name, "Python e dados")
+        self.assertTrue(pillar.approved)
+        self.assertEqual(pillar.count, 2)
+        self.assertEqual(pillar.evidence_ids, ("linkedin:a", "linkedin:b"))
+
+    def test_reproposal_replaces_the_pillar_set_and_preserves_matching_approval(self):
+        from content_ops.db import Pillar
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path,
+            self.database,
+            [("linkedin:a", "Python para dados"), ("linkedin:b", "Entrevista de emprego")],
+        )
+        approve_pillar(self.path, self.database, "Python e dados")
+        # Matching names retain approval; an approved name absent from a reproposal
+        # is removed because the database mirrors the current editorial record.
+        approve_pillar(self.path, self.database, "Carreira e oportunidades")
+
+        write_pillar_proposals(
+            self.path,
+            self.database,
+            [("linkedin:c", "Python para dados"), ("linkedin:d", "LLM para produto")],
+        )
+
+        self.assertEqual(
+            self.database.list_pillars(),
+            [
+                Pillar("IA aplicada", False, 1, ("linkedin:d",)),
+                Pillar("Python e dados", True, 1, ("linkedin:c",)),
+            ],
+        )
+        document = self.path.read_text(encoding="utf-8")
+        self.assertNotIn("Carreira e oportunidades", document)
+        self.assertIn("## IA aplicada", document)
+        self.assertIn("## Python e dados", document)
+        self.assertIn("## Python e dados\ncount: 1\nevidence_ids: linkedin:c\napproved: true", document)
 
     def test_refuses_a_sixth_approved_pillar(self):
         from content_ops.pillars import approve_pillar
