@@ -102,6 +102,7 @@ def reconcile_schedule(
     key = intent["idempotency_key"]
     if not isinstance(payload, dict) or not isinstance(key, str):
         raise SchedulingError("Scheduling recovery is required")
+    _validate_persisted_idempotency_key(key)
     return _send_schedule_request(path, post_id, metadata, body, payload, key, client, database)
 
 
@@ -118,9 +119,12 @@ def _send_schedule_request(
     try:
         zernio_post_id = client.create_post(payload, idempotency_key)
     except Exception as error:
-        from content_ops.zernio import ZernioError, ZernioPreSendError
+        from content_ops.zernio import ZernioPreSendError
 
-        status = PostStatus.FAILED if isinstance(error, (ZernioError, ZernioPreSendError)) else PostStatus.INDETERMINATE
+        # An HTTP response proves the POST reached Zernio, even if it is an
+        # error response.  Only the explicit pre-send transport failure is
+        # safe to classify as failed; every other outcome requires recovery.
+        status = PostStatus.FAILED if isinstance(error, ZernioPreSendError) else PostStatus.INDETERMINATE
         persisted = _persist_or_record_recovery(
             path, metadata, body, post_id, status, None, database
         )
@@ -161,14 +165,15 @@ def _persist_schedule_intent(
     existing_key = metadata.get("idempotency_key")
     if intent is not None:
         stored_key = intent["idempotency_key"]
+        _validate_persisted_idempotency_key(stored_key)
         if existing_key not in (None, stored_key):
             raise SchedulingError("Scheduling recovery is required")
         if intent["scheduled_for"] != scheduled_for or intent["payload"] != payload:
             raise SchedulingError("Stored scheduling request must be reconciled")
         key = stored_key
     else:
-        if existing_key is not None and not isinstance(existing_key, str):
-            raise SchedulingError("Scheduling recovery is required")
+        if existing_key is not None:
+            _validate_persisted_idempotency_key(existing_key)
         key = existing_key or str(uuid.uuid4())
     updated = dict(metadata)
     updated.update(
@@ -185,6 +190,16 @@ def _persist_schedule_intent(
         # invocation finish the Markdown copy using the same UUID.
         raise SchedulingError("Could not persist scheduling request") from None
     return key
+
+
+def _validate_persisted_idempotency_key(key: object) -> None:
+    """Reject malformed recovery keys before they can be sent over HTTP."""
+    if not isinstance(key, str):
+        raise SchedulingError("Scheduling recovery is required")
+    try:
+        uuid.UUID(key)
+    except (ValueError, AttributeError, TypeError):
+        raise SchedulingError("Scheduling recovery is required") from None
 
 
 def _validate_schedule(

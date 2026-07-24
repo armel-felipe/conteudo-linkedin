@@ -150,6 +150,51 @@ class SchedulingTests(unittest.TestCase):
             self.schedule(FakeClient(error=ZernioPreSendError("request was not sent")))
         self.assertEqual(read_post_record(self.path)[0]["status"], "failed")
 
+    def test_http_500_response_becomes_indeterminate(self):
+        from content_ops.markdown import read_post_record
+        from content_ops.workflow import SchedulingError, approve_draft
+        from content_ops.zernio import ZernioError
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        with self.assertRaisesRegex(SchedulingError, "requires reconciliation"):
+            self.schedule(FakeClient(error=ZernioError(500, "HTTP 500 error")))
+
+        self.assertEqual(read_post_record(self.path)[0]["status"], "indeterminate")
+
+    def test_schedule_rejects_invalid_persisted_uuid_before_http(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.workflow import SchedulingError, approve_draft
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        metadata, body = read_post_record(self.path)
+        metadata["idempotency_key"] = "not-a-uuid"
+        write_post_record(self.path, metadata, body)
+
+        with self.assertRaisesRegex(SchedulingError, "Scheduling recovery is required"):
+            self.schedule()
+        self.assertEqual(self.client.create_calls, 0)
+
+    def test_reconcile_rejects_invalid_persisted_uuid_before_http(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.models import PostStatus
+        from content_ops.workflow import SchedulingError, approve_draft, reconcile_schedule
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        self.database.persist_schedule_intent(
+            self.post_id,
+            "not-a-uuid",
+            "2026-08-01T10:00:00",
+            {"content": "Texto aprovado."},
+        )
+        metadata, body = read_post_record(self.path)
+        metadata["status"] = "indeterminate"
+        write_post_record(self.path, metadata, body)
+        self.database.record_schedule_result(self.post_id, PostStatus.INDETERMINATE, None)
+
+        with self.assertRaisesRegex(SchedulingError, "Scheduling recovery is required"):
+            reconcile_schedule(self.post_id, self.path, self.client, database=self.database)
+        self.assertEqual(self.client.create_calls, 0)
+
     def test_schedule_rejects_missing_confirmation_before_http(self):
         from content_ops.workflow import SchedulingValidationError, approve_draft, schedule_post
 

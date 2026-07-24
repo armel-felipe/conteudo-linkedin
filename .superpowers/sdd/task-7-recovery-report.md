@@ -31,3 +31,18 @@ não é a única evidência, pois a intenção (UUID e payload) é duravelmente 
 em SQLite e Markdown antes da chamada. Em caso de indisponibilidade simultânea
 dos dois stores após o POST, o sidecar bloqueia novo POST e a intenção prévia
 permite reconciliação segura assim que ao menos um store voltar a aceitar escrita.
+
+## Correção da revisão de recuperação
+
+- Toda resposta HTTP ao POST, inclusive HTTP 500 encapsulado em `ZernioError`,
+  agora termina em `indeterminate`: o servidor recebeu a solicitação e seu
+  resultado não é seguro para classificar como falha anterior ao envio.
+- Somente `ZernioPreSendError` leva a `failed`. As demais exceções continuam
+  sanitizadas e exigem reconciliação, sem POST adicional nesta execução.
+- Chaves de idempotência já persistidas são validadas com `uuid.UUID` em
+  `schedule` e `schedule reconcile`; chave inválida é rejeitada antes de chamar
+  o cliente HTTP.
+
+Evidência: `PYTHONPATH=src python3 -m unittest discover -s tests -v` passou com
+72 testes, incluindo HTTP 500 para `indeterminate` e bloqueio do POST para UUID
+persistido inválido nas rotas normal e de reconciliação.
