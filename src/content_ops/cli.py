@@ -57,8 +57,9 @@ def build_parser() -> argparse.ArgumentParser:
     review_approval = review_commands.add_parser("approve", help="Approve a post in review")
     review_approval.add_argument("post_id", type=int)
     schedule = commands.add_parser("schedule", help="Schedule an explicitly approved post")
-    schedule.add_argument("post_id", type=int)
-    schedule.add_argument("--at", required=True, dest="scheduled_for")
+    schedule.add_argument("post_id")
+    schedule.add_argument("reconcile_post_id", nargs="?")
+    schedule.add_argument("--at", dest="scheduled_for")
     schedule.add_argument("--confirm", action="store_true")
     return parser
 
@@ -92,8 +93,28 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser = build_parser()
     arguments = parser.parse_args(argv)
 
-    if arguments.command == "schedule" and not arguments.confirm:
-        parser.error("--confirm is required")
+    is_reconcile = (
+        arguments.command == "schedule" and arguments.post_id == "reconcile"
+    )
+    if arguments.command == "schedule":
+        if is_reconcile:
+            if arguments.reconcile_post_id is None:
+                parser.error("schedule reconcile requires a post ID")
+            try:
+                arguments.post_id = int(arguments.reconcile_post_id)
+            except ValueError:
+                parser.error("post ID must be an integer")
+        else:
+            if arguments.reconcile_post_id is not None:
+                parser.error("schedule accepts one post ID")
+            try:
+                arguments.post_id = int(arguments.post_id)
+            except ValueError:
+                parser.error("post ID must be an integer")
+            if not arguments.confirm:
+                parser.error("--confirm is required")
+            if not arguments.scheduled_for:
+                parser.error("--at is required")
 
     if arguments.command in {"review", "schedule"}:
         from content_ops.db import Database
@@ -101,6 +122,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             SchedulingError,
             SchedulingValidationError,
             approve_draft,
+            reconcile_schedule,
             schedule_post,
         )
 
@@ -121,15 +143,25 @@ def main(argv: Sequence[str] | None = None) -> None:
                 parser.error(f"Missing required configuration: {', '.join(missing)}")
             from content_ops.zernio import ZernioClient
 
-            zernio_post_id = schedule_post(
-                arguments.post_id,
-                markdown_path,
-                arguments.scheduled_for,
-                arguments.confirm,
-                ZernioClient(os.environ["ZERNIO_API_KEY"]),
-                database=database,
-                account_id=os.environ["ZERNIO_ACCOUNT_ID"],
-            )
+            client = ZernioClient(os.environ["ZERNIO_API_KEY"])
+            if is_reconcile:
+                zernio_post_id = reconcile_schedule(
+                    arguments.post_id,
+                    markdown_path,
+                    client,
+                    database=database,
+                    account_id=os.environ["ZERNIO_ACCOUNT_ID"],
+                )
+            else:
+                zernio_post_id = schedule_post(
+                    arguments.post_id,
+                    markdown_path,
+                    arguments.scheduled_for,
+                    arguments.confirm,
+                    client,
+                    database=database,
+                    account_id=os.environ["ZERNIO_ACCOUNT_ID"],
+                )
         except (SchedulingValidationError, SchedulingError, ValueError) as error:
             parser.error(str(error))
         print(f"Scheduled post {arguments.post_id} as {zernio_post_id}.")

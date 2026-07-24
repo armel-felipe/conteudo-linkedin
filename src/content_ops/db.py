@@ -38,6 +38,9 @@ class Database:
                     title TEXT NOT NULL,
                     status TEXT NOT NULL,
                     zernio_post_id TEXT,
+                    idempotency_key TEXT,
+                    scheduled_for TEXT,
+                    schedule_payload TEXT,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
@@ -84,6 +87,12 @@ class Database:
             }
             if "zernio_post_id" not in post_columns:
                 connection.execute("ALTER TABLE posts ADD COLUMN zernio_post_id TEXT")
+            if "idempotency_key" not in post_columns:
+                connection.execute("ALTER TABLE posts ADD COLUMN idempotency_key TEXT")
+            if "scheduled_for" not in post_columns:
+                connection.execute("ALTER TABLE posts ADD COLUMN scheduled_for TEXT")
+            if "schedule_payload" not in post_columns:
+                connection.execute("ALTER TABLE posts ADD COLUMN schedule_payload TEXT")
 
     def upsert_post(self, external_id: str, title: str, status: str | PostStatus) -> None:
         """Insert or update an externally identified post without duplication."""
@@ -157,6 +166,50 @@ class Database:
                 "UPDATE posts SET zernio_post_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (zernio_post_id, post_id),
             )
+
+    def persist_schedule_intent(
+        self, post_id: int, idempotency_key: str, scheduled_for: str, payload: dict
+    ) -> None:
+        """Durably retain the exact request before it may reach Zernio."""
+        with self.transaction() as connection:
+            row = connection.execute(
+                "SELECT idempotency_key FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Post {post_id} does not exist")
+            existing = row["idempotency_key"]
+            if existing is not None and existing != idempotency_key:
+                raise ValueError("Post already has a different idempotency key")
+            connection.execute(
+                """
+                UPDATE posts
+                SET idempotency_key = ?, scheduled_for = ?, schedule_payload = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (idempotency_key, scheduled_for, json.dumps(payload, ensure_ascii=False), post_id),
+            )
+
+    def schedule_intent(self, post_id: int) -> dict[str, object] | None:
+        """Return the persisted remote request, never rebuilding it from edits."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT idempotency_key, scheduled_for, schedule_payload FROM posts WHERE id = ?",
+                (post_id,),
+            ).fetchone()
+        if row is None or not all(row[key] for key in ("idempotency_key", "scheduled_for", "schedule_payload")):
+            return None
+        try:
+            payload = json.loads(row["schedule_payload"])
+        except json.JSONDecodeError:
+            raise ValueError("Stored scheduling request is invalid") from None
+        if not isinstance(payload, dict):
+            raise ValueError("Stored scheduling request is invalid")
+        return {
+            "idempotency_key": row["idempotency_key"],
+            "scheduled_for": row["scheduled_for"],
+            "payload": payload,
+        }
 
     def count_posts(self) -> int:
         """Return the number of indexed posts."""

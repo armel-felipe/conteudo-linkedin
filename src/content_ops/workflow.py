@@ -1,6 +1,7 @@
 """Editorial workflow operations that keep research, ideas, and drafts linked."""
 
 import json
+import uuid
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -58,8 +59,7 @@ def schedule_post(
         metadata, body = read_post_record(path)
     except ValueError as error:
         raise SchedulingValidationError(str(error)) from None
-    _recover_pending_schedule_result(path, post_id, metadata, body, database)
-    metadata, body = read_post_record(path)
+    _block_if_reconciliation_required(path, post_id, metadata, database)
     _validate_schedule(post_id, metadata, body, scheduled_for, confirmed, database, account_id)
     payload: dict[str, object] = {
         "content": body,
@@ -70,20 +70,121 @@ def schedule_post(
     image_url = metadata.get("image_url")
     if image_url:
         payload["mediaItems"] = [{"url": image_url}]
+    idempotency_key = _persist_schedule_intent(
+        path, post_id, metadata, body, scheduled_for, payload, database
+    )
+    metadata, body = read_post_record(path)
+    return _send_schedule_request(
+        path, post_id, metadata, body, payload, idempotency_key, client, database
+    )
+
+
+def reconcile_schedule(
+    post_id: int,
+    markdown_path: str | Path,
+    client: object,
+    database: Database,
+    account_id: str | None = None,
+) -> str:
+    """Repeat a recorded uncertain request with its original idempotency key."""
+    del account_id  # Account is part of the persisted original request.
+    path = Path(markdown_path)
     try:
-        zernio_post_id = client.create_post(payload)
-    except Exception:
-        _persist_or_record_recovery(path, metadata, body, post_id, PostStatus.FAILED, None, database)
+        metadata, body = read_post_record(path)
+    except ValueError as error:
+        raise SchedulingValidationError(str(error)) from None
+    if not _is_indeterminate(path, post_id, metadata, database):
+        raise SchedulingValidationError("Post does not require reconciliation")
+    intent = database.schedule_intent(post_id)
+    if intent is None:
+        raise SchedulingError("Scheduling recovery is required")
+    payload = intent["payload"]
+    key = intent["idempotency_key"]
+    if not isinstance(payload, dict) or not isinstance(key, str):
+        raise SchedulingError("Scheduling recovery is required")
+    return _send_schedule_request(path, post_id, metadata, body, payload, key, client, database)
+
+
+def _send_schedule_request(
+    path: Path,
+    post_id: int,
+    metadata: dict,
+    body: str,
+    payload: dict[str, object],
+    idempotency_key: str,
+    client: object,
+    database: Database | None,
+) -> str:
+    try:
+        zernio_post_id = client.create_post(payload, idempotency_key)
+    except Exception as error:
+        from content_ops.zernio import ZernioError, ZernioPreSendError
+
+        status = PostStatus.FAILED if isinstance(error, (ZernioError, ZernioPreSendError)) else PostStatus.INDETERMINATE
+        persisted = _persist_or_record_recovery(
+            path, metadata, body, post_id, status, None, database
+        )
+        if not persisted:
+            _persist_or_record_recovery(
+                path, metadata, body, post_id, PostStatus.INDETERMINATE, None, database
+            )
+            raise SchedulingError("Scheduling result requires reconciliation") from None
+        if status is PostStatus.INDETERMINATE:
+            raise SchedulingError("Scheduling result requires reconciliation") from None
         raise SchedulingError("Scheduling request failed") from None
     if not isinstance(zernio_post_id, str) or not zernio_post_id:
-        _persist_or_record_recovery(path, metadata, body, post_id, PostStatus.FAILED, None, database)
-        raise SchedulingError("Scheduling request failed")
-    metadata["zernio_post_id"] = zernio_post_id
+        _persist_or_record_recovery(
+            path, metadata, body, post_id, PostStatus.INDETERMINATE, None, database
+        )
+        raise SchedulingError("Scheduling result requires reconciliation")
     if not _persist_or_record_recovery(
         path, metadata, body, post_id, PostStatus.SCHEDULED, zernio_post_id, database
     ):
-        raise SchedulingError("Scheduling result requires recovery")
+        _persist_or_record_recovery(
+            path, metadata, body, post_id, PostStatus.INDETERMINATE, zernio_post_id, database
+        )
+        raise SchedulingError("Scheduling result requires reconciliation")
     return zernio_post_id
+
+
+def _persist_schedule_intent(
+    path: Path,
+    post_id: int,
+    metadata: dict,
+    body: str,
+    scheduled_for: str,
+    payload: dict[str, object],
+    database: Database | None,
+) -> str:
+    """Generate once and retain the exact remote request before any POST."""
+    intent = database.schedule_intent(post_id) if database is not None else None
+    existing_key = metadata.get("idempotency_key")
+    if intent is not None:
+        stored_key = intent["idempotency_key"]
+        if existing_key not in (None, stored_key):
+            raise SchedulingError("Scheduling recovery is required")
+        if intent["scheduled_for"] != scheduled_for or intent["payload"] != payload:
+            raise SchedulingError("Stored scheduling request must be reconciled")
+        key = stored_key
+    else:
+        if existing_key is not None and not isinstance(existing_key, str):
+            raise SchedulingError("Scheduling recovery is required")
+        key = existing_key or str(uuid.uuid4())
+    updated = dict(metadata)
+    updated.update(
+        idempotency_key=key,
+        scheduled_for=scheduled_for,
+        schedule_payload=payload,
+    )
+    try:
+        if database is not None:
+            database.persist_schedule_intent(post_id, key, scheduled_for, payload)
+        write_post_record(path, updated, body)
+    except BaseException:
+        # No POST occurred. A durable database intent (if present) lets the next
+        # invocation finish the Markdown copy using the same UUID.
+        raise SchedulingError("Could not persist scheduling request") from None
+    return key
 
 
 def _validate_schedule(
@@ -137,12 +238,7 @@ def _persist_or_record_recovery(
     zernio_post_id: str | None,
     database: Database | None,
 ) -> bool:
-    """Persist each store independently and keep a retry-safe recovery marker.
-
-    A remote request has already been made when this function is called.  A
-    partial local write must therefore block another POST until both stores
-    agree on the known result.
-    """
+    """Persist a remote result, marking uncertainty if either store disagrees."""
     updated = dict(metadata)
     updated["status"] = status.value
     updated["zernio_post_id"] = zernio_post_id
@@ -158,7 +254,7 @@ def _persist_or_record_recovery(
         failures.append(error)
     if not failures:
         return _remove_schedule_recovery(path)
-    _write_schedule_recovery(path, post_id, status, zernio_post_id)
+    _write_schedule_recovery(path, post_id, PostStatus.INDETERMINATE, zernio_post_id)
     return False
 
 
@@ -198,27 +294,23 @@ def _remove_schedule_recovery(path: Path) -> bool:
     return True
 
 
-def _recover_pending_schedule_result(
-    path: Path, post_id: int, metadata: dict, body: str, database: Database | None
+def _is_indeterminate(
+    path: Path, post_id: int, metadata: dict, database: Database | None
+) -> bool:
+    if metadata.get("status") == PostStatus.INDETERMINATE.value or _recovery_path(path).exists():
+        return True
+    if database is None:
+        return False
+    with database._connect() as connection:
+        row = connection.execute("SELECT status FROM posts WHERE id = ?", (post_id,)).fetchone()
+    return bool(row and row["status"] == PostStatus.INDETERMINATE.value)
+
+
+def _block_if_reconciliation_required(
+    path: Path, post_id: int, metadata: dict, database: Database | None
 ) -> None:
-    marker = _recovery_path(path)
-    if not marker.exists():
-        return
-    try:
-        saved = json.loads(marker.read_text(encoding="utf-8"))
-        status = PostStatus(saved["status"])
-        saved_post_id = saved["post_id"]
-        zernio_post_id = saved.get("zernio_post_id")
-        if saved_post_id != post_id or not isinstance(zernio_post_id, (str, type(None))):
-            raise ValueError
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
-        raise SchedulingError("Scheduling recovery is required") from None
-    if not _persist_or_record_recovery(
-        path, metadata, body, post_id, status, zernio_post_id, database
-    ):
-        raise SchedulingError("Scheduling recovery is required")
-    # Recovery records a prior outcome; never send a second POST in this call.
-    raise SchedulingError("Previous scheduling attempt recovered; review the post state")
+    if _is_indeterminate(path, post_id, metadata, database):
+        raise SchedulingError("Scheduling result requires reconciliation")
 
 
 def create_idea(

@@ -67,9 +67,23 @@ class DatabaseTests(unittest.TestCase):
                 PostStatus.REJECTED,
                 PostStatus.DRAFT,
             ),
-            PostStatus.APPROVED: (PostStatus.SCHEDULED, PostStatus.DRAFT),
-            PostStatus.SCHEDULED: (PostStatus.PUBLISHED, PostStatus.FAILED),
+            PostStatus.APPROVED: (
+                PostStatus.SCHEDULED,
+                PostStatus.INDETERMINATE,
+                PostStatus.DRAFT,
+                PostStatus.FAILED,
+            ),
+            PostStatus.SCHEDULED: (
+                PostStatus.PUBLISHED,
+                PostStatus.FAILED,
+                PostStatus.INDETERMINATE,
+            ),
             PostStatus.FAILED: (PostStatus.APPROVED, PostStatus.ARCHIVED),
+            PostStatus.INDETERMINATE: (
+                PostStatus.SCHEDULED,
+                PostStatus.FAILED,
+                PostStatus.ARCHIVED,
+            ),
         }
 
         for source, destinations in allowed_transitions.items():
@@ -83,6 +97,27 @@ class DatabaseTests(unittest.TestCase):
                             "SELECT status FROM posts WHERE id = ?", (post_id,)
                         ).fetchone()[0]
                     self.assertEqual(status, destination.value)
+
+    def test_initialize_migrates_an_idempotency_key_column(self):
+        with sqlite3.connect(self.path) as connection:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(posts)")}
+
+        self.assertIn("idempotency_key", columns)
+
+    def test_initialize_migrates_schedule_recovery_columns_on_an_existing_database(self):
+        legacy_path = Path(self.temporary_directory.name) / "legacy.db"
+        with sqlite3.connect(legacy_path) as connection:
+            connection.execute(
+                "CREATE TABLE posts (id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL)"
+            )
+
+        from content_ops.db import Database
+
+        Database(legacy_path).initialize()
+
+        with sqlite3.connect(legacy_path) as connection:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(posts)")}
+        self.assertTrue({"idempotency_key", "scheduled_for", "schedule_payload"} <= columns)
 
     def test_transition_post_rejects_missing_post(self):
         from content_ops.models import PostStatus

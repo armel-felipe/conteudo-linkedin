@@ -13,10 +13,12 @@ class FakeClient:
         self.error = error
         self.create_calls = 0
         self.payloads = []
+        self.idempotency_keys = []
 
-    def create_post(self, payload):
+    def create_post(self, payload, idempotency_key):
         self.create_calls += 1
         self.payloads.append(payload)
+        self.idempotency_keys.append(idempotency_key)
         if self.error:
             raise self.error
         return self.response
@@ -85,6 +87,69 @@ class SchedulingTests(unittest.TestCase):
         }])
         self.assertEqual(read_post_record(self.path)[0]["zernio_post_id"], "z-1")
 
+    def test_schedule_persists_uuid_idempotency_key_before_posting(self):
+        from content_ops.markdown import read_post_record
+        from content_ops.workflow import approve_draft
+        from uuid import UUID
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        observed = {}
+
+        class InspectingClient(FakeClient):
+            def create_post(client_self, payload, idempotency_key):
+                metadata, _ = read_post_record(self.path)
+                with self.database._connect() as connection:
+                    stored = connection.execute(
+                        "SELECT idempotency_key FROM posts WHERE id = ?", (self.post_id,)
+                    ).fetchone()[0]
+                observed.update(markdown=metadata["idempotency_key"], database=stored)
+                return super().create_post(payload, idempotency_key)
+
+        client = InspectingClient()
+        self.assertEqual(self.schedule(client), "z-1")
+        UUID(client.idempotency_keys[0])
+        self.assertEqual(observed["markdown"], client.idempotency_keys[0])
+        self.assertEqual(observed["database"], client.idempotency_keys[0])
+
+    def test_uncertain_result_becomes_indeterminate_and_reconcile_reuses_key(self):
+        from content_ops.markdown import read_post_record
+        from content_ops.workflow import (
+            SchedulingError,
+            approve_draft,
+            reconcile_schedule,
+        )
+        from content_ops.zernio import ZernioUncertainError
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        uncertain = FakeClient(error=ZernioUncertainError("connection closed"))
+        with self.assertRaisesRegex(SchedulingError, "requires reconciliation"):
+            self.schedule(uncertain)
+        self.assertEqual(read_post_record(self.path)[0]["status"], "indeterminate")
+        first_key = uncertain.idempotency_keys[0]
+
+        with self.assertRaisesRegex(SchedulingError, "requires reconciliation"):
+            self.schedule(uncertain)
+        self.assertEqual(uncertain.create_calls, 1)
+
+        recovered = FakeClient(response="z-recovered")
+        self.assertEqual(
+            reconcile_schedule(self.post_id, self.path, recovered, database=self.database,
+                               account_id="linkedin-account"),
+            "z-recovered",
+        )
+        self.assertEqual(recovered.idempotency_keys, [first_key])
+        self.assertEqual(read_post_record(self.path)[0]["status"], "scheduled")
+
+    def test_confirmed_pre_send_failure_becomes_failed(self):
+        from content_ops.markdown import read_post_record
+        from content_ops.workflow import SchedulingError, approve_draft
+        from content_ops.zernio import ZernioPreSendError
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        with self.assertRaisesRegex(SchedulingError, "Scheduling request failed"):
+            self.schedule(FakeClient(error=ZernioPreSendError("request was not sent")))
+        self.assertEqual(read_post_record(self.path)[0]["status"], "failed")
+
     def test_schedule_rejects_missing_confirmation_before_http(self):
         from content_ops.workflow import SchedulingValidationError, approve_draft, schedule_post
 
@@ -132,20 +197,20 @@ class SchedulingTests(unittest.TestCase):
 
         self.assertEqual(self.client.payloads[0]["mediaItems"], [{"url": "https://example.test/post.png"}])
 
-    def test_client_error_marks_post_failed_without_retry(self):
+    def test_unknown_client_error_marks_post_indeterminate_without_retry(self):
         from content_ops.markdown import read_post_record
         from content_ops.workflow import SchedulingError, approve_draft, schedule_post
 
         approve_draft(self.post_id, self.path, database=self.database)
         failing_client = FakeClient(error=RuntimeError("secret detail"))
-        with self.assertRaisesRegex(SchedulingError, "Scheduling request failed"):
+        with self.assertRaisesRegex(SchedulingError, "requires reconciliation"):
             self.schedule(failing_client)
 
         self.assertEqual(failing_client.create_calls, 1)
-        self.assertEqual(read_post_record(self.path)[0]["status"], "failed")
+        self.assertEqual(read_post_record(self.path)[0]["status"], "indeterminate")
         with self.database._connect() as connection:
             status = connection.execute("SELECT status FROM posts WHERE id = ?", (self.post_id,)).fetchone()[0]
-        self.assertEqual(status, "failed")
+        self.assertEqual(status, "indeterminate")
 
     def test_schedule_rejects_https_url_without_host_before_http(self):
         from content_ops.markdown import read_post_record, write_post_record
@@ -160,34 +225,34 @@ class SchedulingTests(unittest.TestCase):
             self.schedule()
         self.assertEqual(self.client.create_calls, 0)
 
-    def test_http_failure_is_sanitized_and_records_recovery_when_both_stores_fail(self):
-        from content_ops.markdown import read_post_record
+    def test_intent_write_failure_aborts_before_http_without_a_sidecar(self):
         from content_ops.workflow import SchedulingError, approve_draft
-        from content_ops.zernio import ZernioError
 
         approve_draft(self.post_id, self.path, database=self.database)
-        failing_client = FakeClient(error=ZernioError(500, "secret network detail"))
-        with patch.object(self.database, "record_schedule_result", side_effect=OSError("db secret")), patch(
-            "content_ops.workflow.write_post_record", side_effect=OSError("markdown secret")
-        ):
-            with self.assertRaisesRegex(SchedulingError, "Scheduling request failed") as raised:
-                self.schedule(failing_client)
+        with patch("content_ops.workflow.write_post_record", side_effect=OSError("markdown secret")):
+            with self.assertRaisesRegex(SchedulingError, "Could not persist scheduling request") as raised:
+                self.schedule(self.client)
 
         self.assertNotIn("secret", str(raised.exception))
+        self.assertEqual(self.client.create_calls, 0)
         recovery_path = self.path.with_name(f".{self.path.name}.schedule-recovery.json")
-        self.assertEqual(json.loads(recovery_path.read_text(encoding="utf-8"))["status"], "failed")
-        self.assertEqual(failing_client.create_calls, 1)
-
-        with self.assertRaisesRegex(SchedulingError, "Previous scheduling attempt recovered"):
-            self.schedule(failing_client)
-        self.assertEqual(failing_client.create_calls, 1)
-        self.assertEqual(recovery_path.exists(), False)
-        self.assertEqual(read_post_record(self.path)[0]["status"], "failed")
+        self.assertFalse(recovery_path.exists())
         with self.database._connect() as connection:
-            status = connection.execute(
-                "SELECT status FROM posts WHERE id = ?", (self.post_id,)
+            key = connection.execute(
+                "SELECT idempotency_key FROM posts WHERE id = ?", (self.post_id,)
             ).fetchone()[0]
-        self.assertEqual(status, "failed")
+        self.assertIsNotNone(key)
+
+    def test_result_persistence_failure_is_indeterminate_in_markdown_not_only_sidecar(self):
+        from content_ops.markdown import read_post_record
+        from content_ops.workflow import SchedulingError, approve_draft
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        with patch.object(self.database, "record_schedule_result", side_effect=OSError("db unavailable")):
+            with self.assertRaisesRegex(SchedulingError, "requires reconciliation"):
+                self.schedule()
+
+        self.assertEqual(read_post_record(self.path)[0]["status"], "indeterminate")
 
     def test_schedule_persists_zernio_id_in_sqlite(self):
         from content_ops.workflow import approve_draft
@@ -200,6 +265,29 @@ class SchedulingTests(unittest.TestCase):
                 "SELECT zernio_post_id FROM posts WHERE id = ?", (self.post_id,)
             ).fetchone()[0]
         self.assertEqual(zernio_post_id, "z-1")
+
+    def test_zernio_client_sends_persisted_key_as_x_request_id(self):
+        from content_ops.zernio import ZernioClient
+
+        captured = {}
+
+        class Response:
+            def read(self):
+                return b'{"id":"z-1"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+        def opener(request):
+            captured["request"] = request
+            return Response()
+
+        client = ZernioClient("local-test-key", opener=opener)
+        self.assertEqual(client.create_post({"content": "x"}, "request-uuid"), "z-1")
+        self.assertEqual(captured["request"].get_header("X-request-id"), "request-uuid")
 
     def test_approval_restores_database_status_when_markdown_write_fails(self):
         from content_ops.workflow import approve_draft
@@ -220,6 +308,14 @@ class SchedulingTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     main(["schedule", "1", "--at", "2026-08-01T10:00:00"])
         self.assertEqual(error.call_args.args[0], "--confirm is required")
+
+    def test_cli_parser_accepts_schedule_reconcile_syntax(self):
+        from content_ops.cli import build_parser
+
+        arguments = build_parser().parse_args(["schedule", "reconcile", "7"])
+
+        self.assertEqual(arguments.post_id, "reconcile")
+        self.assertEqual(arguments.reconcile_post_id, "7")
 
 
 if __name__ == "__main__":

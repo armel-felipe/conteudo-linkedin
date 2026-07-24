@@ -13,6 +13,7 @@ class PostStatus(str, Enum):
     REJECTED = "rejected"
     ARCHIVED = "archived"
     FAILED = "failed"
+    INDETERMINATE = "indeterminate"
 
 
 ALLOWED_POST_TRANSITIONS: dict[PostStatus, frozenset[PostStatus]] = {
@@ -22,8 +23,13 @@ ALLOWED_POST_TRANSITIONS: dict[PostStatus, frozenset[PostStatus]] = {
         {PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.DRAFT}
     ),
     PostStatus.APPROVED: frozenset(
-        {PostStatus.SCHEDULED, PostStatus.DRAFT, PostStatus.FAILED}
+        {PostStatus.SCHEDULED, PostStatus.DRAFT, PostStatus.FAILED, PostStatus.INDETERMINATE}
     ),
-    PostStatus.SCHEDULED: frozenset({PostStatus.PUBLISHED, PostStatus.FAILED}),
+    PostStatus.SCHEDULED: frozenset(
+        {PostStatus.PUBLISHED, PostStatus.FAILED, PostStatus.INDETERMINATE}
+    ),
     PostStatus.FAILED: frozenset({PostStatus.APPROVED, PostStatus.ARCHIVED}),
+    PostStatus.INDETERMINATE: frozenset(
+        {PostStatus.SCHEDULED, PostStatus.FAILED, PostStatus.ARCHIVED}
+    ),
 }
