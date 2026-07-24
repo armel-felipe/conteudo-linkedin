@@ -1,7 +1,7 @@
 import json
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,16 +14,24 @@ class ReportingTests(unittest.TestCase):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.database = Database(Path(self.temporary_directory.name) / "content.db")
         self.database.initialize()
+        today = date.today()
+        self.week_start = today + timedelta(days=(7 - today.weekday()) % 7)
+        scheduled_for = (
+            f"{self.week_start.isoformat()}T10:00:00-03:00"
+        )
+        published_for = (
+            f"{(self.week_start + timedelta(days=5)).isoformat()}T10:00:00-03:00"
+        )
         self.scheduled = self.database.create_post(PostStatus.APPROVED, "Scheduled post")
         self.database.persist_schedule_intent(
             self.scheduled, "123e4567-e89b-12d3-a456-426614174000",
-            "2026-07-28T10:00:00-03:00", {"content": "Scheduled post"},
+            scheduled_for, {"content": "Scheduled post"},
         )
         self.database.record_schedule_result(self.scheduled, PostStatus.SCHEDULED, "z-1")
         self.published = self.database.create_post(PostStatus.APPROVED, "Published post")
         self.database.persist_schedule_intent(
             self.published, "123e4567-e89b-12d3-a456-426614174001",
-            "2026-08-02T10:00:00-03:00", {"content": "Published post"},
+            published_for, {"content": "Published post"},
         )
         self.database.record_schedule_result(self.published, PostStatus.SCHEDULED, "z-2")
 
@@ -33,7 +41,7 @@ class ReportingTests(unittest.TestCase):
     def test_weekly_report_counts_cadence(self):
         from content_ops.reporting import weekly_report
 
-        report = weekly_report(self.database, date(2026, 7, 27))
+        report = weekly_report(self.database, self.week_start)
 
         self.assertIn("Cadência: 2/2", report)
         self.assertIn("scheduled: 2", report)
@@ -42,7 +50,7 @@ class ReportingTests(unittest.TestCase):
         from content_ops.reporting import weekly_report
 
         with self.assertRaisesRegex(ValueError, "Monday"):
-            weekly_report(self.database, date(2026, 7, 28))
+            weekly_report(self.database, self.week_start + timedelta(days=1))
 
     def test_sync_marks_only_published_response_and_saves_platform_url(self):
         from content_ops.markdown import read_post_record, write_post_record
@@ -110,6 +118,32 @@ class ReportingTests(unittest.TestCase):
                 "SELECT status FROM posts WHERE id = ?", (self.scheduled,)
             ).fetchone()[0]
         self.assertEqual(status, "scheduled")
+
+    def test_sync_maps_remote_failed_to_failed_in_both_stores(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.reporting import sync_published_post
+
+        class ReadOnlyClient:
+            def get_post(self, post_id):
+                return {"status": "FAILED"}
+
+        path = Path(self.temporary_directory.name) / "scheduled.md"
+        write_post_record(
+            path, {"post_id": self.scheduled, "status": "scheduled"}, "Conteúdo"
+        )
+
+        self.assertFalse(
+            sync_published_post(ReadOnlyClient(), self.database, self.scheduled, path)
+        )
+
+        with self.database._connect() as connection:
+            status = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (self.scheduled,)
+            ).fetchone()[0]
+        self.assertEqual(status, "failed")
+        metadata, _ = read_post_record(path)
+        self.assertEqual(metadata["status"], "failed")
+        self.assertEqual(metadata["publication_result"]["status"], "FAILED")
 
     def test_sync_does_not_publish_when_get_fails(self):
         from content_ops.markdown import write_post_record

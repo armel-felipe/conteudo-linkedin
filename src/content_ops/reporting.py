@@ -7,6 +7,7 @@ from typing import Any
 
 from content_ops.db import Database
 from content_ops.markdown import read_post_record, write_post_record
+from content_ops.models import PostStatus
 
 
 def weekly_report(db: Database, week_start: date) -> str:
@@ -34,7 +35,14 @@ def sync_published_post(
     if not isinstance(payload, dict):
         payload = {}
     status = payload.get("status")
-    published = isinstance(status, str) and status.lower() == "published"
+    normalized_status = status.lower() if isinstance(status, str) else ""
+    if normalized_status == PostStatus.PUBLISHED.value:
+        local_status = PostStatus.PUBLISHED
+    elif normalized_status == PostStatus.FAILED.value:
+        local_status = PostStatus.FAILED
+    else:
+        local_status = PostStatus.SCHEDULED
+    published = local_status is PostStatus.PUBLISHED
     platform_post_url = payload.get("platformPostUrl")
     if not isinstance(platform_post_url, str) or not platform_post_url:
         platform_post_url = None
@@ -54,7 +62,7 @@ def sync_published_post(
         raise ValueError(f"Markdown record for post {post_id} is not scheduled")
     original = path.read_bytes()
     updated = dict(metadata)
-    updated["status"] = "published" if published else "scheduled"
+    updated["status"] = local_status.value
     updated["published_url"] = platform_post_url or metadata.get("published_url")
     updated["metrics"] = metrics
     updated["publication_result"] = publication_result
@@ -63,7 +71,7 @@ def sync_published_post(
         with db.transaction() as connection:
             db.record_publication_sync(
                 post_id,
-                published,
+                local_status,
                 platform_post_url,
                 metrics,
                 publication_result,

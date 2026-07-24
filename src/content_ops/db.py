@@ -225,18 +225,18 @@ class Database:
     def record_publication_sync(
         self,
         post_id: int,
-        published: bool,
+        status: PostStatus,
         platform_post_url: str | None,
         metrics: dict[str, object] | None = None,
         publication_result: dict[str, object] | None = None,
         connection: sqlite3.Connection | None = None,
     ) -> None:
-        """Store a GET result, transitioning only a currently scheduled post."""
+        """Store a GET result, mapping terminal remote states from scheduled."""
         if connection is None:
             with self.transaction() as transaction:
                 self.record_publication_sync(
                     post_id,
-                    published,
+                    status,
                     platform_post_url,
                     metrics,
                     publication_result,
@@ -250,8 +250,15 @@ class Database:
             raise ValueError(f"Post {post_id} does not exist")
         if row["status"] != PostStatus.SCHEDULED.value:
             raise ValueError(f"Post {post_id} is not scheduled")
-        if published:
-            self.transition_post(post_id, PostStatus.PUBLISHED, connection)
+        destination = self._coerce_status(status)
+        if destination not in {
+            PostStatus.SCHEDULED,
+            PostStatus.PUBLISHED,
+            PostStatus.FAILED,
+        }:
+            raise ValueError(f"Unsupported publication sync status: {destination.value}")
+        if destination is not PostStatus.SCHEDULED:
+            self.transition_post(post_id, destination, connection)
         connection.execute(
             """
             UPDATE posts

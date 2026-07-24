@@ -131,6 +131,7 @@ def reconcile_schedule(
     if not isinstance(payload, dict) or not isinstance(key, str):
         raise SchedulingError("Scheduling recovery is required")
     _validate_persisted_idempotency_key(key)
+    _validate_markdown_matches_schedule_intent(metadata, body, intent)
     return _send_schedule_request(path, post_id, metadata, body, payload, key, client, database)
 
 
@@ -228,6 +229,27 @@ def _validate_persisted_idempotency_key(key: object) -> None:
         uuid.UUID(key)
     except (ValueError, AttributeError, TypeError):
         raise SchedulingError("Scheduling recovery is required") from None
+
+
+def _validate_markdown_matches_schedule_intent(
+    metadata: dict, body: str, intent: dict[str, object]
+) -> None:
+    """Refuse recovery when the editorial record no longer matches the sent request."""
+    payload = intent["payload"]
+    if (
+        not isinstance(payload, dict)
+        or body != payload.get("content")
+        or metadata.get("scheduled_for") != intent.get("scheduled_for")
+        or metadata.get("schedule_payload") != payload
+    ):
+        raise SchedulingError("Markdown differs from stored request")
+
+    image_url = metadata.get("image_url")
+    markdown_media = [{"url": image_url}] if image_url else None
+    if payload.get("mediaItems") != markdown_media and (
+        "mediaItems" in payload or markdown_media is not None
+    ):
+        raise SchedulingError("Markdown differs from stored request")
 
 
 def _validate_schedule(

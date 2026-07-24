@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 
 class FakeClient:
@@ -43,6 +44,9 @@ class SchedulingTests(unittest.TestCase):
             "Texto aprovado.",
         )
         self.client = FakeClient()
+        self.scheduled_for = (
+            datetime.now(ZoneInfo("America/Sao_Paulo")) + timedelta(days=7)
+        ).isoformat(timespec="seconds")
 
     def schedule(self, client=None):
         from content_ops.workflow import schedule_post
@@ -50,7 +54,7 @@ class SchedulingTests(unittest.TestCase):
         return schedule_post(
             self.post_id,
             self.path,
-            "2026-08-01T10:00:00",
+            self.scheduled_for,
             True,
             client or self.client,
             database=self.database,
@@ -81,7 +85,7 @@ class SchedulingTests(unittest.TestCase):
         self.assertEqual(self.client.create_calls, 1)
         self.assertEqual(self.client.payloads, [{
             "content": "Texto aprovado.",
-            "scheduledFor": "2026-08-01T10:00:00",
+            "scheduledFor": self.scheduled_for,
             "timezone": "America/Sao_Paulo",
             "targets": [{"platform": "linkedin", "accountId": "linkedin-account"}],
         }])
@@ -183,7 +187,7 @@ class SchedulingTests(unittest.TestCase):
         self.database.persist_schedule_intent(
             self.post_id,
             "not-a-uuid",
-            "2026-08-01T10:00:00",
+            self.scheduled_for,
             {"content": "Texto aprovado."},
         )
         metadata, body = read_post_record(self.path)
@@ -195,13 +199,83 @@ class SchedulingTests(unittest.TestCase):
             reconcile_schedule(self.post_id, self.path, self.client, database=self.database)
         self.assertEqual(self.client.create_calls, 0)
 
+    def test_reconcile_rejects_changed_body_before_http(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.workflow import (
+            SchedulingError,
+            approve_draft,
+            reconcile_schedule,
+        )
+        from content_ops.zernio import ZernioUncertainError
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        with self.assertRaises(SchedulingError):
+            self.schedule(FakeClient(error=ZernioUncertainError("closed")))
+        metadata, _ = read_post_record(self.path)
+        write_post_record(self.path, metadata, "Conteúdo editado depois do envio.")
+        client = FakeClient(response="must-not-send")
+
+        with self.assertRaisesRegex(SchedulingError, "differs from stored request"):
+            reconcile_schedule(
+                self.post_id, self.path, client, database=self.database
+            )
+
+        self.assertEqual(client.create_calls, 0)
+        self.assertEqual(read_post_record(self.path)[0]["status"], "indeterminate")
+
+    def test_reconcile_rejects_changed_time_account_or_media_before_http(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.workflow import (
+            SchedulingError,
+            approve_draft,
+            reconcile_schedule,
+        )
+        from content_ops.zernio import ZernioUncertainError
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        with self.assertRaises(SchedulingError):
+            self.schedule(FakeClient(error=ZernioUncertainError("closed")))
+        original = self.path.read_bytes()
+        mutations = {
+            "time": lambda metadata: metadata.__setitem__(
+                "scheduled_for",
+                (
+                    datetime.now(ZoneInfo("America/Sao_Paulo"))
+                    + timedelta(days=8)
+                ).isoformat(timespec="seconds"),
+            ),
+            "account": lambda metadata: metadata["schedule_payload"]["targets"][0].__setitem__(
+                "accountId", "different-account"
+            ),
+            "media": lambda metadata: metadata.__setitem__(
+                "image_url", "https://example.test/edited.png"
+            ),
+        }
+
+        for name, mutate in mutations.items():
+            with self.subTest(field=name):
+                self.path.write_bytes(original)
+                metadata, body = read_post_record(self.path)
+                mutate(metadata)
+                write_post_record(self.path, metadata, body)
+                client = FakeClient(response="must-not-send")
+
+                with self.assertRaisesRegex(
+                    SchedulingError, "differs from stored request"
+                ):
+                    reconcile_schedule(
+                        self.post_id, self.path, client, database=self.database
+                    )
+
+                self.assertEqual(client.create_calls, 0)
+
     def test_schedule_rejects_missing_confirmation_before_http(self):
         from content_ops.workflow import SchedulingValidationError, approve_draft, schedule_post
 
         approve_draft(self.post_id, self.path, database=self.database)
         with self.assertRaisesRegex(SchedulingValidationError, "--confirm is required"):
             schedule_post(
-                self.post_id, self.path, "2026-08-01T10:00:00", False, self.client,
+                self.post_id, self.path, self.scheduled_for, False, self.client,
                 database=self.database, account_id="linkedin-account",
             )
         self.assertEqual(self.client.create_calls, 0)
@@ -351,7 +425,7 @@ class SchedulingTests(unittest.TestCase):
         with patch.dict("os.environ", {}, clear=True):
             with patch.object(argparse.ArgumentParser, "error", side_effect=RuntimeError) as error:
                 with self.assertRaises(RuntimeError):
-                    main(["schedule", "1", "--at", "2026-08-01T10:00:00"])
+                    main(["schedule", "1", "--at", self.scheduled_for])
         self.assertEqual(error.call_args.args[0], "--confirm is required")
 
     def test_cli_parser_accepts_schedule_reconcile_syntax(self):
