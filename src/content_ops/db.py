@@ -2,8 +2,10 @@
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
 
@@ -159,62 +161,93 @@ class Database:
             for row in rows
         ]
 
+    @contextmanager
+    def transaction(self) -> Iterator[sqlite3.Connection]:
+        """Yield one transaction so database and editorial writes can succeed together."""
+        with self._connect() as connection:
+            yield connection
+
     def replace_pillars(
-        self, pillars: list[tuple[str, int, tuple[str, ...]]]
+        self,
+        pillars: list[tuple[str, int, tuple[str, ...]]],
+        connection: sqlite3.Connection | None = None,
     ) -> None:
         """Synchronize the proposal set while retaining approval for matching names.
 
         Approval belongs to a pillar in the current proposal set. A reproposal
-        with the same name preserves its prior approval; absent names are removed,
-        even if approved, so SQLite exactly mirrors the rendered editorial record.
+        with the same name preserves its prior approval; absent names are removed
+        and linked ideas are detached, so SQLite exactly mirrors the rendered
+        editorial record without violating foreign-key integrity.
         """
         names = [name for name, _, _ in pillars]
         if len(names) != len(set(names)):
             raise ValueError("Pillar names must be unique")
 
-        with self._connect() as connection:
-            for name, count, evidence_ids in pillars:
-                connection.execute(
-                    """
-                    INSERT INTO pillars (name, count, evidence_ids)
-                    VALUES (?, ?, ?)
-                    ON CONFLICT(name) DO UPDATE SET
-                        count = excluded.count,
-                        evidence_ids = excluded.evidence_ids
-                    """,
-                    (name, count, json.dumps(evidence_ids, ensure_ascii=False)),
-                )
-            if names:
-                placeholders = ", ".join("?" for _ in names)
-                connection.execute(
-                    f"DELETE FROM pillars WHERE name NOT IN ({placeholders})", names
-                )
-            else:
-                connection.execute("DELETE FROM pillars")
+        if connection is None:
+            with self.transaction() as transaction:
+                self.replace_pillars(pillars, transaction)
+            return
 
-    def approve_pillar(self, name: str, maximum_approved: int = 5) -> None:
+        for name, count, evidence_ids in pillars:
+            connection.execute(
+                """
+                INSERT INTO pillars (name, count, evidence_ids)
+                VALUES (?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    count = excluded.count,
+                    evidence_ids = excluded.evidence_ids
+                """,
+                (name, count, json.dumps(evidence_ids, ensure_ascii=False)),
+            )
+        if names:
+            placeholders = ", ".join("?" for _ in names)
+            missing_clause = f"name NOT IN ({placeholders})"
+            connection.execute(
+                "UPDATE ideas SET pillar_id = NULL "
+                f"WHERE pillar_id IN (SELECT id FROM pillars WHERE {missing_clause})",
+                names,
+            )
+            connection.execute(f"DELETE FROM pillars WHERE {missing_clause}", names)
+        else:
+            connection.execute("UPDATE ideas SET pillar_id = NULL WHERE pillar_id IS NOT NULL")
+            connection.execute("DELETE FROM pillars")
+
+    def approve_pillar(
+        self,
+        name: str,
+        maximum_approved: int = 5,
+        connection: sqlite3.Connection | None = None,
+    ) -> None:
         """Approve a proposal, rejecting approval number six and beyond."""
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT approved FROM pillars WHERE name = ?", (name,)
-            ).fetchone()
-            if row is None:
-                raise ValueError(f"Pillar {name!r} does not exist")
-            if row["approved"]:
-                return
-            approved_count = connection.execute(
-                "SELECT COUNT(*) FROM pillars WHERE approved = 1"
-            ).fetchone()[0]
-            if approved_count >= maximum_approved:
-                raise ValueError(f"Cannot approve more than {maximum_approved} pillars (at most five)")
-            connection.execute("UPDATE pillars SET approved = 1 WHERE name = ?", (name,))
+        if connection is None:
+            with self.transaction() as transaction:
+                self.approve_pillar(name, maximum_approved, transaction)
+            return
 
-    def pillar_is_approved(self, name: str) -> bool:
+        row = connection.execute(
+            "SELECT approved FROM pillars WHERE name = ?", (name,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Pillar {name!r} does not exist")
+        if row["approved"]:
+            return
+        approved_count = connection.execute(
+            "SELECT COUNT(*) FROM pillars WHERE approved = 1"
+        ).fetchone()[0]
+        if approved_count >= maximum_approved:
+            raise ValueError(f"Cannot approve more than {maximum_approved} pillars (at most five)")
+        connection.execute("UPDATE pillars SET approved = 1 WHERE name = ?", (name,))
+
+    def pillar_is_approved(
+        self, name: str, connection: sqlite3.Connection | None = None
+    ) -> bool:
         """Return whether an existing pillar has an approval decision."""
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT approved FROM pillars WHERE name = ?", (name,)
-            ).fetchone()
+        if connection is None:
+            with self._connect() as read_connection:
+                return self.pillar_is_approved(name, read_connection)
+        row = connection.execute(
+            "SELECT approved FROM pillars WHERE name = ?", (name,)
+        ).fetchone()
         return bool(row and row["approved"])
 
     def _connect(self) -> sqlite3.Connection:

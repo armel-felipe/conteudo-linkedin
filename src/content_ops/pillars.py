@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sqlite3
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -75,10 +76,13 @@ def write_pillar_proposals(
 ) -> list[PillarProposal]:
     """Persist transparent proposals in SQLite and render the editorial record."""
     proposals = propose_pillars(posts, limit=limit)
-    database.replace_pillars(
-        [(proposal.name, proposal.count, proposal.evidence_ids) for proposal in proposals]
-    )
-    _write_document(Path(path), proposals, database)
+    document_path = Path(path)
+    with database.transaction() as connection:
+        database.replace_pillars(
+            [(proposal.name, proposal.count, proposal.evidence_ids) for proposal in proposals],
+            connection,
+        )
+        _write_document(document_path, proposals, database, connection)
     return proposals
 
 
@@ -86,15 +90,11 @@ def approve_pillar(path: str | Path, database: Database, name: str) -> None:
     """Approve a recorded proposal in both index and editorial Markdown."""
     document_path = Path(path)
     document = document_path.read_text(encoding="utf-8")
-    heading = f"## {name}\n"
-    if heading not in document:
-        raise ValueError(f"Pillar {name!r} is not in {document_path}")
-    section_pattern = rf"(## {re.escape(name)}\n.*?approved: )false(?=\n|$)"
-    updated, replacements = re.subn(section_pattern, r"\1true", document, count=1, flags=re.DOTALL)
-    if replacements != 1:
-        raise ValueError(f"Pillar {name!r} has no editable approval field")
-    database.approve_pillar(name)
-    document_path.write_text(updated, encoding="utf-8")
+    updated = _approve_document_section(document, name, document_path)
+    with database.transaction() as connection:
+        database.approve_pillar(name, connection=connection)
+        if updated != document:
+            document_path.write_text(updated, encoding="utf-8")
 
 
 def _normalize_post(post: str | tuple[str, str], index: int) -> tuple[str, str]:
@@ -127,7 +127,32 @@ def _normalize_token(token: str) -> str:
     return {"remotas": "remota"}.get(token, token)
 
 
-def _write_document(path: Path, proposals: Sequence[PillarProposal], database: Database) -> None:
+def _approve_document_section(document: str, name: str, path: Path) -> str:
+    heading = re.compile(rf"^## {re.escape(name)}$", flags=re.MULTILINE)
+    section_start = heading.search(document)
+    if section_start is None:
+        raise ValueError(f"Pillar {name!r} is not in {path}")
+    next_heading = re.compile(r"^## .+$", flags=re.MULTILINE).search(
+        document, section_start.end()
+    )
+    section_end = next_heading.start() if next_heading else len(document)
+    section = document[section_start.start() : section_end]
+    approval = re.compile(r"^(approved: )(true|false)$", flags=re.MULTILINE)
+    match = approval.search(section)
+    if match is None:
+        raise ValueError(f"Pillar {name!r} has no editable approval field")
+    if match.group(2) == "true":
+        return document
+    updated_section = section[: match.start(2)] + "true" + section[match.end(2) :]
+    return document[: section_start.start()] + updated_section + document[section_end:]
+
+
+def _write_document(
+    path: Path,
+    proposals: Sequence[PillarProposal],
+    database: Database,
+    connection: sqlite3.Connection,
+) -> None:
     lines = ["# Pilares editoriais", "", "Propostas geradas do histórico importado.", ""]
     for proposal in proposals:
         lines.extend(
@@ -135,7 +160,7 @@ def _write_document(path: Path, proposals: Sequence[PillarProposal], database: D
                 f"## {proposal.name}",
                 f"count: {proposal.count}",
                 f"evidence_ids: {', '.join(proposal.evidence_ids)}",
-                f"approved: {'true' if database.pillar_is_approved(proposal.name) else 'false'}",
+                f"approved: {'true' if database.pillar_is_approved(proposal.name, connection) else 'false'}",
                 "",
             ]
         )

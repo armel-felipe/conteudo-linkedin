@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 class PillarProposalTests(unittest.TestCase):
@@ -89,6 +90,90 @@ class PillarPersistenceTests(unittest.TestCase):
         self.assertTrue(pillar.approved)
         self.assertEqual(pillar.count, 2)
         self.assertEqual(pillar.evidence_ids, ("linkedin:a", "linkedin:b"))
+
+    def test_approval_only_changes_its_own_section_and_is_idempotent(self):
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path,
+            self.database,
+            [("linkedin:a", "Python para dados"), ("linkedin:b", "Entrevista de emprego")],
+        )
+
+        approve_pillar(self.path, self.database, "Carreira e oportunidades")
+        approve_pillar(self.path, self.database, "Carreira e oportunidades")
+
+        self.assertEqual(
+            self.path.read_text(encoding="utf-8"),
+            "# Pilares editoriais\n\n"
+            "Propostas geradas do histórico importado.\n\n"
+            "## Carreira e oportunidades\n"
+            "count: 1\n"
+            "evidence_ids: linkedin:b\n"
+            "approved: true\n\n"
+            "## Python e dados\n"
+            "count: 1\n"
+            "evidence_ids: linkedin:a\n"
+            "approved: false\n",
+        )
+
+    def test_approval_rolls_back_database_when_markdown_write_fails(self):
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path, self.database, [("linkedin:a", "Python para dados")]
+        )
+
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+            with self.assertRaisesRegex(OSError, "disk full"):
+                approve_pillar(self.path, self.database, "Python e dados")
+
+        self.assertFalse(self.database.pillar_is_approved("Python e dados"))
+        self.assertIn("approved: false", self.path.read_text(encoding="utf-8"))
+
+    def test_reproposal_rolls_back_database_when_markdown_write_fails(self):
+        from content_ops.db import Pillar
+        from content_ops.pillars import write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path, self.database, [("linkedin:a", "Python para dados")]
+        )
+        before_document = self.path.read_text(encoding="utf-8")
+
+        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+            with self.assertRaisesRegex(OSError, "disk full"):
+                write_pillar_proposals(
+                    self.path, self.database, [("linkedin:b", "LLM para produto")]
+                )
+
+        self.assertEqual(
+            self.database.list_pillars(),
+            [Pillar("Python e dados", False, 1, ("linkedin:a",))],
+        )
+        self.assertEqual(self.path.read_text(encoding="utf-8"), before_document)
+
+    def test_reproposal_detaches_ideas_from_removed_pillars(self):
+        from content_ops.pillars import write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path, self.database, [("linkedin:a", "Entrevista de emprego")]
+        )
+        with self.database._connect() as connection:
+            pillar_id = connection.execute(
+                "SELECT id FROM pillars WHERE name = ?", ("Carreira e oportunidades",)
+            ).fetchone()[0]
+            connection.execute(
+                "INSERT INTO ideas (title, pillar_id) VALUES (?, ?)", ("Ideia", pillar_id)
+            )
+
+        write_pillar_proposals(
+            self.path, self.database, [("linkedin:b", "Python para dados")]
+        )
+
+        with self.database._connect() as connection:
+            self.assertIsNone(connection.execute("SELECT pillar_id FROM ideas").fetchone()[0])
+        self.assertEqual([pillar.name for pillar in self.database.list_pillars()], ["Python e dados"])
+        self.assertNotIn("Carreira e oportunidades", self.path.read_text(encoding="utf-8"))
 
     def test_reproposal_replaces_the_pillar_set_and_preserves_matching_approval(self):
         from content_ops.db import Pillar
