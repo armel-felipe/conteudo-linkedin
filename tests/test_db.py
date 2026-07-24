@@ -2,6 +2,7 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 class DatabaseTests(unittest.TestCase):
@@ -88,6 +89,13 @@ class DatabaseTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.db.transition_post(999, PostStatus.DRAFT)
+
+    def test_transaction_acquires_the_write_lock_before_reading_approval_count(self):
+        with patch.object(self.db, "_begin_immediate", wraps=self.db._begin_immediate) as begin:
+            with self.db.transaction() as connection:
+                self.assertTrue(connection.in_transaction)
+
+        begin.assert_called_once()
 
 
 if __name__ == "__main__":

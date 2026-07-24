@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import sqlite3
 from pathlib import Path
 from unittest.mock import patch
 
@@ -124,12 +125,44 @@ class PillarPersistenceTests(unittest.TestCase):
             self.path, self.database, [("linkedin:a", "Python para dados")]
         )
 
-        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+        with patch("content_ops.pillars.os.fsync", side_effect=OSError("disk full")):
             with self.assertRaisesRegex(OSError, "disk full"):
                 approve_pillar(self.path, self.database, "Python e dados")
 
         self.assertFalse(self.database.pillar_is_approved("Python e dados"))
         self.assertIn("approved: false", self.path.read_text(encoding="utf-8"))
+
+    def test_approval_preserves_original_when_staging_fsync_fails(self):
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path, self.database, [("linkedin:a", "Python para dados")]
+        )
+        original = self.path.read_text(encoding="utf-8")
+
+        with patch("content_ops.pillars.os.fsync", side_effect=OSError("disk full")):
+            with self.assertRaisesRegex(OSError, "disk full"):
+                approve_pillar(self.path, self.database, "Python e dados")
+
+        self.assertFalse(self.database.pillar_is_approved("Python e dados"))
+        self.assertEqual(self.path.read_text(encoding="utf-8"), original)
+
+    def test_approval_restores_markdown_when_database_commit_fails(self):
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path, self.database, [("linkedin:a", "Python para dados")]
+        )
+        original = self.path.read_text(encoding="utf-8")
+
+        with patch.object(
+            self.database, "_commit", side_effect=sqlite3.OperationalError("commit failed")
+        ):
+            with self.assertRaisesRegex(sqlite3.OperationalError, "commit failed"):
+                approve_pillar(self.path, self.database, "Python e dados")
+
+        self.assertFalse(self.database.pillar_is_approved("Python e dados"))
+        self.assertEqual(self.path.read_text(encoding="utf-8"), original)
 
     def test_reproposal_rolls_back_database_when_markdown_write_fails(self):
         from content_ops.db import Pillar
@@ -140,7 +173,7 @@ class PillarPersistenceTests(unittest.TestCase):
         )
         before_document = self.path.read_text(encoding="utf-8")
 
-        with patch.object(Path, "write_text", side_effect=OSError("disk full")):
+        with patch("content_ops.pillars.os.fsync", side_effect=OSError("disk full")):
             with self.assertRaisesRegex(OSError, "disk full"):
                 write_pillar_proposals(
                     self.path, self.database, [("linkedin:b", "LLM para produto")]

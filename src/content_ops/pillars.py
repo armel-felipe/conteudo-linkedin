@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sqlite3
+import tempfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Callable, Iterable, Sequence
 
 from content_ops.db import Database
 
@@ -77,24 +79,27 @@ def write_pillar_proposals(
     """Persist transparent proposals in SQLite and render the editorial record."""
     proposals = propose_pillars(posts, limit=limit)
     document_path = Path(path)
-    with database.transaction() as connection:
-        database.replace_pillars(
+    _synchronize_document(
+        document_path,
+        database,
+        lambda connection, _: _render_document(proposals, database, connection),
+        lambda connection: database.replace_pillars(
             [(proposal.name, proposal.count, proposal.evidence_ids) for proposal in proposals],
             connection,
-        )
-        _write_document(document_path, proposals, database, connection)
+        ),
+    )
     return proposals
 
 
 def approve_pillar(path: str | Path, database: Database, name: str) -> None:
     """Approve a recorded proposal in both index and editorial Markdown."""
     document_path = Path(path)
-    document = document_path.read_text(encoding="utf-8")
-    updated = _approve_document_section(document, name, document_path)
-    with database.transaction() as connection:
-        database.approve_pillar(name, connection=connection)
-        if updated != document:
-            document_path.write_text(updated, encoding="utf-8")
+    _synchronize_document(
+        document_path,
+        database,
+        lambda _, document: _approve_document_section(document, name, document_path),
+        lambda connection: database.approve_pillar(name, connection=connection),
+    )
 
 
 def _normalize_post(post: str | tuple[str, str], index: int) -> tuple[str, str]:
@@ -147,12 +152,11 @@ def _approve_document_section(document: str, name: str, path: Path) -> str:
     return document[: section_start.start()] + updated_section + document[section_end:]
 
 
-def _write_document(
-    path: Path,
+def _render_document(
     proposals: Sequence[PillarProposal],
     database: Database,
     connection: sqlite3.Connection,
-) -> None:
+) -> str:
     lines = ["# Pilares editoriais", "", "Propostas geradas do histórico importado.", ""]
     for proposal in proposals:
         lines.extend(
@@ -164,5 +168,91 @@ def _write_document(
                 "",
             ]
         )
+    return "\n".join(lines)
+
+
+def _synchronize_document(
+    path: Path,
+    database: Database,
+    build_document: Callable[[sqlite3.Connection, str], str],
+    mutate_database: Callable[[sqlite3.Connection], None],
+) -> None:
+    """Stage Markdown, then compensate it if the SQLite commit fails.
+
+    Markdown replacement is atomic within its directory, but SQLite and the
+    filesystem are separate durability domains. The old document is retained
+    until SQLite commits; a failed commit restores it before the error escapes.
+    """
+    staged: Path | None = None
+    published = False
+    original = path.read_bytes() if path.exists() else None
+    original_document = original.decode("utf-8") if original is not None else ""
+    try:
+        with database.transaction() as connection:
+            updated_document = build_document(connection, original_document)
+            updated = updated_document.encode("utf-8")
+            if updated != original:
+                staged = _stage_document(path, updated)
+            mutate_database(connection)
+            if staged is not None:
+                _publish_staged_document(staged, path)
+                published = True
+    except BaseException:
+        _discard_staged_document(staged)
+        if published:
+            try:
+                _restore_document(path, original)
+            except BaseException as restoration_error:
+                raise RuntimeError(
+                    f"SQLite synchronization failed and could not restore {path}"
+                ) from restoration_error
+        raise
+    finally:
+        _discard_staged_document(staged)
+
+
+def _stage_document(path: Path, content: bytes) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines), encoding="utf-8")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as temporary_file:
+            temporary_file.write(content)
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+    except BaseException:
+        _discard_staged_document(temporary_path)
+        raise
+    return temporary_path
+
+
+def _publish_staged_document(staged: Path, path: Path) -> None:
+    os.replace(staged, path)
+    _fsync_directory(path.parent)
+
+
+def _restore_document(path: Path, original: bytes | None) -> None:
+    if original is None:
+        path.unlink(missing_ok=True)
+        _fsync_directory(path.parent)
+        return
+    staged = _stage_document(path, original)
+    try:
+        _publish_staged_document(staged, path)
+    finally:
+        _discard_staged_document(staged)
+
+
+def _discard_staged_document(staged: Path | None) -> None:
+    if staged is not None:
+        staged.unlink(missing_ok=True)
+
+
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)

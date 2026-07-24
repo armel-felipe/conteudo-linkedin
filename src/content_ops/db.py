@@ -163,9 +163,27 @@ class Database:
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
-        """Yield one transaction so database and editorial writes can succeed together."""
-        with self._connect() as connection:
-            yield connection
+        """Serialize a write transaction before any approval state is read.
+
+        This only protects SQLite. Callers coordinating another store must use
+        their own staged-write and compensation protocol.
+        """
+        connection = self._connect()
+        try:
+            self._begin_immediate(connection)
+            try:
+                yield connection
+            except BaseException:
+                self._rollback(connection)
+                raise
+            else:
+                try:
+                    self._commit(connection)
+                except BaseException:
+                    self._rollback(connection)
+                    raise
+        finally:
+            connection.close()
 
     def replace_pillars(
         self,
@@ -255,6 +273,18 @@ class Database:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
+
+    @staticmethod
+    def _begin_immediate(connection: sqlite3.Connection) -> None:
+        connection.execute("BEGIN IMMEDIATE")
+
+    @staticmethod
+    def _commit(connection: sqlite3.Connection) -> None:
+        connection.commit()
+
+    @staticmethod
+    def _rollback(connection: sqlite3.Connection) -> None:
+        connection.rollback()
 
     @staticmethod
     def _coerce_status(status: str | PostStatus) -> PostStatus:
