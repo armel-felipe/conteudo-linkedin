@@ -164,7 +164,7 @@ def main(
             markdown_path = _find_post_markdown(
                 repository_root, arguments.post_id
             )
-            published = sync_published_post(
+            sync_published_post(
                 ZernioClient(os.environ["ZERNIO_API_KEY"]),
                 database,
                 arguments.post_id,
@@ -172,11 +172,13 @@ def main(
             )
         except (ValueError, ZernioError) as error:
             parser.error(str(error))
-        print(
-            f"Post {arguments.post_id} is published."
-            if published
-            else f"Post {arguments.post_id} remains scheduled."
-        )
+        status = database.post_status(arguments.post_id).value
+        messages = {
+            "scheduled": f"Post {arguments.post_id} remains scheduled.",
+            "published": f"Post {arguments.post_id} is published.",
+            "failed": f"Post {arguments.post_id} failed.",
+        }
+        print(messages[status])
         return
 
     if arguments.command in {"review", "schedule"}:

@@ -3,6 +3,7 @@ import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 class EditorialCliEndToEndTests(unittest.TestCase):
@@ -87,6 +88,38 @@ class EditorialCliEndToEndTests(unittest.TestCase):
                 "SELECT status FROM posts WHERE id = 1"
             ).fetchone()[0]
         self.assertEqual(status, "approved")
+
+    def test_posts_sync_reports_failed_when_remote_post_failed(self):
+        from content_ops.markdown import write_post_record
+        from content_ops.models import PostStatus
+
+        post_id = self.database.create_post(PostStatus.APPROVED, "Scheduled post")
+        self.database.persist_schedule_intent(
+            post_id,
+            "123e4567-e89b-12d3-a456-426614174000",
+            "2030-01-01T10:00:00-03:00",
+            {"content": "Scheduled post"},
+        )
+        self.database.record_schedule_result(post_id, PostStatus.SCHEDULED, "z-1")
+        path = self.root / "content" / "drafts" / "scheduled.md"
+        write_post_record(
+            path, {"post_id": post_id, "status": "scheduled"}, "Scheduled post"
+        )
+
+        class FailedPostClient:
+            def __init__(self, api_key):
+                self.api_key = api_key
+
+            def get_post(self, zernio_post_id):
+                return {"status": "FAILED"}
+
+        with (
+            patch.dict("content_ops.cli.os.environ", {"ZERNIO_API_KEY": "test-key"}),
+            patch("content_ops.zernio.ZernioClient", FailedPostClient),
+        ):
+            output = self.run_cli(["posts", "sync", str(post_id)])
+
+        self.assertEqual(output, f"Post {post_id} failed.\n")
 
 
 if __name__ == "__main__":

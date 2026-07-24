@@ -222,6 +222,16 @@ class Database:
             raise ValueError(f"Post {post_id} has no Zernio post ID")
         return row
 
+    def post_status(self, post_id: int) -> PostStatus:
+        """Return the current local status for an existing post."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()
+        if row is None:
+            raise ValueError(f"Post {post_id} does not exist")
+        return self._coerce_status(row["status"])
+
     def record_publication_sync(
         self,
         post_id: int,
