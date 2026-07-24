@@ -37,6 +37,14 @@ class PillarProposal:
     evidence_ids: tuple[str, ...]
 
 
+class _PublishedDocumentError(Exception):
+    """Signal that a document was replaced before its durability check failed."""
+
+    def __init__(self, original_error: BaseException):
+        super().__init__(str(original_error))
+        self.original_error = original_error
+
+
 def propose_pillars(posts: Iterable[str | tuple[str, str]], limit: int = 5) -> list[PillarProposal]:
     """Classify historical posts into no more than ``limit`` ranked pillar proposals."""
     if limit < 0:
@@ -185,10 +193,11 @@ def _synchronize_document(
     """
     staged: Path | None = None
     published = False
-    original = path.read_bytes() if path.exists() else None
-    original_document = original.decode("utf-8") if original is not None else ""
+    original: bytes | None = None
     try:
         with database.transaction() as connection:
+            original = path.read_bytes() if path.exists() else None
+            original_document = original.decode("utf-8") if original is not None else ""
             updated_document = build_document(connection, original_document)
             updated = updated_document.encode("utf-8")
             if updated != original:
@@ -197,15 +206,17 @@ def _synchronize_document(
             if staged is not None:
                 _publish_staged_document(staged, path)
                 published = True
-    except BaseException:
+    except BaseException as error:
         _discard_staged_document(staged)
-        if published:
+        if published or isinstance(error, _PublishedDocumentError):
             try:
                 _restore_document(path, original)
             except BaseException as restoration_error:
                 raise RuntimeError(
                     f"SQLite synchronization failed and could not restore {path}"
                 ) from restoration_error
+        if isinstance(error, _PublishedDocumentError):
+            raise error.original_error from error
         raise
     finally:
         _discard_staged_document(staged)
@@ -230,7 +241,10 @@ def _stage_document(path: Path, content: bytes) -> Path:
 
 def _publish_staged_document(staged: Path, path: Path) -> None:
     os.replace(staged, path)
-    _fsync_directory(path.parent)
+    try:
+        _fsync_directory(path.parent)
+    except BaseException as error:
+        raise _PublishedDocumentError(error) from error
 
 
 def _restore_document(path: Path, original: bytes | None) -> None:

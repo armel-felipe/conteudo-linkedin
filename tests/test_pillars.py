@@ -1,4 +1,5 @@
 import tempfile
+import threading
 import unittest
 import sqlite3
 from pathlib import Path
@@ -147,6 +148,24 @@ class PillarPersistenceTests(unittest.TestCase):
         self.assertFalse(self.database.pillar_is_approved("Python e dados"))
         self.assertEqual(self.path.read_text(encoding="utf-8"), original)
 
+    def test_approval_restores_markdown_when_directory_fsync_fails_after_replace(self):
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path, self.database, [("linkedin:a", "Python para dados")]
+        )
+        original = self.path.read_text(encoding="utf-8")
+
+        with patch(
+            "content_ops.pillars.os.fsync",
+            side_effect=[None, OSError("directory fsync failed"), None, None],
+        ):
+            with self.assertRaisesRegex(OSError, "directory fsync failed"):
+                approve_pillar(self.path, self.database, "Python e dados")
+
+        self.assertFalse(self.database.pillar_is_approved("Python e dados"))
+        self.assertEqual(self.path.read_text(encoding="utf-8"), original)
+
     def test_approval_restores_markdown_when_database_commit_fails(self):
         from content_ops.pillars import approve_pillar, write_pillar_proposals
 
@@ -256,6 +275,60 @@ class PillarPersistenceTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "at most five"):
             approve_pillar(self.path, self.database, names[5])
+
+    def test_concurrent_approvals_preserve_both_markdown_changes(self):
+        from content_ops.pillars import approve_pillar, write_pillar_proposals
+
+        write_pillar_proposals(
+            self.path,
+            self.database,
+            [("linkedin:a", "Python para dados"), ("linkedin:b", "Entrevista de emprego")],
+        )
+        barrier = threading.Barrier(2)
+        original_read_bytes = Path.read_bytes
+        original_begin = self.database._begin_immediate
+        transaction_state = threading.local()
+        errors: list[BaseException] = []
+
+        def begin_and_mark_lock(connection: sqlite3.Connection) -> None:
+            original_begin(connection)
+            transaction_state.holds_write_lock = True
+
+        def read_together(path: Path) -> bytes:
+            document = original_read_bytes(path)
+            if path == self.path and not getattr(transaction_state, "holds_write_lock", False):
+                barrier.wait(timeout=5)
+            return document
+
+        def approve(name: str) -> None:
+            try:
+                approve_pillar(self.path, self.database, name)
+            except BaseException as error:
+                errors.append(error)
+
+        with patch.object(self.database, "_begin_immediate", side_effect=begin_and_mark_lock):
+            with patch(
+                "content_ops.pillars.Path.read_bytes", autospec=True, side_effect=read_together
+            ):
+                threads = [
+                    threading.Thread(target=approve, args=("Python e dados",)),
+                    threading.Thread(target=approve, args=("Carreira e oportunidades",)),
+                ]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join(timeout=10)
+
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(errors, [])
+        self.assertTrue(self.database.pillar_is_approved("Python e dados"))
+        self.assertTrue(self.database.pillar_is_approved("Carreira e oportunidades"))
+        document = self.path.read_text(encoding="utf-8")
+        self.assertIn("## Python e dados\ncount: 1\nevidence_ids: linkedin:a\napproved: true", document)
+        self.assertIn(
+            "## Carreira e oportunidades\ncount: 1\nevidence_ids: linkedin:b\napproved: true",
+            document,
+        )
 
 
 class PillarCommandTests(unittest.TestCase):
