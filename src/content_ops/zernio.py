@@ -61,13 +61,17 @@ class ZernioClient:
             headers={"Authorization": f"Bearer {self.api_key}"},
             method="GET",
         )
+        request_error: tuple[int, str] | None = None
         try:
             with self._opener(request) as response:
                 body = response.read()
         except HTTPError as error:
-            raise ZernioError(error.code, self._http_error_message(error)) from error
-        except URLError as error:
-            raise ZernioError(0, "Network error") from error
+            request_error = (error.code, self._http_error_message(error))
+        except URLError:
+            request_error = (0, "Network error")
+
+        if request_error is not None:
+            raise ZernioError(*request_error)
 
         try:
             return json.loads(body.decode("utf-8")), body

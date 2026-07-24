@@ -9,6 +9,15 @@ from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
 
+def exception_chain(error):
+    """Return explicit exception links without following traceback frames."""
+    chain = []
+    while error is not None:
+        chain.append(error)
+        error = error.__cause__ or error.__context__
+    return chain
+
+
 class FakeZernioClient:
     def list_external_posts(self, account_id):
         self.account_id = account_id
@@ -138,6 +147,14 @@ class ZernioClientTests(unittest.TestCase):
         self.assertEqual(raised.exception.message, "HTTP 401 error")
         self.assertNotIn("credentials", str(raised.exception))
         self.assertNotIn("secret server detail", str(raised.exception))
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
+        self.assertFalse(
+            any(
+                "secret server detail" in str(error)
+                for error in exception_chain(raised.exception)
+            )
+        )
 
     def test_list_external_posts_does_not_expose_url_error_reason(self):
         from content_ops.zernio import ZernioClient, ZernioError
@@ -155,6 +172,14 @@ class ZernioClientTests(unittest.TestCase):
         self.assertEqual(raised.exception.status, 0)
         self.assertEqual(raised.exception.message, "Network error")
         self.assertNotIn("sensitive.example", str(raised.exception))
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
+        self.assertFalse(
+            any(
+                "sensitive.example" in str(error)
+                for error in exception_chain(raised.exception)
+            )
+        )
 
 
 class HistoryCommandTests(unittest.TestCase):
