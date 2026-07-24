@@ -1,0 +1,5 @@
+.env
+data/content.db
+data/imports/
+__pycache__/
+.DS_Store
