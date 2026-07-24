@@ -294,11 +294,17 @@ class Database:
                 """
                 SELECT pillars.id AS pillar_id, research_reports.id AS research_report_id
                 FROM pillars CROSS JOIN research_reports
-                WHERE pillars.name = ? AND research_reports.path = ?
+                WHERE pillars.name = ?
+                  AND pillars.approved = 1
+                  AND research_reports.path = ?
                 """,
                 (pillar, research_path),
             ).fetchone()
             if row is None:
+                if connection.execute(
+                    "SELECT 1 FROM pillars WHERE name = ? AND approved = 0", (pillar,)
+                ).fetchone():
+                    raise ValueError(f"Pillar {pillar!r} is not approved")
                 raise ValueError("Pillar or research report does not exist")
             cursor = connection.execute(
                 """
@@ -308,6 +314,42 @@ class Database:
                 (title, row["pillar_id"], row["research_report_id"]),
             )
             return cursor.lastrowid
+
+    def create_draft_for_idea(self, idea_id: int, pillar: str) -> dict[str, object]:
+        """Create a draft post only for the idea's still-approved pillar.
+
+        The supplied pillar is checked against the persisted idea rather than
+        trusted from a CLI or workflow caller, preventing cross-pillar drafts.
+        """
+        with self.transaction() as connection:
+            row = connection.execute(
+                """
+                SELECT ideas.id, ideas.title, pillars.name AS pillar, pillars.approved,
+                       research_reports.path AS research_path
+                FROM ideas
+                JOIN pillars ON pillars.id = ideas.pillar_id
+                JOIN research_reports ON research_reports.id = ideas.research_report_id
+                WHERE ideas.id = ?
+                """,
+                (idea_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Idea {idea_id} does not exist or is no longer linked")
+            if row["pillar"] != pillar:
+                raise ValueError("Draft pillar does not match the idea's pillar")
+            if not row["approved"]:
+                raise ValueError(f"Pillar {pillar!r} is not approved")
+            cursor = connection.execute(
+                "INSERT INTO posts (title, status) VALUES (?, 'draft')",
+                (row["title"],),
+            )
+            return {
+                "id": row["id"],
+                "angle": row["title"],
+                "pillar": row["pillar"],
+                "research_path": row["research_path"],
+                "post_id": cursor.lastrowid,
+            }
 
     def get_idea(self, idea_id: int) -> dict[str, object]:
         """Return an idea with the links needed to create its draft."""

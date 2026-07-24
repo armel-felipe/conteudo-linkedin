@@ -102,11 +102,11 @@ def main(argv: Sequence[str] | None = None) -> None:
             try:
                 idea = database.get_idea(arguments.idea_id)
                 pillar = str(idea["pillar"])
-                if not database.pillar_is_approved(pillar):
-                    raise ValueError(f"Pillar {pillar!r} is not approved")
-                idea["post_id"] = database.create_post("draft", str(idea["angle"]))
                 path = create_draft(
-                    idea, pillar, repository_root / "content" / "drafts" / f"idea-{idea['id']}.md"
+                    database,
+                    idea,
+                    pillar,
+                    repository_root / "content" / "drafts" / f"idea-{idea['id']}.md",
                 )
             except ValueError as error:
                 parser.error(str(error))

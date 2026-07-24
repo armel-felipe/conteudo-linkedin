@@ -19,21 +19,24 @@ def create_idea(
     return {"id": idea_id, "research_path": research_path, "pillar": pillar, "angle": angle}
 
 
-def create_draft(idea: dict, pillar: str, path: str | Path) -> Path:
+def create_draft(
+    database: Database, idea: dict[str, object], pillar: str, path: str | Path
+) -> Path:
     """Create a non-approved Markdown draft that retains its research source."""
+    persisted_idea = database.create_draft_for_idea(int(idea["id"]), pillar)
     draft_path = Path(path)
     draft_path.parent.mkdir(parents=True, exist_ok=True)
     metadata = {
         "approved": False,
-        "idea_id": idea["id"],
+        "idea_id": persisted_idea["id"],
         "image_url": None,
         "objective": "authority_and_job_opportunities",
         "pillar": pillar,
-        "research_path": idea["research_path"],
+        "research_path": persisted_idea["research_path"],
         "status": "draft",
         "zernio_post_id": None,
     }
-    if "post_id" in idea:
-        metadata["post_id"] = idea["post_id"]
-    write_post_record(draft_path, metadata, f"Ângulo: {idea['angle']}")
+    metadata["post_id"] = persisted_idea["post_id"]
+    idea["post_id"] = persisted_idea["post_id"]
+    write_post_record(draft_path, metadata, f"Ângulo: {persisted_idea['angle']}")
     return draft_path

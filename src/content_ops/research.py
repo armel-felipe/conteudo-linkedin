@@ -17,12 +17,12 @@ def capture_research(topic: str, command: str, target_path: str | Path) -> Path:
         raise ValueError("LAST30DAYS_COMMAND is required")
 
     result = subprocess.run(
-        [*arguments, topic], text=True, capture_output=True, check=False
+        [*arguments, topic], text=False, capture_output=True, check=False
     )
     if result.returncode != 0:
         raise RuntimeError(f"Research command failed with exit code {result.returncode}")
 
     path = Path(target_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(result.stdout, encoding="utf-8")
+    path.write_bytes(result.stdout)
     return path
