@@ -17,9 +17,9 @@ class ZernioError(RuntimeError):
 
 
 class ExternalPosts(list[dict[str, Any]]):
-    """Flattened posts with the raw API responses retained by page."""
+    """Flattened parsed posts with raw HTTP response bytes retained by page."""
 
-    def __init__(self, posts: list[dict[str, Any]], pages: list[Any]):
+    def __init__(self, posts: list[dict[str, Any]], pages: list[bytes]):
         super().__init__(posts)
         self.pages = pages
 
@@ -40,19 +40,19 @@ class ZernioClient:
     def list_external_posts(self, account_id: str) -> ExternalPosts:
         """Return all external posts for an account, fetching 100 at a time."""
         all_posts: list[dict[str, Any]] = []
-        raw_pages: list[Any] = []
+        raw_pages: list[bytes] = []
         page = 1
 
         while True:
-            payload = self._get_page(account_id, page)
+            payload, raw_page = self._get_page(account_id, page)
             posts = self._posts_from_payload(payload)
-            raw_pages.append(payload)
+            raw_pages.append(raw_page)
             all_posts.extend(posts)
             if len(posts) < 100:
                 return ExternalPosts(all_posts, raw_pages)
             page += 1
 
-    def _get_page(self, account_id: str, page: int) -> Any:
+    def _get_page(self, account_id: str, page: int) -> tuple[Any, bytes]:
         query = urlencode(
             {"source": "external", "accountId": account_id, "page": page, "limit": 100}
         )
@@ -67,10 +67,10 @@ class ZernioClient:
         except HTTPError as error:
             raise ZernioError(error.code, self._http_error_message(error)) from error
         except URLError as error:
-            raise ZernioError(0, str(error.reason)) from error
+            raise ZernioError(0, "Network error") from error
 
         try:
-            return json.loads(body.decode("utf-8"))
+            return json.loads(body.decode("utf-8")), body
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
             raise ZernioError(200, "Invalid JSON response") from error
 
@@ -87,13 +87,4 @@ class ZernioClient:
 
     @staticmethod
     def _http_error_message(error: HTTPError) -> str:
-        try:
-            body = error.read().decode("utf-8")
-            payload = json.loads(body)
-            if isinstance(payload, dict):
-                message = payload.get("message") or payload.get("error")
-                if isinstance(message, str):
-                    return message
-            return body or error.reason
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            return error.reason
+        return f"HTTP {error.code} error"

@@ -6,13 +6,18 @@ import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
 from unittest.mock import patch
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 
 class FakeZernioClient:
     def list_external_posts(self, account_id):
         self.account_id = account_id
-        return [{"_id": "a1", "content": "Python e dados", "status": "published"}]
+        from content_ops.zernio import ExternalPosts
+
+        return ExternalPosts(
+            [{"_id": "a1", "content": "Python e dados", "status": "published"}],
+            [b'[{"_id":"a1","content":"Python e dados","status":"published"}]'],
+        )
 
 
 class HistoryImportTests(unittest.TestCase):
@@ -39,8 +44,8 @@ class HistoryImportTests(unittest.TestCase):
         snapshots = list(self.import_dir.glob("*.json"))
         self.assertEqual(len(snapshots), 1)
         self.assertEqual(
-            json.loads(snapshots[0].read_text(encoding="utf-8")),
-            [{"_id": "a1", "content": "Python e dados", "status": "published"}],
+            snapshots[0].read_bytes(),
+            b'[{"_id":"a1","content":"Python e dados","status":"published"}]',
         )
 
     def test_import_is_idempotent(self):
@@ -95,6 +100,17 @@ class ZernioClientTests(unittest.TestCase):
         self.assertIn("page=1", requests[0].full_url)
         self.assertIn("page=2", requests[1].full_url)
 
+    def test_list_external_posts_retains_unmodified_raw_page_bytes(self):
+        from content_ops.zernio import ZernioClient
+
+        raw_page = b'[ { "_id" : "a1", "content" : "caf\\u00e9" } ]\n'
+        result = ZernioClient(
+            "test-key", opener=lambda request: FakeResponse(raw_page)
+        ).list_external_posts("account")
+
+        self.assertEqual(result.pages, [raw_page])
+        self.assertEqual(result[0]["content"], "caf\u00e9")
+
     def test_list_external_posts_raises_for_invalid_json(self):
         from content_ops.zernio import ZernioClient, ZernioError
 
@@ -103,7 +119,7 @@ class ZernioClientTests(unittest.TestCase):
         with self.assertRaisesRegex(ZernioError, "Invalid JSON"):
             client.list_external_posts("account")
 
-    def test_list_external_posts_raises_status_and_message_for_http_errors(self):
+    def test_list_external_posts_does_not_expose_http_error_body(self):
         from content_ops.zernio import ZernioClient, ZernioError
 
         error = HTTPError(
@@ -111,7 +127,7 @@ class ZernioClientTests(unittest.TestCase):
             401,
             "Unauthorized",
             None,
-            io.BytesIO(b'{"message": "invalid credentials"}'),
+            io.BytesIO(b'{"message": "invalid credentials: secret server detail"}'),
         )
         client = ZernioClient("test-key", opener=lambda request: (_ for _ in ()).throw(error))
 
@@ -119,7 +135,26 @@ class ZernioClientTests(unittest.TestCase):
             client.list_external_posts("account")
 
         self.assertEqual(raised.exception.status, 401)
-        self.assertEqual(raised.exception.message, "invalid credentials")
+        self.assertEqual(raised.exception.message, "HTTP 401 error")
+        self.assertNotIn("credentials", str(raised.exception))
+        self.assertNotIn("secret server detail", str(raised.exception))
+
+    def test_list_external_posts_does_not_expose_url_error_reason(self):
+        from content_ops.zernio import ZernioClient, ZernioError
+
+        client = ZernioClient(
+            "test-key",
+            opener=lambda request: (_ for _ in ()).throw(
+                URLError("proxy returned internal hostname: sensitive.example")
+            ),
+        )
+
+        with self.assertRaises(ZernioError) as raised:
+            client.list_external_posts("account")
+
+        self.assertEqual(raised.exception.status, 0)
+        self.assertEqual(raised.exception.message, "Network error")
+        self.assertNotIn("sensitive.example", str(raised.exception))
 
 
 class HistoryCommandTests(unittest.TestCase):
