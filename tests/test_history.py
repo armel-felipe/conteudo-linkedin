@@ -128,6 +128,22 @@ class ZernioClientTests(unittest.TestCase):
         with self.assertRaisesRegex(ZernioError, "Invalid JSON"):
             client.list_external_posts("account")
 
+    def test_list_external_posts_does_not_chain_invalid_json_response(self):
+        from content_ops.zernio import ZernioClient, ZernioError
+
+        raw_response = b'{"message": "sensitive raw response"'
+        client = ZernioClient(
+            "test-key", opener=lambda request: FakeResponse(raw_response)
+        )
+
+        with self.assertRaises(ZernioError) as raised:
+            client.list_external_posts("account")
+
+        self.assertEqual(raised.exception.status, 200)
+        self.assertEqual(raised.exception.message, "Invalid JSON response")
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
+
     def test_list_external_posts_does_not_expose_http_error_body(self):
         from content_ops.zernio import ZernioClient, ZernioError
 

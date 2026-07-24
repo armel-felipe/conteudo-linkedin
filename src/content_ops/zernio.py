@@ -73,10 +73,15 @@ class ZernioClient:
         if request_error is not None:
             raise ZernioError(*request_error)
 
+        invalid_json = False
         try:
-            return json.loads(body.decode("utf-8")), body
-        except (UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise ZernioError(200, "Invalid JSON response") from error
+            payload = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            invalid_json = True
+
+        if invalid_json:
+            raise ZernioError(200, "Invalid JSON response")
+        return payload, body
 
     @staticmethod
     def _posts_from_payload(payload: Any) -> list[dict[str, Any]]:
