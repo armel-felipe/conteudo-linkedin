@@ -21,6 +21,15 @@ class MarkdownRecordTests(unittest.TestCase):
         self.assertTrue(metadata["approved"])
         self.assertEqual(body, "Texto")
 
+    def test_writes_equivalent_metadata_deterministically(self):
+        from content_ops.markdown import write_post_record
+
+        second_path = Path(self.temporary_directory.name) / "second-post.md"
+        write_post_record(self.path, {"status": "approved", "approved": True}, "Texto")
+        write_post_record(second_path, {"approved": True, "status": "approved"}, "Texto")
+
+        self.assertEqual(self.path.read_text(encoding="utf-8"), second_path.read_text(encoding="utf-8"))
+
     def test_rejects_missing_delimiters(self):
         from content_ops.markdown import read_post_record
 

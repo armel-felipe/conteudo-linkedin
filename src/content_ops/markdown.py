@@ -12,7 +12,7 @@ def write_post_record(path, metadata, body):
     """Write a Markdown record containing JSON metadata and a trimmed body."""
     Path(path).write_text(
         OPENING_DELIMITER
-        + json.dumps(metadata, ensure_ascii=False, indent=2)
+        + json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True)
         + "\n---\n\n"
         + body.strip()
         + "\n",
