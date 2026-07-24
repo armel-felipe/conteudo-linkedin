@@ -15,7 +15,7 @@
 - Markdown é o registro humano; SQLite é índice, nunca cópia única.
 - Agendamento exige status SQLite `approved`, `approved: true` no Markdown e `--confirm` explícito.
 - `ZERNIO_API_KEY` fica exclusivamente em `.env`; `.env`, `data/content.db` e `data/imports/` não entram no Git.
-- Falha do Zernio leva a `failed`, sem retentativa automática; fuso padrão `America/Sao_Paulo`.
+- Falha confirmada do Zernio leva a `failed`, sem retentativa automática. Resultado remoto não confirmável após o POST leva a `indeterminate`, bloqueia novos agendamentos e deve ser reconciliado com a mesma chave de idempotência; fuso padrão `America/Sao_Paulo`.
 - A pasta ainda não tem Git: inicializá-lo antes do primeiro commit.
 
 ---
@@ -138,7 +138,7 @@ Expected: FAIL com módulo ausente.
 
 - [ ] **Step 3: Implementar schema e transições**
 
-Criar tabelas `posts`, `pillars`, `research_reports`, `ideas`. `posts.external_id` é `UNIQUE`. Definir estados `idea`, `draft`, `in_review`, `approved`, `scheduled`, `published`, `rejected`, `archived`, `failed`. Permitir apenas `idea→draft|archived`, `draft→in_review|archived`, `in_review→approved|rejected|draft`, `approved→scheduled|draft`, `scheduled→published|failed`, `failed→approved|archived`.
+Criar tabelas `posts`, `pillars`, `research_reports`, `ideas`. `posts.external_id` é `UNIQUE`. Definir estados `idea`, `draft`, `in_review`, `approved`, `scheduled`, `published`, `rejected`, `archived`, `failed`, `indeterminate`. Permitir apenas `idea→draft|archived`, `draft→in_review|archived`, `in_review→approved|rejected|draft`, `approved→scheduled|indeterminate|draft`, `scheduled→published|failed`, `failed→approved|archived`, `indeterminate→scheduled|failed|archived`.
 
 - [ ] **Step 4: Rodar testes e commit**
 
@@ -342,7 +342,7 @@ Expected: FAIL porque o agendamento não existe.
 
 - [ ] **Step 3: Implementar dois portões de segurança**
 
-`contentctl review approve <post-id>` deve mover `in_review→approved` e atualizar o Markdown. Se a escrita falhar, restaurar estado anterior. `contentctl schedule <post-id> --at <ISO> --confirm` recusa sem `--confirm`, data passada, corpo vazio, pilar não aprovado, conta/chave ausente ou `image_url` que não seja HTTP(S). Chama POST `/api/v1/posts` com `content`, `scheduledFor`, `timezone: "America/Sao_Paulo"`, alvo LinkedIn e `mediaItems` somente com imagem. Sucesso salva ID e muda para `scheduled`; erro sanitizado muda para `failed`, sem retentativa.
+`contentctl review approve <post-id>` deve mover `in_review→approved` e atualizar o Markdown. Se a escrita falhar, restaurar estado anterior. `contentctl schedule <post-id> --at <ISO> --confirm` recusa sem `--confirm`, data passada, corpo vazio, pilar não aprovado, conta/chave ausente ou `image_url` que não seja HTTP(S). Antes do POST, gera e persiste uma chave UUID de idempotência no post. Chama POST `/api/v1/posts` com o cabeçalho `x-request-id` igual a essa chave, `content`, `scheduledFor`, `timezone: "America/Sao_Paulo"`, alvo LinkedIn com `accountId` e `mediaItems` somente com imagem. Sucesso salva ID e muda para `scheduled`; falha confirmada anterior ao envio muda para `failed`. Se o resultado de uma tentativa remota não puder ser confirmado ou persistido, muda para `indeterminate`, bloqueia novos POSTs e `contentctl schedule reconcile <post-id>` repete a chamada usando a mesma chave para recuperar o post original sem criar duplicata.
 
 - [ ] **Step 4: Verificar e commit**
 
