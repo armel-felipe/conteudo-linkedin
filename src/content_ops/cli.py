@@ -61,6 +61,14 @@ def build_parser() -> argparse.ArgumentParser:
     schedule.add_argument("reconcile_post_id", nargs="?")
     schedule.add_argument("--at", dest="scheduled_for")
     schedule.add_argument("--confirm", action="store_true")
+    report = commands.add_parser("report", help="Inspect local operational metrics")
+    report_commands = report.add_subparsers(dest="report_command")
+    weekly = report_commands.add_parser("weekly", help="Show one Monday-to-Sunday report")
+    weekly.add_argument("--week", required=True, help="Monday date in YYYY-MM-DD format")
+    posts = commands.add_parser("posts", help="Synchronize published post state")
+    post_commands = posts.add_subparsers(dest="posts_command")
+    post_sync = post_commands.add_parser("sync", help="Read one Zernio post without publishing")
+    post_sync.add_argument("post_id", type=int)
     return parser
 
 
@@ -115,6 +123,43 @@ def main(argv: Sequence[str] | None = None) -> None:
                 parser.error("--confirm is required")
             if not arguments.scheduled_for:
                 parser.error("--at is required")
+
+    if (arguments.command, getattr(arguments, "report_command", None)) == ("report", "weekly"):
+        from content_ops.db import Database
+        from content_ops.reporting import weekly_report
+
+        try:
+            week_start = date.fromisoformat(arguments.week)
+            database = Database(repository_root / "data" / "content.db")
+            database.initialize()
+            print(weekly_report(database, week_start))
+        except ValueError as error:
+            parser.error(str(error))
+        return
+
+    if (arguments.command, getattr(arguments, "posts_command", None)) == ("posts", "sync"):
+        required = ("ZERNIO_API_KEY",)
+        missing = [name for name in required if not os.environ.get(name)]
+        if missing:
+            parser.error(f"Missing required configuration: {', '.join(missing)}")
+        from content_ops.db import Database
+        from content_ops.reporting import sync_published_post
+        from content_ops.zernio import ZernioClient, ZernioError
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+        try:
+            published = sync_published_post(
+                ZernioClient(os.environ["ZERNIO_API_KEY"]), database, arguments.post_id
+            )
+        except (ValueError, ZernioError) as error:
+            parser.error(str(error))
+        print(
+            f"Post {arguments.post_id} is published."
+            if published
+            else f"Post {arguments.post_id} remains scheduled."
+        )
+        return
 
     if arguments.command in {"review", "schedule"}:
         from content_ops.db import Database

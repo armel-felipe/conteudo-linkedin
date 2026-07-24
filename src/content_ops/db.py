@@ -4,8 +4,10 @@ import json
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Iterator
+from zoneinfo import ZoneInfo
 
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
 
@@ -38,6 +40,7 @@ class Database:
                     title TEXT NOT NULL,
                     status TEXT NOT NULL,
                     zernio_post_id TEXT,
+                    platform_post_url TEXT,
                     idempotency_key TEXT,
                     scheduled_for TEXT,
                     schedule_payload TEXT,
@@ -87,6 +90,8 @@ class Database:
             }
             if "zernio_post_id" not in post_columns:
                 connection.execute("ALTER TABLE posts ADD COLUMN zernio_post_id TEXT")
+            if "platform_post_url" not in post_columns:
+                connection.execute("ALTER TABLE posts ADD COLUMN platform_post_url TEXT")
             if "idempotency_key" not in post_columns:
                 connection.execute("ALTER TABLE posts ADD COLUMN idempotency_key TEXT")
             if "scheduled_for" not in post_columns:
@@ -224,6 +229,63 @@ class Database:
                 "FROM posts WHERE status = 'published' ORDER BY id"
             ).fetchall()
         return [(row[0], row[1]) for row in rows]
+
+    def weekly_status_counts(self, week_start: date) -> dict[str, int]:
+        """Count posts scheduled during a Monday-to-Sunday São Paulo week."""
+        if week_start.weekday() != 0:
+            raise ValueError("week_start must be a Monday")
+        timezone = ZoneInfo("America/Sao_Paulo")
+        start = datetime.combine(week_start, time.min, timezone)
+        end = start + timedelta(days=7)
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT status, scheduled_for FROM posts WHERE scheduled_for IS NOT NULL"
+            ).fetchall()
+        counts: dict[str, int] = {}
+        for row in rows:
+            try:
+                scheduled_for = datetime.fromisoformat(
+                    row["scheduled_for"].replace("Z", "+00:00")
+                )
+            except (AttributeError, ValueError):
+                continue
+            if scheduled_for.tzinfo is None:
+                scheduled_for = scheduled_for.replace(tzinfo=timezone)
+            if start <= scheduled_for.astimezone(timezone) < end:
+                counts[row["status"]] = counts.get(row["status"], 0) + 1
+        return counts
+
+    def scheduled_post(self, post_id: int) -> sqlite3.Row:
+        """Return a scheduled post eligible for read-only publication sync."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT id, status, zernio_post_id FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()
+        if row is None:
+            raise ValueError(f"Post {post_id} does not exist")
+        if row["status"] != PostStatus.SCHEDULED.value:
+            raise ValueError(f"Post {post_id} is not scheduled")
+        if not isinstance(row["zernio_post_id"], str) or not row["zernio_post_id"]:
+            raise ValueError(f"Post {post_id} has no Zernio post ID")
+        return row
+
+    def record_publication_sync(self, post_id: int, published: bool, platform_post_url: str | None) -> None:
+        """Store a GET result, transitioning only a currently scheduled post."""
+        with self.transaction() as connection:
+            row = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Post {post_id} does not exist")
+            if row["status"] != PostStatus.SCHEDULED.value:
+                raise ValueError(f"Post {post_id} is not scheduled")
+            if published:
+                self.transition_post(post_id, PostStatus.PUBLISHED, connection)
+            if platform_post_url:
+                connection.execute(
+                    "UPDATE posts SET platform_post_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (platform_post_url, post_id),
+                )
 
     def upsert_pillar(self, name: str) -> None:
         """Record a proposal without changing an existing approval decision."""

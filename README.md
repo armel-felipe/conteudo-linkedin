@@ -9,6 +9,7 @@ Operação local e pessoal para organizar conteúdo para o LinkedIn. O fluxo edi
 ./contentctl --help
 ./contentctl history --help
 ./contentctl history import
+./contentctl report weekly --week 2026-07-27
 ```
 
 Copie `.env.example` para `.env` e preencha apenas as configurações necessárias.
@@ -18,6 +19,21 @@ Valores já definidos no ambiente têm precedência sobre `.env`.
 configurada, guarda respostas brutas locais em `data/imports/` (ignoradas pelo Git)
 e atualiza o índice SQLite de modo idempotente. Ele exige `ZERNIO_API_KEY` e
 `ZERNIO_ACCOUNT_ID`; mensagens de erro mostram apenas os nomes das configurações.
+
+## Agendamento e acompanhamento
+
+Agende somente depois de uma confirmação explícita. O comando exige uma `.env` local
+com credenciais reais, um post já aprovado, horário futuro e `--confirm`:
+
+```sh
+./contentctl schedule 12 --at 2026-08-03T10:00:00-03:00 --confirm
+```
+
+Após o horário, `./contentctl posts sync 12` consulta apenas por GET o post já
+agendado no Zernio. Ele nunca publica: o estado local muda para `published` somente
+quando a resposta remota confirmar esse estado. `report weekly` mostra os estados
+dos posts agendados de segunda a domingo, no fuso `America/Sao_Paulo`, e a cadência
+da semana (`N/2`).
 
 ## Segurança
 

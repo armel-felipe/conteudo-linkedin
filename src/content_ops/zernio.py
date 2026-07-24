@@ -96,6 +96,28 @@ class ZernioClient:
                 return identifier
         raise ZernioUncertainError("Response outcome is unknown")
 
+    def get_post(self, post_id: str) -> dict[str, Any]:
+        """Read one Zernio post.  This operation never creates or updates a post."""
+        request = Request(
+            f"{self.base_url}/api/v1/posts/{post_id}",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            method="GET",
+        )
+        try:
+            with self._opener(request) as response:
+                body = response.read()
+        except HTTPError as error:
+            raise ZernioError(error.code, self._http_error_message(error)) from None
+        except (URLError, OSError):
+            raise ZernioError(0, "Network error") from None
+        try:
+            payload = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise ZernioError(200, "Invalid JSON response") from None
+        if isinstance(payload, dict):
+            return payload
+        raise ZernioError(200, "Invalid JSON response")
+
     def _get_page(self, account_id: str, page: int) -> tuple[Any, bytes]:
         query = urlencode(
             {"source": "external", "accountId": account_id, "page": page, "limit": 100}
