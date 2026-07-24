@@ -268,6 +268,69 @@ class Database:
         ).fetchone()
         return bool(row and row["approved"])
 
+    def create_research_report(self, topic: str, path: str) -> int:
+        """Record a successfully captured research report."""
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO research_reports (topic, path) VALUES (?, ?)
+                ON CONFLICT(path) DO UPDATE SET topic = excluded.topic
+                """,
+                (topic, path),
+            )
+            return cursor.lastrowid
+
+    def research_report_exists(self, path: str) -> bool:
+        """Return whether a report was captured by this local workflow."""
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT 1 FROM research_reports WHERE path = ?", (path,)
+            ).fetchone() is not None
+
+    def create_idea(self, title: str, pillar: str, research_path: str) -> int:
+        """Persist an idea linked to one approved pillar and captured report."""
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT pillars.id AS pillar_id, research_reports.id AS research_report_id
+                FROM pillars CROSS JOIN research_reports
+                WHERE pillars.name = ? AND research_reports.path = ?
+                """,
+                (pillar, research_path),
+            ).fetchone()
+            if row is None:
+                raise ValueError("Pillar or research report does not exist")
+            cursor = connection.execute(
+                """
+                INSERT INTO ideas (title, pillar_id, research_report_id)
+                VALUES (?, ?, ?)
+                """,
+                (title, row["pillar_id"], row["research_report_id"]),
+            )
+            return cursor.lastrowid
+
+    def get_idea(self, idea_id: int) -> dict[str, object]:
+        """Return an idea with the links needed to create its draft."""
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT ideas.id, ideas.title, pillars.name AS pillar, research_reports.path
+                FROM ideas
+                JOIN pillars ON pillars.id = ideas.pillar_id
+                JOIN research_reports ON research_reports.id = ideas.research_report_id
+                WHERE ideas.id = ?
+                """,
+                (idea_id,),
+            ).fetchone()
+        if row is None:
+            raise ValueError(f"Idea {idea_id} does not exist or is no longer linked")
+        return {
+            "id": row["id"],
+            "angle": row["title"],
+            "pillar": row["pillar"],
+            "research_path": row["path"],
+        }
+
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path)
         connection.row_factory = sqlite3.Row

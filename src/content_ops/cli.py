@@ -2,6 +2,9 @@
 
 import argparse
 import os
+import re
+import unicodedata
+from datetime import date
 from pathlib import Path
 from typing import Sequence
 
@@ -33,7 +36,29 @@ def build_parser() -> argparse.ArgumentParser:
     pillar_commands.add_parser("propose", help="Propose pillars from published history")
     approval = pillar_commands.add_parser("approve", help="Approve one proposed pillar")
     approval.add_argument("name")
+    research = commands.add_parser("research", help="Capture recent research")
+    research_commands = research.add_subparsers(dest="research_command")
+    discovery = research_commands.add_parser(
+        "discover", help="Capture configured Last30days output without creating ideas"
+    )
+    discovery.add_argument("topic")
+    ideas = commands.add_parser("ideas", help="Create research-backed content ideas")
+    idea_commands = ideas.add_subparsers(dest="ideas_command")
+    idea_creation = idea_commands.add_parser("create", help="Create an idea from captured research")
+    idea_creation.add_argument("--research", required=True)
+    idea_creation.add_argument("--pillar", required=True)
+    idea_creation.add_argument("--angle", required=True)
+    draft = commands.add_parser("draft", help="Create non-approved Markdown drafts")
+    draft_commands = draft.add_subparsers(dest="draft_command")
+    draft_creation = draft_commands.add_parser("create", help="Create a draft from an idea")
+    draft_creation.add_argument("idea_id", type=int)
     return parser
+
+
+def _research_filename(topic: str) -> str:
+    normalized = unicodedata.normalize("NFKD", topic).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-") or "research"
+    return f"{date.today().isoformat()}--{slug}.md"
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -41,6 +66,54 @@ def main(argv: Sequence[str] | None = None) -> None:
     load_env(repository_root / ".env")
     parser = build_parser()
     arguments = parser.parse_args(argv)
+
+    if arguments.command in {"research", "ideas", "draft"}:
+        from content_ops.db import Database
+        from content_ops.research import capture_research
+        from content_ops.workflow import create_draft, create_idea
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+
+        if (arguments.command, arguments.research_command) == ("research", "discover"):
+            command = os.environ.get("LAST30DAYS_COMMAND")
+            if not command:
+                parser.error("Missing required configuration: LAST30DAYS_COMMAND")
+            relative_path = Path("research") / _research_filename(arguments.topic)
+            try:
+                capture_research(arguments.topic, command, repository_root / relative_path)
+                database.create_research_report(arguments.topic, str(relative_path))
+            except (RuntimeError, ValueError) as error:
+                parser.error(str(error))
+            print(f"Captured research in {relative_path}.")
+            return
+
+        if (arguments.command, arguments.ideas_command) == ("ideas", "create"):
+            try:
+                idea = create_idea(
+                    database, arguments.research, arguments.pillar, arguments.angle
+                )
+            except ValueError as error:
+                parser.error(str(error))
+            print(f"Created idea {idea['id']}.")
+            return
+
+        if (arguments.command, arguments.draft_command) == ("draft", "create"):
+            try:
+                idea = database.get_idea(arguments.idea_id)
+                pillar = str(idea["pillar"])
+                if not database.pillar_is_approved(pillar):
+                    raise ValueError(f"Pillar {pillar!r} is not approved")
+                idea["post_id"] = database.create_post("draft", str(idea["angle"]))
+                path = create_draft(
+                    idea, pillar, repository_root / "content" / "drafts" / f"idea-{idea['id']}.md"
+                )
+            except ValueError as error:
+                parser.error(str(error))
+            print(f"Created draft {path.relative_to(repository_root)} (post {idea['post_id']}).")
+            return
+
+        return
 
     if arguments.command == "pillars":
         from content_ops.db import Database
