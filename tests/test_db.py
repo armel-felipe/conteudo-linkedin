@@ -119,6 +119,44 @@ class DatabaseTests(unittest.TestCase):
             columns = {row[1] for row in connection.execute("PRAGMA table_info(posts)")}
         self.assertTrue({"idempotency_key", "scheduled_for", "schedule_payload"} <= columns)
 
+    def test_initialize_versions_schema_and_migrates_legacy_posts(self):
+        legacy_path = Path(self.temporary_directory.name) / "legacy-versioned.db"
+        with sqlite3.connect(legacy_path) as connection:
+            connection.execute(
+                "CREATE TABLE posts "
+                "(id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL)"
+            )
+            connection.execute(
+                "INSERT INTO posts (title, status) VALUES ('Legado', 'published')"
+            )
+
+        from content_ops.db import CURRENT_SCHEMA_VERSION, Database
+
+        database = Database(legacy_path)
+        database.initialize()
+        database.upsert_post("linkedin:new", "Novo", "published")
+
+        with sqlite3.connect(legacy_path) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(posts)")
+            }
+            count = connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0]
+        self.assertEqual(version, CURRENT_SCHEMA_VERSION)
+        self.assertTrue(
+            {
+                "external_id",
+                "created_at",
+                "updated_at",
+                "metrics",
+                "publication_result",
+                "suggested_time",
+                "sources",
+            }
+            <= columns
+        )
+        self.assertEqual(count, 2)
+
     def test_transition_post_rejects_missing_post(self):
         from content_ops.models import PostStatus
 

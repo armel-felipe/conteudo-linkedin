@@ -44,6 +44,34 @@ def approve_draft(
         raise
 
 
+def submit_draft_for_review(
+    post_id: int, markdown_path: str | Path, database: Database | None = None
+) -> None:
+    """Move a draft into human review in SQLite and Markdown together."""
+    path = Path(markdown_path)
+    metadata, body = read_post_record(path)
+    if metadata.get("status") != PostStatus.DRAFT.value:
+        raise SchedulingValidationError("Post is not a draft")
+    if metadata.get("approved") is not False:
+        raise SchedulingValidationError("Draft must not already be approved")
+    if metadata.get("post_id") not in (None, post_id):
+        raise SchedulingValidationError("Markdown record belongs to another post")
+    original = path.read_bytes()
+    updated = dict(metadata)
+    updated["status"] = PostStatus.IN_REVIEW.value
+    try:
+        if database is None:
+            write_post_record(path, updated, body)
+            return
+        with database.transaction() as connection:
+            database.transition_post(post_id, PostStatus.IN_REVIEW, connection)
+            write_post_record(path, updated, body)
+    except BaseException:
+        if path.exists() and path.read_bytes() != original:
+            path.write_bytes(original)
+        raise
+
+
 def schedule_post(
     post_id: int,
     markdown_path: str | Path,
@@ -329,36 +357,106 @@ def _block_if_reconciliation_required(
 
 
 def create_idea(
-    database: Database, research_path: str, pillar: str, angle: str
+    database: Database,
+    research_path: str,
+    pillar: str,
+    angle: str,
+    ideas_directory: str | Path | None = None,
 ) -> dict[str, object]:
-    """Create an idea only when its research and pillar are eligible."""
-    if not database.pillar_is_approved(pillar):
-        raise ValueError(f"Pillar {pillar!r} is not approved")
-    if not database.research_report_exists(research_path):
-        raise ValueError(f"Research report {research_path!r} does not exist")
-
-    idea_id = database.create_idea(angle, pillar, research_path)
-    return {"id": idea_id, "research_path": research_path, "pillar": pillar, "angle": angle}
+    """Create one deterministic idea and, when requested, its editorial record."""
+    created_path: Path | None = None
+    try:
+        with database.transaction() as connection:
+            idea_id = database.create_idea(
+                angle, pillar, research_path, connection=connection
+            )
+            if ideas_directory is not None:
+                idea_path = Path(ideas_directory) / f"idea-{idea_id}.md"
+                idea_path.parent.mkdir(parents=True, exist_ok=True)
+                if idea_path.exists():
+                    _require_matching_record(idea_path, "idea_id", idea_id)
+                else:
+                    metadata = {
+                        "idea_id": idea_id,
+                        "status": PostStatus.IDEA.value,
+                        "pillar": pillar,
+                        "objective": "authority_and_job_opportunities",
+                        "research_path": research_path,
+                        "sources": [{"type": "research", "path": research_path}],
+                        "suggested_time": None,
+                    }
+                    created_path = idea_path
+                    write_post_record(idea_path, metadata, f"Ângulo: {angle}")
+    except BaseException:
+        if created_path is not None:
+            created_path.unlink(missing_ok=True)
+        raise
+    return {
+        "id": idea_id,
+        "research_path": research_path,
+        "pillar": pillar,
+        "angle": angle,
+    }
 
 
 def create_draft(
     database: Database, idea: dict[str, object], pillar: str, path: str | Path
 ) -> Path:
     """Create a non-approved Markdown draft that retains its research source."""
-    persisted_idea = database.create_draft_for_idea(int(idea["id"]), pillar)
     draft_path = Path(path)
     draft_path.parent.mkdir(parents=True, exist_ok=True)
-    metadata = {
-        "approved": False,
-        "idea_id": persisted_idea["id"],
-        "image_url": None,
-        "objective": "authority_and_job_opportunities",
-        "pillar": pillar,
-        "research_path": persisted_idea["research_path"],
-        "status": "draft",
-        "zernio_post_id": None,
-    }
-    metadata["post_id"] = persisted_idea["post_id"]
+    created_path = False
+    try:
+        with database.transaction() as connection:
+            persisted_idea = database.create_draft_for_idea(
+                int(idea["id"]), pillar, connection=connection
+            )
+            if draft_path.exists():
+                _require_matching_record(
+                    draft_path, "idea_id", persisted_idea["id"]
+                )
+                _require_matching_record(
+                    draft_path, "post_id", persisted_idea["post_id"]
+                )
+            else:
+                metadata = {
+                    "approved": False,
+                    "idea_id": persisted_idea["id"],
+                    "image_url": None,
+                    "metrics": {},
+                    "objective": "authority_and_job_opportunities",
+                    "pillar": pillar,
+                    "post_id": persisted_idea["post_id"],
+                    "publication_result": None,
+                    "published_url": None,
+                    "research_path": persisted_idea["research_path"],
+                    "sources": [
+                        {
+                            "type": "research",
+                            "path": persisted_idea["research_path"],
+                        }
+                    ],
+                    "status": PostStatus.DRAFT.value,
+                    "suggested_time": None,
+                    "zernio_post_id": None,
+                }
+                created_path = True
+                write_post_record(
+                    draft_path, metadata, f"Ângulo: {persisted_idea['angle']}"
+                )
+    except BaseException:
+        if created_path:
+            draft_path.unlink(missing_ok=True)
+        raise
     idea["post_id"] = persisted_idea["post_id"]
-    write_post_record(draft_path, metadata, f"Ângulo: {persisted_idea['angle']}")
     return draft_path
+
+
+def _require_matching_record(path: Path, field: str, expected: object) -> None:
+    """Reject a pre-existing path unless it belongs to the same domain record."""
+    try:
+        metadata, _ = read_post_record(path)
+    except (OSError, ValueError):
+        raise ValueError(f"Existing editorial record {path} is invalid") from None
+    if metadata.get(field) != expected:
+        raise ValueError(f"Existing editorial record {path} belongs to another item")

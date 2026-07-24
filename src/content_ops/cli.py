@@ -54,6 +54,10 @@ def build_parser() -> argparse.ArgumentParser:
     draft_creation.add_argument("idea_id", type=int)
     review = commands.add_parser("review", help="Record an explicit draft approval")
     review_commands = review.add_subparsers(dest="review_command")
+    review_submission = review_commands.add_parser(
+        "submit", help="Submit a draft for human review"
+    )
+    review_submission.add_argument("post_id", type=int)
     review_approval = review_commands.add_parser("approve", help="Approve a post in review")
     review_approval.add_argument("post_id", type=int)
     schedule = commands.add_parser("schedule", help="Schedule an explicitly approved post")
@@ -95,8 +99,16 @@ def _find_post_markdown(repository_root: Path, post_id: int) -> Path:
     return matches[0]
 
 
-def main(argv: Sequence[str] | None = None) -> None:
-    repository_root = Path(__file__).resolve().parents[2]
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    repository_root: Path | None = None,
+) -> None:
+    repository_root = (
+        Path(__file__).resolve().parents[2]
+        if repository_root is None
+        else Path(repository_root)
+    )
     load_env(repository_root / ".env")
     parser = build_parser()
     arguments = parser.parse_args(argv)
@@ -149,8 +161,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         database = Database(repository_root / "data" / "content.db")
         database.initialize()
         try:
+            markdown_path = _find_post_markdown(
+                repository_root, arguments.post_id
+            )
             published = sync_published_post(
-                ZernioClient(os.environ["ZERNIO_API_KEY"]), database, arguments.post_id
+                ZernioClient(os.environ["ZERNIO_API_KEY"]),
+                database,
+                arguments.post_id,
+                markdown_path,
             )
         except (ValueError, ZernioError) as error:
             parser.error(str(error))
@@ -169,6 +187,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             approve_draft,
             reconcile_schedule,
             schedule_post,
+            submit_draft_for_review,
         )
 
         database = Database(repository_root / "data" / "content.db")
@@ -176,6 +195,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         try:
             markdown_path = _find_post_markdown(repository_root, arguments.post_id)
             if arguments.command == "review":
+                if arguments.review_command == "submit":
+                    submit_draft_for_review(
+                        arguments.post_id, markdown_path, database=database
+                    )
+                    print(f"Submitted post {arguments.post_id} for review.")
+                    return
                 if arguments.review_command != "approve":
                     parser.error("A review action is required")
                 approve_draft(arguments.post_id, markdown_path, database=database)
@@ -220,7 +245,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         database = Database(repository_root / "data" / "content.db")
         database.initialize()
 
-        if (arguments.command, arguments.research_command) == ("research", "discover"):
+        if (arguments.command, getattr(arguments, "research_command", None)) == (
+            "research",
+            "discover",
+        ):
             command = os.environ.get("LAST30DAYS_COMMAND")
             if not command:
                 parser.error("Missing required configuration: LAST30DAYS_COMMAND")
@@ -233,17 +261,27 @@ def main(argv: Sequence[str] | None = None) -> None:
             print(f"Captured research in {relative_path}.")
             return
 
-        if (arguments.command, arguments.ideas_command) == ("ideas", "create"):
+        if (arguments.command, getattr(arguments, "ideas_command", None)) == (
+            "ideas",
+            "create",
+        ):
             try:
                 idea = create_idea(
-                    database, arguments.research, arguments.pillar, arguments.angle
+                    database,
+                    arguments.research,
+                    arguments.pillar,
+                    arguments.angle,
+                    ideas_directory=repository_root / "content" / "ideas",
                 )
             except ValueError as error:
                 parser.error(str(error))
             print(f"Created idea {idea['id']}.")
             return
 
-        if (arguments.command, arguments.draft_command) == ("draft", "create"):
+        if (arguments.command, getattr(arguments, "draft_command", None)) == (
+            "draft",
+            "create",
+        ):
             try:
                 idea = database.get_idea(arguments.idea_id)
                 pillar = str(idea["pillar"])
@@ -280,7 +318,10 @@ def main(argv: Sequence[str] | None = None) -> None:
             print(f"Approved pillar: {arguments.name}")
         return
 
-    if (arguments.command, arguments.history_command) != ("history", "import"):
+    if (arguments.command, getattr(arguments, "history_command", None)) != (
+        "history",
+        "import",
+    ):
         return
 
     required = ("ZERNIO_API_KEY", "ZERNIO_ACCOUNT_ID")

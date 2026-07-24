@@ -1,3 +1,4 @@
+import json
 import subprocess
 import tempfile
 import unittest
@@ -76,6 +77,187 @@ class EditorialWorkflowTests(unittest.TestCase):
         self.assertEqual(metadata["objective"], "authority_and_job_opportunities")
         self.assertIsNone(metadata["image_url"])
         self.assertIsNone(metadata["zernio_post_id"])
+        self.assertIsNone(metadata["suggested_time"])
+        self.assertEqual(
+            metadata["sources"],
+            [{"type": "research", "path": "research/x.md"}],
+        )
+        self.assertIsNone(metadata["published_url"])
+        self.assertEqual(metadata["metrics"], {})
+        self.assertIsNone(metadata["publication_result"])
+        with self.database._connect() as connection:
+            stored = connection.execute(
+                "SELECT suggested_time, sources FROM posts WHERE id = ?",
+                (metadata["post_id"],),
+            ).fetchone()
+        self.assertIsNone(stored["suggested_time"])
+        self.assertEqual(
+            json.loads(stored["sources"]),
+            [{"path": "research/x.md", "type": "research"}],
+        )
+
+    def test_idea_and_draft_creation_are_idempotent(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.workflow import create_draft, create_idea
+
+        self.database.upsert_pillar("IA aplicada")
+        self.database.approve_pillar("IA aplicada")
+        self.database.create_research_report("IA", "research/x.md")
+        ideas_directory = self.root / "ideas"
+
+        first = create_idea(
+            self.database,
+            "research/x.md",
+            "IA aplicada",
+            "Mesmo ângulo",
+            ideas_directory=ideas_directory,
+        )
+        second = create_idea(
+            self.database,
+            "research/x.md",
+            "IA aplicada",
+            "Mesmo ângulo",
+            ideas_directory=ideas_directory,
+        )
+        self.assertEqual(first["id"], second["id"])
+        with self.database._connect() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM ideas").fetchone()[0], 1)
+
+        draft = create_draft(self.database, first, "IA aplicada", self.draft_path)
+        metadata, _ = read_post_record(draft)
+        write_post_record(draft, metadata, "Edição humana preservada")
+        create_draft(self.database, second, "IA aplicada", self.draft_path)
+
+        self.assertEqual(read_post_record(draft)[1], "Edição humana preservada")
+        with self.database._connect() as connection:
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM posts WHERE status = 'draft'").fetchone()[0],
+                1,
+            )
+
+    def test_idea_markdown_failure_rolls_back_database(self):
+        from content_ops.workflow import create_idea
+
+        self.database.upsert_pillar("IA aplicada")
+        self.database.approve_pillar("IA aplicada")
+        self.database.create_research_report("IA", "research/x.md")
+
+        with patch(
+            "content_ops.workflow.write_post_record", side_effect=OSError("disk full")
+        ):
+            with self.assertRaises(OSError):
+                create_idea(
+                    self.database,
+                    "research/x.md",
+                    "IA aplicada",
+                    "Ângulo",
+                    ideas_directory=self.root / "ideas",
+                )
+
+        with self.database._connect() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM ideas").fetchone()[0], 0)
+
+    def test_idea_post_replace_failure_removes_published_orphan(self):
+        from content_ops.markdown import write_post_record
+        from content_ops.workflow import create_idea
+
+        self.database.upsert_pillar("IA aplicada")
+        self.database.approve_pillar("IA aplicada")
+        self.database.create_research_report("IA", "research/x.md")
+        ideas_directory = self.root / "ideas"
+
+        def publish_then_fail(path, metadata, body):
+            write_post_record(path, metadata, body)
+            raise OSError("directory fsync failed")
+
+        with patch(
+            "content_ops.workflow.write_post_record",
+            side_effect=publish_then_fail,
+        ):
+            with self.assertRaises(OSError):
+                create_idea(
+                    self.database,
+                    "research/x.md",
+                    "IA aplicada",
+                    "Ângulo",
+                    ideas_directory=ideas_directory,
+                )
+
+        self.assertEqual(list(ideas_directory.glob("*.md")), [])
+        with self.database._connect() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM ideas").fetchone()[0], 0)
+
+    def test_draft_markdown_failure_rolls_back_database(self):
+        from content_ops.workflow import create_draft, create_idea
+
+        self.database.upsert_pillar("IA aplicada")
+        self.database.approve_pillar("IA aplicada")
+        self.database.create_research_report("IA", "research/x.md")
+        idea = create_idea(self.database, "research/x.md", "IA aplicada", "Ângulo")
+
+        with patch(
+            "content_ops.workflow.write_post_record", side_effect=OSError("disk full")
+        ):
+            with self.assertRaises(OSError):
+                create_draft(self.database, idea, "IA aplicada", self.draft_path)
+
+        with self.database._connect() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0], 0)
+            self.assertIsNone(
+                connection.execute(
+                    "SELECT draft_post_id FROM ideas WHERE id = ?", (idea["id"],)
+                ).fetchone()[0]
+            )
+
+    def test_draft_post_replace_failure_removes_published_orphan(self):
+        from content_ops.markdown import write_post_record
+        from content_ops.workflow import create_draft, create_idea
+
+        self.database.upsert_pillar("IA aplicada")
+        self.database.approve_pillar("IA aplicada")
+        self.database.create_research_report("IA", "research/x.md")
+        idea = create_idea(self.database, "research/x.md", "IA aplicada", "Ângulo")
+
+        def publish_then_fail(path, metadata, body):
+            write_post_record(path, metadata, body)
+            raise OSError("directory fsync failed")
+
+        with patch(
+            "content_ops.workflow.write_post_record",
+            side_effect=publish_then_fail,
+        ):
+            with self.assertRaises(OSError):
+                create_draft(self.database, idea, "IA aplicada", self.draft_path)
+
+        self.assertFalse(self.draft_path.exists())
+        with self.database._connect() as connection:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0], 0)
+
+    def test_submit_for_review_rolls_back_database_when_markdown_write_fails(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.workflow import submit_draft_for_review
+
+        post_id = self.database.create_post("draft", "Rascunho")
+        write_post_record(
+            self.draft_path,
+            {"post_id": post_id, "status": "draft", "approved": False},
+            "Texto",
+        )
+
+        with patch(
+            "content_ops.workflow.write_post_record", side_effect=OSError("disk full")
+        ):
+            with self.assertRaises(OSError):
+                submit_draft_for_review(
+                    post_id, self.draft_path, database=self.database
+                )
+
+        self.assertEqual(read_post_record(self.draft_path)[0]["status"], "draft")
+        with self.database._connect() as connection:
+            status = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()[0]
+        self.assertEqual(status, "draft")
 
     def test_workflow_rejects_draft_with_a_pillar_different_from_its_idea(self):
         from content_ops.workflow import create_draft, create_idea

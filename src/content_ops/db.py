@@ -1,5 +1,6 @@
 """SQLite persistence for the local content workflow index."""
 
+import hashlib
 import json
 import sqlite3
 from contextlib import contextmanager
@@ -10,6 +11,9 @@ from typing import Iterator
 from zoneinfo import ZoneInfo
 
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
+
+
+CURRENT_SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True)
@@ -29,75 +33,24 @@ class Database:
         self.path = Path(path)
 
     def initialize(self) -> None:
-        """Create the operational schema if it does not exist."""
+        """Create or migrate the operational schema to the current version."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS posts (
-                    id INTEGER PRIMARY KEY,
-                    external_id TEXT UNIQUE,
-                    title TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    zernio_post_id TEXT,
-                    platform_post_url TEXT,
-                    idempotency_key TEXT,
-                    scheduled_for TEXT,
-                    schedule_payload TEXT,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE IF NOT EXISTS pillars (
-                    id INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL UNIQUE,
-                    approved INTEGER NOT NULL DEFAULT 0,
-                    count INTEGER NOT NULL DEFAULT 0,
-                    evidence_ids TEXT NOT NULL DEFAULT '[]',
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE IF NOT EXISTS research_reports (
-                    id INTEGER PRIMARY KEY,
-                    topic TEXT NOT NULL,
-                    path TEXT NOT NULL UNIQUE,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-
-                CREATE TABLE IF NOT EXISTS ideas (
-                    id INTEGER PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'idea',
-                    pillar_id INTEGER REFERENCES pillars(id),
-                    research_report_id INTEGER REFERENCES research_reports(id),
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-                """
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            if version > CURRENT_SCHEMA_VERSION:
+                raise ValueError(
+                    f"Database schema version {version} is newer than supported "
+                    f"version {CURRENT_SCHEMA_VERSION}"
+                )
+            migrations = (
+                self._migrate_to_v1,
+                self._migrate_to_v2,
+                self._migrate_to_v3,
+                self._migrate_to_v4,
             )
-            pillar_columns = {
-                row["name"] for row in connection.execute("PRAGMA table_info(pillars)")
-            }
-            if "count" not in pillar_columns:
-                connection.execute(
-                    "ALTER TABLE pillars ADD COLUMN count INTEGER NOT NULL DEFAULT 0"
-                )
-            if "evidence_ids" not in pillar_columns:
-                connection.execute(
-                    "ALTER TABLE pillars ADD COLUMN evidence_ids TEXT NOT NULL DEFAULT '[]'"
-                )
-            post_columns = {
-                row["name"] for row in connection.execute("PRAGMA table_info(posts)")
-            }
-            if "zernio_post_id" not in post_columns:
-                connection.execute("ALTER TABLE posts ADD COLUMN zernio_post_id TEXT")
-            if "platform_post_url" not in post_columns:
-                connection.execute("ALTER TABLE posts ADD COLUMN platform_post_url TEXT")
-            if "idempotency_key" not in post_columns:
-                connection.execute("ALTER TABLE posts ADD COLUMN idempotency_key TEXT")
-            if "scheduled_for" not in post_columns:
-                connection.execute("ALTER TABLE posts ADD COLUMN scheduled_for TEXT")
-            if "schedule_payload" not in post_columns:
-                connection.execute("ALTER TABLE posts ADD COLUMN schedule_payload TEXT")
+            for target_version in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
+                migrations[target_version - 1](connection)
+                connection.execute(f"PRAGMA user_version = {target_version}")
 
     def upsert_post(self, external_id: str, title: str, status: str | PostStatus) -> None:
         """Insert or update an externally identified post without duplication."""
@@ -269,23 +222,52 @@ class Database:
             raise ValueError(f"Post {post_id} has no Zernio post ID")
         return row
 
-    def record_publication_sync(self, post_id: int, published: bool, platform_post_url: str | None) -> None:
+    def record_publication_sync(
+        self,
+        post_id: int,
+        published: bool,
+        platform_post_url: str | None,
+        metrics: dict[str, object] | None = None,
+        publication_result: dict[str, object] | None = None,
+        connection: sqlite3.Connection | None = None,
+    ) -> None:
         """Store a GET result, transitioning only a currently scheduled post."""
-        with self.transaction() as connection:
-            row = connection.execute(
-                "SELECT status FROM posts WHERE id = ?", (post_id,)
-            ).fetchone()
-            if row is None:
-                raise ValueError(f"Post {post_id} does not exist")
-            if row["status"] != PostStatus.SCHEDULED.value:
-                raise ValueError(f"Post {post_id} is not scheduled")
-            if published:
-                self.transition_post(post_id, PostStatus.PUBLISHED, connection)
-            if platform_post_url:
-                connection.execute(
-                    "UPDATE posts SET platform_post_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    (platform_post_url, post_id),
+        if connection is None:
+            with self.transaction() as transaction:
+                self.record_publication_sync(
+                    post_id,
+                    published,
+                    platform_post_url,
+                    metrics,
+                    publication_result,
+                    transaction,
                 )
+            return
+        row = connection.execute(
+            "SELECT status FROM posts WHERE id = ?", (post_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Post {post_id} does not exist")
+        if row["status"] != PostStatus.SCHEDULED.value:
+            raise ValueError(f"Post {post_id} is not scheduled")
+        if published:
+            self.transition_post(post_id, PostStatus.PUBLISHED, connection)
+        connection.execute(
+            """
+            UPDATE posts
+            SET platform_post_url = COALESCE(?, platform_post_url),
+                metrics = ?,
+                publication_result = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                platform_post_url,
+                json.dumps(metrics or {}, ensure_ascii=False, sort_keys=True),
+                json.dumps(publication_result or {}, ensure_ascii=False, sort_keys=True),
+                post_id,
+            ),
+        )
 
     def upsert_pillar(self, name: str) -> None:
         """Record a proposal without changing an existing approval decision."""
@@ -434,69 +416,123 @@ class Database:
                 "SELECT 1 FROM research_reports WHERE path = ?", (path,)
             ).fetchone() is not None
 
-    def create_idea(self, title: str, pillar: str, research_path: str) -> int:
+    def create_idea(
+        self,
+        title: str,
+        pillar: str,
+        research_path: str,
+        connection: sqlite3.Connection | None = None,
+    ) -> int:
         """Persist an idea linked to one approved pillar and captured report."""
-        with self._connect() as connection:
-            row = connection.execute(
-                """
-                SELECT pillars.id AS pillar_id, research_reports.id AS research_report_id
-                FROM pillars CROSS JOIN research_reports
-                WHERE pillars.name = ?
-                  AND pillars.approved = 1
-                  AND research_reports.path = ?
-                """,
-                (pillar, research_path),
-            ).fetchone()
-            if row is None:
-                if connection.execute(
-                    "SELECT 1 FROM pillars WHERE name = ? AND approved = 0", (pillar,)
-                ).fetchone():
-                    raise ValueError(f"Pillar {pillar!r} is not approved")
-                raise ValueError("Pillar or research report does not exist")
-            cursor = connection.execute(
-                """
-                INSERT INTO ideas (title, pillar_id, research_report_id)
-                VALUES (?, ?, ?)
-                """,
-                (title, row["pillar_id"], row["research_report_id"]),
-            )
-            return cursor.lastrowid
+        if connection is None:
+            with self.transaction() as transaction:
+                return self.create_idea(title, pillar, research_path, transaction)
+        row = connection.execute(
+            """
+            SELECT pillars.id AS pillar_id, research_reports.id AS research_report_id
+            FROM pillars CROSS JOIN research_reports
+            WHERE pillars.name = ?
+              AND pillars.approved = 1
+              AND research_reports.path = ?
+            """,
+            (pillar, research_path),
+        ).fetchone()
+        if row is None:
+            if connection.execute(
+                "SELECT 1 FROM pillars WHERE name = ? AND approved = 0", (pillar,)
+            ).fetchone():
+                raise ValueError(f"Pillar {pillar!r} is not approved")
+            raise ValueError("Pillar or research report does not exist")
+        idea_key = hashlib.sha256(
+            json.dumps(
+                [title, pillar, research_path],
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        connection.execute(
+            """
+            INSERT INTO ideas (
+                title, pillar_id, research_report_id, idea_key
+            ) VALUES (?, ?, ?, ?)
+            ON CONFLICT(idea_key) DO NOTHING
+            """,
+            (title, row["pillar_id"], row["research_report_id"], idea_key),
+        )
+        idea_row = connection.execute(
+            "SELECT id FROM ideas WHERE idea_key = ?", (idea_key,)
+        ).fetchone()
+        if idea_row is None:
+            raise RuntimeError("Could not persist idea")
+        return idea_row["id"]
 
-    def create_draft_for_idea(self, idea_id: int, pillar: str) -> dict[str, object]:
+    def create_draft_for_idea(
+        self,
+        idea_id: int,
+        pillar: str,
+        connection: sqlite3.Connection | None = None,
+    ) -> dict[str, object]:
         """Create a draft post only for the idea's still-approved pillar.
 
         The supplied pillar is checked against the persisted idea rather than
         trusted from a CLI or workflow caller, preventing cross-pillar drafts.
         """
-        with self.transaction() as connection:
-            row = connection.execute(
-                """
-                SELECT ideas.id, ideas.title, pillars.name AS pillar, pillars.approved,
-                       research_reports.path AS research_path
-                FROM ideas
-                JOIN pillars ON pillars.id = ideas.pillar_id
-                JOIN research_reports ON research_reports.id = ideas.research_report_id
-                WHERE ideas.id = ?
-                """,
-                (idea_id,),
-            ).fetchone()
-            if row is None:
-                raise ValueError(f"Idea {idea_id} does not exist or is no longer linked")
-            if row["pillar"] != pillar:
-                raise ValueError("Draft pillar does not match the idea's pillar")
-            if not row["approved"]:
-                raise ValueError(f"Pillar {pillar!r} is not approved")
+        if connection is None:
+            with self.transaction() as transaction:
+                return self.create_draft_for_idea(idea_id, pillar, transaction)
+        row = connection.execute(
+            """
+            SELECT ideas.id, ideas.title, ideas.draft_post_id,
+                   pillars.name AS pillar, pillars.approved,
+                   research_reports.path AS research_path
+            FROM ideas
+            JOIN pillars ON pillars.id = ideas.pillar_id
+            JOIN research_reports ON research_reports.id = ideas.research_report_id
+            WHERE ideas.id = ?
+            """,
+            (idea_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Idea {idea_id} does not exist or is no longer linked")
+        if row["pillar"] != pillar:
+            raise ValueError("Draft pillar does not match the idea's pillar")
+        if not row["approved"]:
+            raise ValueError(f"Pillar {pillar!r} is not approved")
+        post_id = row["draft_post_id"]
+        created = False
+        if post_id is None:
             cursor = connection.execute(
-                "INSERT INTO posts (title, status) VALUES (?, 'draft')",
-                (row["title"],),
+                """
+                INSERT INTO posts (title, status, suggested_time, sources)
+                VALUES (?, 'draft', NULL, ?)
+                """,
+                (
+                    row["title"],
+                    json.dumps(
+                        [{"type": "research", "path": row["research_path"]}],
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                ),
             )
-            return {
-                "id": row["id"],
-                "angle": row["title"],
-                "pillar": row["pillar"],
-                "research_path": row["research_path"],
-                "post_id": cursor.lastrowid,
-            }
+            post_id = cursor.lastrowid
+            connection.execute(
+                "UPDATE ideas SET draft_post_id = ? WHERE id = ?",
+                (post_id, idea_id),
+            )
+            created = True
+        elif connection.execute(
+            "SELECT 1 FROM posts WHERE id = ?", (post_id,)
+        ).fetchone() is None:
+            raise ValueError(f"Draft post {post_id} does not exist")
+        return {
+            "id": row["id"],
+            "angle": row["title"],
+            "pillar": row["pillar"],
+            "research_path": row["research_path"],
+            "post_id": post_id,
+            "created": created,
+        }
 
     def get_idea(self, idea_id: int) -> dict[str, object]:
         """Return an idea with the links needed to create its draft."""
@@ -525,6 +561,157 @@ class Database:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
+
+    @staticmethod
+    def _column_names(
+        connection: sqlite3.Connection, table: str
+    ) -> set[str]:
+        return {
+            row["name"] for row in connection.execute(f"PRAGMA table_info({table})")
+        }
+
+    @classmethod
+    def _add_columns(
+        cls,
+        connection: sqlite3.Connection,
+        table: str,
+        definitions: dict[str, str],
+    ) -> None:
+        existing = cls._column_names(connection, table)
+        for name, definition in definitions.items():
+            if name not in existing:
+                connection.execute(
+                    f"ALTER TABLE {table} ADD COLUMN {name} {definition}"
+                )
+
+    @classmethod
+    def _migrate_to_v1(cls, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY,
+                external_id TEXT,
+                title TEXT NOT NULL,
+                status TEXT NOT NULL,
+                zernio_post_id TEXT,
+                platform_post_url TEXT,
+                idempotency_key TEXT,
+                scheduled_for TEXT,
+                schedule_payload TEXT,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS pillars (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                approved INTEGER NOT NULL DEFAULT 0,
+                count INTEGER NOT NULL DEFAULT 0,
+                evidence_ids TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS research_reports (
+                id INTEGER PRIMARY KEY,
+                topic TEXT NOT NULL,
+                path TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS ideas (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'idea',
+                pillar_id INTEGER REFERENCES pillars(id),
+                research_report_id INTEGER REFERENCES research_reports(id),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+        cls._add_columns(
+            connection,
+            "posts",
+            {
+                "external_id": "TEXT",
+                "zernio_post_id": "TEXT",
+                "platform_post_url": "TEXT",
+                "idempotency_key": "TEXT",
+                "scheduled_for": "TEXT",
+                "schedule_payload": "TEXT",
+                "created_at": "TEXT",
+                "updated_at": "TEXT",
+            },
+        )
+        cls._add_columns(
+            connection,
+            "pillars",
+            {
+                "count": "INTEGER NOT NULL DEFAULT 0",
+                "evidence_ids": "TEXT NOT NULL DEFAULT '[]'",
+                "created_at": "TEXT",
+            },
+        )
+        cls._add_columns(
+            connection, "research_reports", {"created_at": "TEXT"}
+        )
+        cls._add_columns(
+            connection,
+            "ideas",
+            {
+                "status": "TEXT NOT NULL DEFAULT 'idea'",
+                "pillar_id": "INTEGER REFERENCES pillars(id)",
+                "research_report_id": "INTEGER REFERENCES research_reports(id)",
+                "created_at": "TEXT",
+            },
+        )
+        connection.executescript(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS posts_external_id_unique
+                ON posts(external_id);
+            CREATE UNIQUE INDEX IF NOT EXISTS pillars_name_unique
+                ON pillars(name);
+            CREATE UNIQUE INDEX IF NOT EXISTS research_reports_path_unique
+                ON research_reports(path);
+            """
+        )
+
+    @classmethod
+    def _migrate_to_v2(cls, connection: sqlite3.Connection) -> None:
+        cls._add_columns(
+            connection,
+            "ideas",
+            {
+                "idea_key": "TEXT",
+                "draft_post_id": "INTEGER REFERENCES posts(id)",
+            },
+        )
+        connection.executescript(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS ideas_idea_key_unique
+                ON ideas(idea_key);
+            CREATE UNIQUE INDEX IF NOT EXISTS ideas_draft_post_unique
+                ON ideas(draft_post_id);
+            """
+        )
+
+    @classmethod
+    def _migrate_to_v3(cls, connection: sqlite3.Connection) -> None:
+        cls._add_columns(
+            connection,
+            "posts",
+            {
+                "metrics": "TEXT NOT NULL DEFAULT '{}'",
+                "publication_result": "TEXT",
+            },
+        )
+
+    @classmethod
+    def _migrate_to_v4(cls, connection: sqlite3.Connection) -> None:
+        cls._add_columns(
+            connection,
+            "posts",
+            {
+                "suggested_time": "TEXT",
+                "sources": "TEXT NOT NULL DEFAULT '[]'",
+            },
+        )
 
     @staticmethod
     def _begin_immediate(connection: sqlite3.Connection) -> None:

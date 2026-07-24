@@ -1,7 +1,9 @@
+import json
 import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 
 class ReportingTests(unittest.TestCase):
@@ -43,6 +45,7 @@ class ReportingTests(unittest.TestCase):
             weekly_report(self.database, date(2026, 7, 28))
 
     def test_sync_marks_only_published_response_and_saves_platform_url(self):
+        from content_ops.markdown import read_post_record, write_post_record
         from content_ops.reporting import sync_published_post
 
         class ReadOnlyClient:
@@ -51,28 +54,57 @@ class ReportingTests(unittest.TestCase):
 
             def get_post(self, post_id):
                 self.get_calls.append(post_id)
-                return {"status": "published", "platformPostUrl": "https://linkedin.test/posts/1"}
+                return {
+                    "status": "published",
+                    "platformPostUrl": "https://linkedin.test/posts/1",
+                    "metrics": {"impressions": 1200, "likes": 42, "comments": 3},
+                }
 
         client = ReadOnlyClient()
-        changed = sync_published_post(client, self.database, self.scheduled)
+        path = Path(self.temporary_directory.name) / "scheduled.md"
+        write_post_record(
+            path,
+            {"post_id": self.scheduled, "status": "scheduled", "published_url": None},
+            "Conteúdo",
+        )
+        changed = sync_published_post(client, self.database, self.scheduled, path)
 
         self.assertTrue(changed)
         self.assertEqual(client.get_calls, ["z-1"])
         with self.database._connect() as connection:
             row = connection.execute(
-                "SELECT status, platform_post_url FROM posts WHERE id = ?", (self.scheduled,)
+                "SELECT status, platform_post_url, metrics, publication_result "
+                "FROM posts WHERE id = ?",
+                (self.scheduled,),
             ).fetchone()
         self.assertEqual(row["status"], "published")
         self.assertEqual(row["platform_post_url"], "https://linkedin.test/posts/1")
+        self.assertEqual(
+            json.loads(row["metrics"]),
+            {"comments": 3, "impressions": 1200, "likes": 42},
+        )
+        self.assertEqual(json.loads(row["publication_result"])["status"], "published")
+        metadata, _ = read_post_record(path)
+        self.assertEqual(metadata["status"], "published")
+        self.assertEqual(metadata["published_url"], "https://linkedin.test/posts/1")
+        self.assertEqual(metadata["metrics"]["impressions"], 1200)
+        self.assertEqual(metadata["publication_result"]["status"], "published")
 
     def test_sync_leaves_scheduled_post_unchanged_after_nonpublished_response(self):
+        from content_ops.markdown import write_post_record
         from content_ops.reporting import sync_published_post
 
         class ReadOnlyClient:
             def get_post(self, post_id):
                 return {"status": "scheduled"}
 
-        self.assertFalse(sync_published_post(ReadOnlyClient(), self.database, self.scheduled))
+        path = Path(self.temporary_directory.name) / "scheduled.md"
+        write_post_record(
+            path, {"post_id": self.scheduled, "status": "scheduled"}, "Conteúdo"
+        )
+        self.assertFalse(
+            sync_published_post(ReadOnlyClient(), self.database, self.scheduled, path)
+        )
         with self.database._connect() as connection:
             status = connection.execute(
                 "SELECT status FROM posts WHERE id = ?", (self.scheduled,)
@@ -80,6 +112,7 @@ class ReportingTests(unittest.TestCase):
         self.assertEqual(status, "scheduled")
 
     def test_sync_does_not_publish_when_get_fails(self):
+        from content_ops.markdown import write_post_record
         from content_ops.reporting import sync_published_post
         from content_ops.zernio import ZernioError
 
@@ -87,8 +120,76 @@ class ReportingTests(unittest.TestCase):
             def get_post(self, post_id):
                 raise ZernioError(0, "Network error")
 
+        path = Path(self.temporary_directory.name) / "scheduled.md"
+        write_post_record(
+            path, {"post_id": self.scheduled, "status": "scheduled"}, "Conteúdo"
+        )
         with self.assertRaises(ZernioError):
-            sync_published_post(ReadOnlyClient(), self.database, self.scheduled)
+            sync_published_post(
+                ReadOnlyClient(), self.database, self.scheduled, path
+            )
+        with self.database._connect() as connection:
+            status = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (self.scheduled,)
+            ).fetchone()[0]
+        self.assertEqual(status, "scheduled")
+
+    def test_sync_markdown_failure_rolls_back_sqlite(self):
+        from content_ops.markdown import write_post_record
+        from content_ops.reporting import sync_published_post
+
+        class ReadOnlyClient:
+            def get_post(self, post_id):
+                return {
+                    "status": "published",
+                    "platformPostUrl": "https://linkedin.test/posts/1",
+                }
+
+        path = Path(self.temporary_directory.name) / "scheduled.md"
+        write_post_record(
+            path, {"post_id": self.scheduled, "status": "scheduled"}, "Conteúdo"
+        )
+        with patch(
+            "content_ops.reporting.write_post_record",
+            side_effect=OSError("disk full"),
+        ):
+            with self.assertRaises(OSError):
+                sync_published_post(
+                    ReadOnlyClient(), self.database, self.scheduled, path
+                )
+
+        with self.database._connect() as connection:
+            row = connection.execute(
+                "SELECT status, platform_post_url FROM posts WHERE id = ?",
+                (self.scheduled,),
+            ).fetchone()
+        self.assertEqual(row["status"], "scheduled")
+        self.assertIsNone(row["platform_post_url"])
+
+    def test_sync_commit_failure_restores_original_markdown(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.reporting import sync_published_post
+
+        class ReadOnlyClient:
+            def get_post(self, post_id):
+                return {
+                    "status": "published",
+                    "platformPostUrl": "https://linkedin.test/posts/1",
+                }
+
+        path = Path(self.temporary_directory.name) / "scheduled.md"
+        write_post_record(
+            path, {"post_id": self.scheduled, "status": "scheduled"}, "Conteúdo"
+        )
+        with patch.object(
+            self.database, "_commit", side_effect=OSError("commit failed")
+        ):
+            with self.assertRaises(OSError):
+                sync_published_post(
+                    ReadOnlyClient(), self.database, self.scheduled, path
+                )
+
+        self.assertEqual(read_post_record(path)[0]["status"], "scheduled")
         with self.database._connect() as connection:
             status = connection.execute(
                 "SELECT status FROM posts WHERE id = ?", (self.scheduled,)

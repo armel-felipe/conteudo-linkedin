@@ -1,6 +1,8 @@
 """Read and write Markdown editorial records with JSON metadata."""
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
 
@@ -9,15 +11,40 @@ CLOSING_DELIMITER = "\n---\n"
 
 
 def write_post_record(path, metadata, body):
-    """Write a Markdown record containing JSON metadata and a trimmed body."""
-    Path(path).write_text(
+    """Atomically write a Markdown record with deterministic JSON metadata."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    content = (
         OPENING_DELIMITER
         + json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True)
         + "\n---\n\n"
         + body.strip()
-        + "\n",
-        encoding="utf-8",
+        + "\n"
     )
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(content)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_path, target)
+        temporary_path = None
+        directory_fd = os.open(target.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def read_post_record(path) -> tuple[dict, str]:

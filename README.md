@@ -20,6 +20,23 @@ configurada, guarda respostas brutas locais em `data/imports/` (ignoradas pelo G
 e atualiza o índice SQLite de modo idempotente. Ele exige `ZERNIO_API_KEY` e
 `ZERNIO_ACCOUNT_ID`; mensagens de erro mostram apenas os nomes das configurações.
 
+## Fluxo editorial
+
+Uma ideia usa somente pesquisa já capturada e um pilar aprovado. Repetir os
+comandos com os mesmos dados reutiliza a ideia e o rascunho existentes:
+
+```sh
+./contentctl ideas create --research research/2026-07-24--ia.md \
+  --pillar "IA aplicada" --angle "Um ângulo verificável"
+./contentctl draft create 1
+./contentctl review submit 1
+./contentctl review approve 1
+```
+
+`review submit` move explicitamente o rascunho para revisão; somente depois dessa
+etapa `review approve` pode registrar a decisão humana. SQLite e Markdown são
+atualizados juntos ou restaurados em caso de falha.
+
 ## Agendamento e acompanhamento
 
 Agende somente depois de uma confirmação explícita. O comando exige uma `.env` local
@@ -33,7 +50,8 @@ Após o horário, `./contentctl posts sync 12` consulta apenas por GET o post j�
 agendado no Zernio. Ele nunca publica: o estado local muda para `published` somente
 quando a resposta remota confirmar esse estado. `report weekly` mostra os estados
 dos posts agendados de segunda a domingo, no fuso `America/Sao_Paulo`, e a cadência
-da semana (`N/2`).
+da semana (`N/2`). Quando disponíveis, URL publicada e métricas numéricas também
+são salvas no SQLite e no Markdown editorial.
 
 ## Segurança
 
