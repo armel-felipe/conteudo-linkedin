@@ -7,6 +7,23 @@ from unittest.mock import patch
 
 
 class CliSmokeTests(unittest.TestCase):
+    def test_required_operational_directories_have_gitkeep_files(self):
+        repository_root = Path(__file__).resolve().parents[1]
+        required_directories = (
+            "research",
+            "content/ideas",
+            "content/drafts",
+            "content/approved",
+            "content/published",
+            "calendar",
+            "data/imports",
+            "docs",
+        )
+
+        for directory in required_directories:
+            with self.subTest(directory=directory):
+                self.assertTrue((repository_root / directory / ".gitkeep").is_file())
+
     def test_help_lists_history(self):
         result = subprocess.run(["./contentctl", "--help"], text=True, capture_output=True)
 

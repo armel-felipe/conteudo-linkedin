@@ -1,5 +1,8 @@
 .env
 data/content.db
 data/imports/
+!data/imports/
+data/imports/*
+!data/imports/.gitkeep
 __pycache__/
 .DS_Store
