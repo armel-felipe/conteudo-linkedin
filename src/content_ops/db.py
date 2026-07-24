@@ -37,6 +37,7 @@ class Database:
                     external_id TEXT UNIQUE,
                     title TEXT NOT NULL,
                     status TEXT NOT NULL,
+                    zernio_post_id TEXT,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
@@ -78,6 +79,11 @@ class Database:
                 connection.execute(
                     "ALTER TABLE pillars ADD COLUMN evidence_ids TEXT NOT NULL DEFAULT '[]'"
                 )
+            post_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(posts)")
+            }
+            if "zernio_post_id" not in post_columns:
+                connection.execute("ALTER TABLE posts ADD COLUMN zernio_post_id TEXT")
 
     def upsert_post(self, external_id: str, title: str, status: str | PostStatus) -> None:
         """Insert or update an externally identified post without duplication."""
@@ -134,6 +140,23 @@ class Database:
             "UPDATE posts SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
             (destination.value, post_id),
         )
+
+    def record_schedule_result(
+        self, post_id: int, status: PostStatus, zernio_post_id: str | None
+    ) -> None:
+        """Persist the result of the single remote scheduling attempt."""
+        with self.transaction() as connection:
+            row = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError(f"Post {post_id} does not exist")
+            if self._coerce_status(row["status"]) != status:
+                self.transition_post(post_id, status, connection)
+            connection.execute(
+                "UPDATE posts SET zernio_post_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (zernio_post_id, post_id),
+            )
 
     def count_posts(self) -> int:
         """Return the number of indexed posts."""

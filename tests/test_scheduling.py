@@ -1,4 +1,5 @@
 import argparse
+import json
 import tempfile
 import unittest
 from datetime import datetime, timedelta
@@ -41,6 +42,19 @@ class SchedulingTests(unittest.TestCase):
         )
         self.client = FakeClient()
 
+    def schedule(self, client=None):
+        from content_ops.workflow import schedule_post
+
+        return schedule_post(
+            self.post_id,
+            self.path,
+            "2026-08-01T10:00:00",
+            True,
+            client or self.client,
+            database=self.database,
+            account_id="linkedin-account",
+        )
+
     def tearDown(self):
         self.temporary_directory.cleanup()
 
@@ -48,10 +62,7 @@ class SchedulingTests(unittest.TestCase):
         from content_ops.workflow import SchedulingValidationError, schedule_post
 
         with self.assertRaises(SchedulingValidationError):
-            schedule_post(
-                self.post_id, self.path, "2026-08-01T10:00:00", True, self.client,
-                database=self.database,
-            )
+            self.schedule()
 
         self.assertEqual(self.client.create_calls, 0)
 
@@ -62,10 +73,7 @@ class SchedulingTests(unittest.TestCase):
         approve_draft(self.post_id, self.path, database=self.database)
 
         self.assertEqual(
-            schedule_post(
-                self.post_id, self.path, "2026-08-01T10:00:00", True, self.client,
-                database=self.database,
-            ),
+            self.schedule(),
             "z-1",
         )
         self.assertEqual(self.client.create_calls, 1)
@@ -73,7 +81,7 @@ class SchedulingTests(unittest.TestCase):
             "content": "Texto aprovado.",
             "scheduledFor": "2026-08-01T10:00:00",
             "timezone": "America/Sao_Paulo",
-            "targets": [{"platform": "linkedin"}],
+            "targets": [{"platform": "linkedin", "accountId": "linkedin-account"}],
         }])
         self.assertEqual(read_post_record(self.path)[0]["zernio_post_id"], "z-1")
 
@@ -84,7 +92,7 @@ class SchedulingTests(unittest.TestCase):
         with self.assertRaisesRegex(SchedulingValidationError, "--confirm is required"):
             schedule_post(
                 self.post_id, self.path, "2026-08-01T10:00:00", False, self.client,
-                database=self.database,
+                database=self.database, account_id="linkedin-account",
             )
         self.assertEqual(self.client.create_calls, 0)
 
@@ -94,7 +102,8 @@ class SchedulingTests(unittest.TestCase):
         approve_draft(self.post_id, self.path, database=self.database)
         past = (datetime.now() - timedelta(minutes=1)).isoformat(timespec="minutes")
         with self.assertRaises(SchedulingValidationError):
-            schedule_post(self.post_id, self.path, past, True, self.client, database=self.database)
+            schedule_post(self.post_id, self.path, past, True, self.client, database=self.database,
+                          account_id="linkedin-account")
         self.assertEqual(self.client.create_calls, 0)
 
     def test_schedule_rejects_empty_body_before_http(self):
@@ -107,10 +116,7 @@ class SchedulingTests(unittest.TestCase):
             encoding="utf-8",
         )
         with self.assertRaises(SchedulingValidationError):
-            schedule_post(
-                self.post_id, self.path, "2026-08-01T10:00:00", True, self.client,
-                database=self.database,
-            )
+            self.schedule()
         self.assertEqual(self.client.create_calls, 0)
 
     def test_schedule_includes_media_only_for_http_image_url(self):
@@ -122,7 +128,7 @@ class SchedulingTests(unittest.TestCase):
         write_post_record(self.path, metadata, body)
         approve_draft(self.post_id, self.path, database=self.database)
 
-        schedule_post(self.post_id, self.path, "2026-08-01T10:00:00", True, self.client, database=self.database)
+        self.schedule()
 
         self.assertEqual(self.client.payloads[0]["mediaItems"], [{"url": "https://example.test/post.png"}])
 
@@ -133,13 +139,67 @@ class SchedulingTests(unittest.TestCase):
         approve_draft(self.post_id, self.path, database=self.database)
         failing_client = FakeClient(error=RuntimeError("secret detail"))
         with self.assertRaisesRegex(SchedulingError, "Scheduling request failed"):
-            schedule_post(self.post_id, self.path, "2026-08-01T10:00:00", True, failing_client, database=self.database)
+            self.schedule(failing_client)
 
         self.assertEqual(failing_client.create_calls, 1)
         self.assertEqual(read_post_record(self.path)[0]["status"], "failed")
         with self.database._connect() as connection:
             status = connection.execute("SELECT status FROM posts WHERE id = ?", (self.post_id,)).fetchone()[0]
         self.assertEqual(status, "failed")
+
+    def test_schedule_rejects_https_url_without_host_before_http(self):
+        from content_ops.markdown import read_post_record, write_post_record
+        from content_ops.workflow import SchedulingValidationError, approve_draft
+
+        metadata, body = read_post_record(self.path)
+        metadata["image_url"] = "https:"
+        write_post_record(self.path, metadata, body)
+        approve_draft(self.post_id, self.path, database=self.database)
+
+        with self.assertRaisesRegex(SchedulingValidationError, "image_url must use HTTP\\(S\\)"):
+            self.schedule()
+        self.assertEqual(self.client.create_calls, 0)
+
+    def test_http_failure_is_sanitized_and_records_recovery_when_both_stores_fail(self):
+        from content_ops.markdown import read_post_record
+        from content_ops.workflow import SchedulingError, approve_draft
+        from content_ops.zernio import ZernioError
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        failing_client = FakeClient(error=ZernioError(500, "secret network detail"))
+        with patch.object(self.database, "record_schedule_result", side_effect=OSError("db secret")), patch(
+            "content_ops.workflow.write_post_record", side_effect=OSError("markdown secret")
+        ):
+            with self.assertRaisesRegex(SchedulingError, "Scheduling request failed") as raised:
+                self.schedule(failing_client)
+
+        self.assertNotIn("secret", str(raised.exception))
+        recovery_path = self.path.with_name(f".{self.path.name}.schedule-recovery.json")
+        self.assertEqual(json.loads(recovery_path.read_text(encoding="utf-8"))["status"], "failed")
+        self.assertEqual(failing_client.create_calls, 1)
+
+        with self.assertRaisesRegex(SchedulingError, "Previous scheduling attempt recovered"):
+            self.schedule(failing_client)
+        self.assertEqual(failing_client.create_calls, 1)
+        self.assertEqual(recovery_path.exists(), False)
+        self.assertEqual(read_post_record(self.path)[0]["status"], "failed")
+        with self.database._connect() as connection:
+            status = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (self.post_id,)
+            ).fetchone()[0]
+        self.assertEqual(status, "failed")
+
+    def test_schedule_persists_zernio_id_in_sqlite(self):
+        from content_ops.workflow import approve_draft
+
+        approve_draft(self.post_id, self.path, database=self.database)
+        self.schedule()
+
+        with self.database._connect() as connection:
+            zernio_post_id = connection.execute(
+                "SELECT zernio_post_id FROM posts WHERE id = ?", (self.post_id,)
+            ).fetchone()[0]
+        self.assertEqual(zernio_post_id, "z-1")
 
     def test_approval_restores_database_status_when_markdown_write_fails(self):
         from content_ops.workflow import approve_draft

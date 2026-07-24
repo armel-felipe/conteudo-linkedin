@@ -128,6 +128,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 arguments.confirm,
                 ZernioClient(os.environ["ZERNIO_API_KEY"]),
                 database=database,
+                account_id=os.environ["ZERNIO_ACCOUNT_ID"],
             )
         except (SchedulingValidationError, SchedulingError, ValueError) as error:
             parser.error(str(error))
