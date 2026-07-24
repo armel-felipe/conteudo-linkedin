@@ -52,6 +52,14 @@ def build_parser() -> argparse.ArgumentParser:
     draft_commands = draft.add_subparsers(dest="draft_command")
     draft_creation = draft_commands.add_parser("create", help="Create a draft from an idea")
     draft_creation.add_argument("idea_id", type=int)
+    review = commands.add_parser("review", help="Record an explicit draft approval")
+    review_commands = review.add_subparsers(dest="review_command")
+    review_approval = review_commands.add_parser("approve", help="Approve a post in review")
+    review_approval.add_argument("post_id", type=int)
+    schedule = commands.add_parser("schedule", help="Schedule an explicitly approved post")
+    schedule.add_argument("post_id", type=int)
+    schedule.add_argument("--at", required=True, dest="scheduled_for")
+    schedule.add_argument("--confirm", action="store_true")
     return parser
 
 
@@ -61,11 +69,70 @@ def _research_filename(topic: str) -> str:
     return f"{date.today().isoformat()}--{slug}.md"
 
 
+def _find_post_markdown(repository_root: Path, post_id: int) -> Path:
+    """Locate the one editorial record whose metadata belongs to ``post_id``."""
+    from content_ops.markdown import read_post_record
+
+    matches: list[Path] = []
+    for path in (repository_root / "content").rglob("*.md"):
+        try:
+            metadata, _ = read_post_record(path)
+        except (OSError, ValueError):
+            continue
+        if metadata.get("post_id") == post_id:
+            matches.append(path)
+    if len(matches) != 1:
+        raise ValueError(f"Expected exactly one Markdown record for post {post_id}")
+    return matches[0]
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     repository_root = Path(__file__).resolve().parents[2]
     load_env(repository_root / ".env")
     parser = build_parser()
     arguments = parser.parse_args(argv)
+
+    if arguments.command == "schedule" and not arguments.confirm:
+        parser.error("--confirm is required")
+
+    if arguments.command in {"review", "schedule"}:
+        from content_ops.db import Database
+        from content_ops.workflow import (
+            SchedulingError,
+            SchedulingValidationError,
+            approve_draft,
+            schedule_post,
+        )
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+        try:
+            markdown_path = _find_post_markdown(repository_root, arguments.post_id)
+            if arguments.command == "review":
+                if arguments.review_command != "approve":
+                    parser.error("A review action is required")
+                approve_draft(arguments.post_id, markdown_path, database=database)
+                print(f"Approved post {arguments.post_id}.")
+                return
+
+            required = ("ZERNIO_API_KEY", "ZERNIO_ACCOUNT_ID")
+            missing = [name for name in required if not os.environ.get(name)]
+            if missing:
+                parser.error(f"Missing required configuration: {', '.join(missing)}")
+            from content_ops.zernio import ZernioClient
+
+            zernio_post_id = schedule_post(
+                arguments.post_id,
+                markdown_path,
+                arguments.scheduled_for,
+                arguments.confirm,
+                ZernioClient(os.environ["ZERNIO_API_KEY"]),
+                database=database,
+            )
+        except (SchedulingValidationError, SchedulingError, ValueError) as error:
+            parser.error(str(error))
+        print(f"Scheduled post {arguments.post_id} as {zernio_post_id}.")
+        return
 
     if arguments.command in {"research", "ideas", "draft"}:
         from content_ops.db import Database

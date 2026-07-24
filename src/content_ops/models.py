@@ -21,7 +21,9 @@ ALLOWED_POST_TRANSITIONS: dict[PostStatus, frozenset[PostStatus]] = {
     PostStatus.IN_REVIEW: frozenset(
         {PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.DRAFT}
     ),
-    PostStatus.APPROVED: frozenset({PostStatus.SCHEDULED, PostStatus.DRAFT}),
+    PostStatus.APPROVED: frozenset(
+        {PostStatus.SCHEDULED, PostStatus.DRAFT, PostStatus.FAILED}
+    ),
     PostStatus.SCHEDULED: frozenset({PostStatus.PUBLISHED, PostStatus.FAILED}),
     PostStatus.FAILED: frozenset({PostStatus.APPROVED, PostStatus.ARCHIVED}),
 }

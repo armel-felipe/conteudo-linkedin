@@ -105,26 +105,35 @@ class Database:
             )
             return cursor.lastrowid
 
-    def transition_post(self, post_id: int, to_status: PostStatus) -> None:
+    def transition_post(
+        self,
+        post_id: int,
+        to_status: PostStatus,
+        connection: sqlite3.Connection | None = None,
+    ) -> None:
         """Move a post through one permitted workflow transition."""
         destination = self._coerce_status(to_status)
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT status FROM posts WHERE id = ?", (post_id,)
-            ).fetchone()
-            if row is None:
-                raise ValueError(f"Post {post_id} does not exist")
+        if connection is None:
+            with self.transaction() as transaction:
+                self.transition_post(post_id, destination, transaction)
+            return
 
-            source = self._coerce_status(row["status"])
-            if destination not in ALLOWED_POST_TRANSITIONS.get(source, frozenset()):
-                raise ValueError(
-                    f"Cannot transition post {post_id} from {source.value} to {destination.value}"
-                )
+        row = connection.execute(
+            "SELECT status FROM posts WHERE id = ?", (post_id,)
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Post {post_id} does not exist")
 
-            connection.execute(
-                "UPDATE posts SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (destination.value, post_id),
+        source = self._coerce_status(row["status"])
+        if destination not in ALLOWED_POST_TRANSITIONS.get(source, frozenset()):
+            raise ValueError(
+                f"Cannot transition post {post_id} from {source.value} to {destination.value}"
             )
+
+        connection.execute(
+            "UPDATE posts SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (destination.value, post_id),
+        )
 
     def count_posts(self) -> int:
         """Return the number of indexed posts."""

@@ -25,7 +25,7 @@ class ExternalPosts(list[dict[str, Any]]):
 
 
 class ZernioClient:
-    """Fetch external posts only; this client intentionally has no write methods."""
+    """Minimal Zernio API client; each request is issued exactly once."""
 
     def __init__(
         self,
@@ -51,6 +51,38 @@ class ZernioClient:
             if len(posts) < 100:
                 return ExternalPosts(all_posts, raw_pages)
             page += 1
+
+    def create_post(self, payload: dict[str, Any]) -> str:
+        """Create one scheduled post without retrying unsuccessful requests."""
+        request = Request(
+            f"{self.base_url}/api/v1/posts",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with self._opener(request) as response:
+                body = response.read()
+        except HTTPError as error:
+            raise ZernioError(error.code, self._http_error_message(error)) from None
+        except URLError:
+            raise ZernioError(0, "Network error") from None
+
+        try:
+            parsed = json.loads(body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise ZernioError(200, "Invalid JSON response") from None
+        if isinstance(parsed, dict):
+            identifier = parsed.get("id")
+            if not isinstance(identifier, str):
+                data = parsed.get("data")
+                identifier = data.get("id") if isinstance(data, dict) else None
+            if isinstance(identifier, str) and identifier:
+                return identifier
+        raise ZernioError(200, "Invalid JSON response")
 
     def _get_page(self, account_id: str, page: int) -> tuple[Any, bytes]:
         query = urlencode(
