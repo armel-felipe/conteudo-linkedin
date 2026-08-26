@@ -36,13 +36,13 @@ O LinkedIn NÃO renderiza Markdown. Marcação crua colada vira literal na posta
 
 Como distinguir `# Título` de `#hashtag` (CRITÉRIO):
 
-- `#` SEGUIDO DE ESPAÇO, no início de uma linha que é um título isolado (`# Título`, `## Subtítulo`) → é TÍTULO: REMOVER o(s) `#`.
-- `#` COLADO À PALAVRA, sem espaço (`#gestao`, `#IA`, `#hashtag`) → é HASHTAG: MANTER como está.
-- Não há meio-termo: uma linha é uma coisa ou outra. Se começa com `# ` (cerquilha + espaço) e é um cabeçalho de seção, remove a cerquilha; se é `#palavra`, preserva.
+- Regra universal e binária: **qualquer `#` seguido de espaço é REMOVIDO; qualquer `#` colado à palavra (sem espaço) é MANTIDO** — independente de posição na linha.
+- Exemplos: `# Título` e `## Subtítulo` → remova os `#` (viram texto normal). `#gestao`, `#IA` → preservados como hashtag.
+- Não há exceção: um `#` é uma coisa ou outra, decidida pelo espaço seguinte.
 
 Regras de conversão por elemento:
 
-- `# Título` / `## Subtítulo` (cerquilha + espaço): REMOVER o(s) `#`. Manter o título como texto normal, SEM caixa alta automática — preserve exatamente como está no arquivo, a menos que a pessoa peça explicitamente para mudar.
+- `#` seguido de espaço (qualquer posição): REMOVER o `#`. Manter o texto como normal, SEM caixa alta automática — preserve exatamente como está no arquivo, a menos que a pessoa peça explicitamente para mudar.
 - `**texto**` / `__texto__`: REMOVER os asteriscos/sublinhados e MANTER apenas `texto`. O conteúdo negritado fica como texto comum — não tente "reproduzir" o negrito, pois o LinkedIn não aceita.
 - `*item*`: remover os asteriscos; manter o `-`/`•` de lista se o arquivo já usar.
 - Links `[texto](url)`: manter apenas `texto` (ou o `texto (url)` se a pessoa quiser expor o link).
