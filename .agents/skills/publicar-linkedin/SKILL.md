@@ -23,7 +23,7 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 ## Fluxo (passos numerados)
 
 1. Localizar arquivo em content/approved/ (valida existência; se não existir, parar e informar).
-2. Ler o arquivo Markdown e converter para texto LinkedIn (opção B): remover `#` de título, converter/remover `**` sem vazar literal, manter quebras de linha, emojis e hashtags.
+2. Ler o arquivo Markdown e converter para texto LinkedIn (opção B): remover `# ` de título, converter/remover `**`/`__`/`*` sem vazar literal, manter quebras de linha, emojis e hashtags (`#palavra` preservadas).
 3. Abrir o browser do OpenWork já logado (openwork_execute browser.open_url → linkedin.com/feed) e navegar até "Começar publicação".
 4. Colar o conteúdo no campo de texto.
 5. Aplicar agendamento:
@@ -32,21 +32,29 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 
 ## Conversão Markdown → texto LinkedIn (OBRIGATÓRIA, antes da colagem)
 
-O LinkedIn NÃO renderiza Markdown. Marcação crua colada vira literal na postagem. NUNCA cole o texto com `**` ou `#` como estão no arquivo. Siga a Opção B:
+O LinkedIn NÃO renderiza Markdown. Marcação crua colada vira literal na postagem. NUNCA cole o texto com `**`, `__`, `*` de ênfase, nem com `# ` de título como estão no arquivo. Hashtags (`#palavra`) são a ÚNICA exceção e devem ser preservadas. Siga a Opção B:
 
-- `# Título` / `## Subtítulo`: REMOVER o(s) `#` (título vira texto normal; opcionalmente deixar em caixa alta se fizer sentido para o tom).
+Como distinguir `# Título` de `#hashtag` (CRITÉRIO):
+
+- `#` SEGUIDO DE ESPAÇO, no início de uma linha que é um título isolado (`# Título`, `## Subtítulo`) → é TÍTULO: REMOVER o(s) `#`.
+- `#` COLADO À PALAVRA, sem espaço (`#gestao`, `#IA`, `#hashtag`) → é HASHTAG: MANTER como está.
+- Não há meio-termo: uma linha é uma coisa ou outra. Se começa com `# ` (cerquilha + espaço) e é um cabeçalho de seção, remove a cerquilha; se é `#palavra`, preserva.
+
+Regras de conversão por elemento:
+
+- `# Título` / `## Subtítulo` (cerquilha + espaço): REMOVER o(s) `#`. Manter o título como texto normal, SEM caixa alta automática — preserve exatamente como está no arquivo, a menos que a pessoa peça explicitamente para mudar.
 - `**texto**` / `__texto__`: REMOVER os asteriscos/sublinhados e MANTER apenas `texto`. O conteúdo negritado fica como texto comum — não tente "reproduzir" o negrito, pois o LinkedIn não aceita.
 - `*item*`: remover os asteriscos; manter o `-`/`•` de lista se o arquivo já usar.
 - Links `[texto](url)`: manter apenas `texto` (ou o `texto (url)` se a pessoa quiser expor o link).
 - Manter quebras de linha, parágrafos, emojis e hashtags como estão.
 
 Checklist antes de colar:
-- [ ] Nenhum `**` restante no texto.
-- [ ] Nenhum `#` restante no texto.
+- [ ] Nenhum `**`, `__` ou `*` de ênfase restante no texto.
+- [ ] Nenhum `# ` de título restante (hashtags `#palavra` devem permanecer).
 - [ ] `[texto](url)` virou texto legível.
 - [ ] Linhas, emojis e hashtags preservados.
 
-Regra prática: se o texto colado ainda contém `**` ou `#`, você errou a conversão — corrija antes de prosseguir.
+Regra prática: se o texto colado ainda contém `**`, `__` ou um `# ` de título, você errou a conversão — corrija antes de prosseguir.
 
 ## Ponto de espera (único)
 
@@ -64,7 +72,7 @@ Regra prática: se o texto colado ainda contém `**` ou `#`, você errou a conve
 
 ## Erros comuns (Common Mistakes)
 
-- Colar Markdown cru (`**`, `#`) — deve converter antes.
+- Colar Markdown cru (`**`, `__`, `*`, `# ` de título) — deve converter antes; hashtags `#palavra` são preservadas e não são erro.
 - Pedir nova aprovação de texto — o arquivo em approved/ já é aprovado.
 - Pular a pausa no envio "agora" — a pausa é obrigatória (anexo manual de imagem).
 - Tentar autenticar — usar a sessão já logada.
