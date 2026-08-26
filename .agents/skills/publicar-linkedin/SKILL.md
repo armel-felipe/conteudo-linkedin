@@ -36,13 +36,13 @@ O LinkedIn NÃO renderiza Markdown. Marcação crua colada vira literal na posta
 
 Como distinguir `# Título` de `#hashtag` (CRITÉRIO):
 
-- Regra universal e binária: **qualquer `#` seguido de espaço é REMOVIDO; qualquer `#` colado à palavra (sem espaço) é MANTIDO** — independente de posição na linha.
-- Exemplos: `# Título` e `## Subtítulo` → remova os `#` (viram texto normal). `#gestao`, `#IA` → preservados como hashtag.
-- Não há exceção: um `#` é uma coisa ou outra, decidida pelo espaço seguinte.
+- Regra universal e binária: **qualquer sequência de `#` seguida de espaço é REMOVIDA inteira; qualquer `#` colado diretamente à palavra (sem espaço) é MANTIDO** — independente de posição na linha.
+- Exemplos: `# Título`, `## Subtítulo`, `### Seção` → remova a sequência inteira de `#` (viram texto normal). `#gestao`, `#IA` → preservados como hashtag.
+- Não há exceção: um `#` (ou run de `#`) é uma coisa ou outra, decidida pelo que vem depois — espaço (remove tudo) ou palavra (mantém).
 
 Regras de conversão por elemento:
 
-- `#` seguido de espaço (qualquer posição): REMOVER o `#`. Manter o texto como normal, SEM caixa alta automática — preserve exatamente como está no arquivo, a menos que a pessoa peça explicitamente para mudar.
+- Sequência de `#` seguida de espaço (qualquer posição): REMOVER todos os `#`. Manter o texto como normal, SEM caixa alta automática — preserve exatamente como está no arquivo, a menos que a pessoa peça explicitamente para mudar.
 - `**texto**` / `__texto__`: REMOVER os asteriscos/sublinhados e MANTER apenas `texto`. O conteúdo negritado fica como texto comum — não tente "reproduzir" o negrito, pois o LinkedIn não aceita.
 - `*item*`: remover os asteriscos; manter o `-`/`•` de lista se o arquivo já usar.
 - Links `[texto](url)`: manter apenas `texto` (ou o `texto (url)` se a pessoa quiser expor o link).
@@ -50,11 +50,11 @@ Regras de conversão por elemento:
 
 Checklist antes de colar:
 - [ ] Nenhum `**`, `__` ou `*` de ênfase restante no texto.
-- [ ] Nenhum `# ` de título restante (hashtags `#palavra` devem permanecer).
+- [ ] Nenhuma run de `# ` de título restante (hashtags `#palavra` devem permanecer).
 - [ ] `[texto](url)` virou texto legível.
 - [ ] Linhas, emojis e hashtags preservados.
 
-Regra prática: se o texto colado ainda contém `**`, `__` ou um `# ` de título, você errou a conversão — corrija antes de prosseguir.
+Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de título, você errou a conversão — corrija antes de prosseguir.
 
 ## Ponto de espera (único)
 
