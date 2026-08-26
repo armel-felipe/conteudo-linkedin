@@ -1,3 +1,9 @@
 # Pilares editoriais
 
-Execute `./contentctl pillars propose` depois de importar o histórico para gerar propostas com evidências.
+Propostas geradas do histórico importado.
+
+## Inteligência Artificial aplicada aos negócios
+
+count: 0
+evidence_ids: 
+approved: true
