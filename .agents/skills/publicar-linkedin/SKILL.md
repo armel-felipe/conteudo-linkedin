@@ -28,7 +28,7 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 4. Colar o conteúdo no campo de texto.
 5. Aplicar agendamento:
    - Envio "agora": colar conteúdo, PAUSAR antes do clique final, informar que a pessoa pode anexar imagem manualmente, e aguardar o comando para concluir.
-   - Agendado (dia/horário): preencher data/hora e agendar; avisar que a validação ocorre no próprio LinkedIn antes do disparo.
+   - Agendado (dia/horário): preencher data/hora e agendar diretamente; concluir sem nova validação de texto (o texto em approved/ já está aprovado).
 
 ## Conversão Markdown → texto LinkedIn (OBRIGATÓRIA, antes da colagem)
 
@@ -60,7 +60,7 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 
 - Texto em approved/ já está aprovado → NÃO pedir nova confirmação textual.
 - Envio "agora": PAUSA obrigatória para anexo manual de imagem; concluir só ao receber comando.
-- Agendado: sem pausa na skill; pessoa valida no LinkedIn.
+- Agendado: sem pausa na skill e sem nova validação; o agente agenda direto (o texto já foi aprovado no pipeline). A pessoa pode conferir/cancelar/edit a em "Ver publicações agendadas" no LinkedIn antes da hora.
 
 ## Visão (delegar ao image-analyzer)
 
