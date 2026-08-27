@@ -31,4 +31,5 @@
   listagem de busca não expõe a URL do post no DOM. (Decisão de 26/08/2026.)
 - Todo arquivo em `content/approved/` deve trazer uma seção **`## Fontes`** ao final, sempre abaixo
   do texto, com o link de cada postagem de origem. Se o artigo não tiver fontes (ex.: links
-  perdidos na coleta), a seção permanece com uma nota explicando o motivo. (Decisão de 26/08/2026.)
+  perdidos na coleta), **a seção não existe** — o arquivo termina no texto, sem nenhuma seção de
+  fontes nem nota de aviso. (Decisão de 26/08/2026.)
