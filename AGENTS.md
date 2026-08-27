@@ -27,4 +27,8 @@
   O link do post é mais importante que qualquer outro link para citação e rastreio. Capture-o
   abrindo cada post individual (clicar no timestamp/abrir a atividade) e registrando a URL
   resultante na barra de endereço, já no momento da coleta — não deixe para depois, pois a
+  resultante na barra de endereço, já no momento da coleta — não deixe para depois, pois a
   listagem de busca não expõe a URL do post no DOM. (Decisão de 26/08/2026.)
+- Todo arquivo em `content/approved/` deve trazer uma seção **`## Fontes`** ao final, sempre abaixo
+  do texto, com o link de cada postagem de origem. Se o artigo não tiver fontes (ex.: links
+  perdidos na coleta), a seção permanece com uma nota explicando o motivo. (Decisão de 26/08/2026.)
