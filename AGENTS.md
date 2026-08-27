@@ -22,3 +22,9 @@
   validação ocorre no próprio LinkedIn antes do disparo.
 - Anexar imagem automaticamente na postagem é um item de **roadmap futuro** (ver
   `docs/roadmap.md`); hoje o anexo é manual e só no envio "agora".
+- Ao capturar pesquisa no LinkedIn (busca de conteúdo), registre o **link individual de cada
+  postagem** (formato `/feed/update/urn:li:activity:...`), não apenas o link do perfil/empresa.
+  O link do post é mais importante que qualquer outro link para citação e rastreio. Capture-o
+  abrindo cada post individual (clicar no timestamp/abrir a atividade) e registrando a URL
+  resultante na barra de endereço, já no momento da coleta — não deixe para depois, pois a
+  listagem de busca não expõe a URL do post no DOM. (Decisão de 26/08/2026.)
