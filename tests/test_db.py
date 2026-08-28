@@ -235,6 +235,22 @@ class DatabaseTests(unittest.TestCase):
         self.db.close_round(round_id)
         self.assertEqual(self.db.list_rounds()[0]["status"], "closed")
 
+    def test_research_report_records_round_and_label(self):
+        round_id = self.db.create_round("Liderança e gestão de times", "runtime/rodadas/x.md")
+        self.db.create_research_report(
+            "liderança em times de alta performance",
+            "research/lideranca-times.md",
+            pillar="Liderança e gestão de times",
+            round_id=round_id,
+            label="2026_08_28 lideranca-gestao-times cultura-times-alta-perf",
+        )
+
+        reports = self.db.list_research_reports()
+        self.assertEqual(len(reports), 1)
+        topic, path, pillar, rid, label = reports[0]
+        self.assertEqual(rid, round_id)
+        self.assertEqual(label, "2026_08_28 lideranca-gestao-times cultura-times-alta-perf")
+
     def test_initialize_migrates_pillar_column_on_an_existing_database(self):
         legacy_path = Path(self.temporary_directory.name) / "legacy-research.db"
         with sqlite3.connect(legacy_path) as connection:

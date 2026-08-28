@@ -416,15 +416,27 @@ class Database:
         ).fetchone()
         return bool(row and row["approved"])
 
-    def create_research_report(self, topic: str, path: str, pillar: str | None = None) -> int:
+    def create_research_report(
+        self,
+        topic: str,
+        path: str,
+        pillar: str | None = None,
+        round_id: int | None = None,
+        label: str | None = None,
+    ) -> int:
         """Record a successfully captured research report."""
         with self._connect() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO research_reports (topic, path, pillar) VALUES (?, ?, ?)
-                ON CONFLICT(path) DO UPDATE SET topic = excluded.topic, pillar = excluded.pillar
+                INSERT INTO research_reports (topic, path, pillar, round_id, label)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                    topic = excluded.topic,
+                    pillar = excluded.pillar,
+                    round_id = excluded.round_id,
+                    label = excluded.label
                 """,
-                (topic, path, pillar),
+                (topic, path, pillar, round_id, label),
             )
             return cursor.lastrowid
 
@@ -435,13 +447,13 @@ class Database:
                 "SELECT 1 FROM research_reports WHERE path = ?", (path,)
             ).fetchone() is not None
 
-    def list_research_reports(self) -> list[tuple[str, str, str | None]]:
-        """Return (topic, path, pillar) for every captured research report."""
+    def list_research_reports(self) -> list[tuple[str, str, str | None, int | None, str | None]]:
+        """Return (topic, path, pillar, round_id, label) for every captured report."""
         with self._connect() as connection:
             rows = connection.execute(
-                "SELECT topic, path, pillar FROM research_reports ORDER BY id"
+                "SELECT topic, path, pillar, round_id, label FROM research_reports ORDER BY id"
             ).fetchall()
-        return [(row["topic"], row["path"], row["pillar"]) for row in rows]
+        return [(row["topic"], row["path"], row["pillar"], row["round_id"], row["label"]) for row in rows]
 
     def create_round(self, pillar: str, plano_path: str) -> int:
         """Create an open work round and return its identifier."""
