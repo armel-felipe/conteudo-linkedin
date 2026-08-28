@@ -13,6 +13,7 @@ BLOCKS: dict[str, str] = {
     "B5": "cruzamento",
     "B6": "ideacao",
     "B8": "escrita",
+    "B10": "escrita-humana",
 }
 
 APPROVAL_KEYS = [
