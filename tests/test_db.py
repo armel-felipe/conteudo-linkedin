@@ -191,6 +191,38 @@ class DatabaseTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertIsNone(pillar)
 
+    def test_initialize_migrates_round_and_label_columns(self):
+        legacy_path = Path(self.temporary_directory.name) / "legacy-rounds.db"
+        with sqlite3.connect(legacy_path) as connection:
+            connection.execute(
+                "CREATE TABLE research_reports ("
+                "id INTEGER PRIMARY KEY, topic TEXT NOT NULL, path TEXT NOT NULL, "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, pillar TEXT)"
+            )
+            connection.execute(
+                "CREATE TABLE ideas ("
+                "id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'idea', "
+                "pillar_id INTEGER, research_report_id INTEGER, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            connection.execute(
+                "INSERT INTO research_reports (topic, path) VALUES ('IA', 'research/ia.md')"
+            )
+
+        from content_ops.db import CURRENT_SCHEMA_VERSION, Database
+
+        Database(legacy_path).initialize()
+
+        with sqlite3.connect(legacy_path) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            tables = {row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            rr_cols = {row[1] for row in connection.execute("PRAGMA table_info(research_reports)")}
+            ideas_cols = {row[1] for row in connection.execute("PRAGMA table_info(ideas)")}
+        self.assertEqual(version, CURRENT_SCHEMA_VERSION)
+        self.assertIn("rounds", tables)
+        self.assertTrue({"round_id", "label"} <= rr_cols)
+        self.assertIn("sources", ideas_cols)
+
     def test_initialize_migrates_pillar_column_on_an_existing_database(self):
         legacy_path = Path(self.temporary_directory.name) / "legacy-research.db"
         with sqlite3.connect(legacy_path) as connection:

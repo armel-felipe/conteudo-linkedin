@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
 
 
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,7 @@ class Database:
                 self._migrate_to_v3,
                 self._migrate_to_v4,
                 self._migrate_to_v5,
+                self._migrate_to_v6,
             )
             for target_version in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
                 migrations[target_version - 1](connection)
@@ -745,6 +746,33 @@ class Database:
             connection,
             "research_reports",
             {"pillar": "TEXT"},
+        )
+
+    @classmethod
+    def _migrate_to_v6(cls, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS rounds (
+                id INTEGER PRIMARY KEY,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                pillar TEXT,
+                status TEXT NOT NULL DEFAULT 'open',
+                plano_path TEXT
+            );
+            """
+        )
+        cls._add_columns(
+            connection,
+            "research_reports",
+            {
+                "round_id": "INTEGER REFERENCES rounds(id)",
+                "label": "TEXT",
+            },
+        )
+        cls._add_columns(
+            connection,
+            "ideas",
+            {"sources": "TEXT NOT NULL DEFAULT '[]'"},
         )
 
     @staticmethod
