@@ -5,7 +5,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-BLOCKS: dict[str, str] = {}
+BLOCKS: dict[str, str] = {
+    "B1": "orquestrador-runtime",
+}
 
 APPROVAL_KEYS = [
     "APPROVAL_PILAR",
