@@ -188,6 +188,26 @@ class EditorialCliEndToEndTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertEqual(status, "published")
 
+    def test_publish_complete_rejects_mismatched_post_id(self):
+        from content_ops.markdown import write_post_record
+        from content_ops.models import PostStatus
+        from content_ops.workflow import SchedulingValidationError, publish_complete
+
+        post_id = self.database.create_post(PostStatus.APPROVED, "Artigo aprovado")
+        source = self.root / "content" / "approved" / "artigo.md"
+        source.parent.mkdir(parents=True, exist_ok=True)
+        # metadata com post_id DIFERENTE do argumento
+        write_post_record(
+            source,
+            {"post_id": 999, "status": "approved", "approved": True, "pillar": "IA aplicada"},
+            "Corpo do artigo",
+        )
+
+        with self.assertRaises(SchedulingValidationError):
+            publish_complete(post_id, "https://linkedin.com/posts/1", source, self.database)
+
+        self.assertTrue(source.exists())  # arquivo NÃO foi movido
+
     def test_pillars_propose_uses_captured_research(self):
         self.database.create_research_report(
             "liderança em times de alta performance",

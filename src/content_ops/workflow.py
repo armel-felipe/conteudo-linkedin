@@ -116,6 +116,8 @@ def publish_complete(
     """Move an approved record to content/published/ and record the publication."""
     path = Path(markdown_path)
     metadata, body = read_post_record(path)
+    if metadata.get("post_id") != post_id:
+        raise SchedulingValidationError("Markdown record belongs to another post")
     if metadata.get("status") != PostStatus.APPROVED.value or metadata.get("approved") is not True:
         raise SchedulingValidationError("Post is not approved")
     if not isinstance(published_url, str) or not published_url.startswith("https://"):
