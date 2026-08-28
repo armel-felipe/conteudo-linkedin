@@ -384,13 +384,14 @@ def create_idea(
     pillar: str,
     angle: str,
     ideas_directory: str | Path | None = None,
+    sources: list[str] | None = None,
 ) -> dict[str, object]:
     """Create one deterministic idea and, when requested, its editorial record."""
     created_path: Path | None = None
     try:
         with database.transaction() as connection:
             idea_id = database.create_idea(
-                angle, pillar, research_path, connection=connection
+                angle, pillar, research_path, connection=connection, sources=sources
             )
             if ideas_directory is not None:
                 idea_path = Path(ideas_directory) / f"idea-{idea_id}.md"
@@ -404,7 +405,10 @@ def create_idea(
                         "pillar": pillar,
                         "objective": "authority_and_job_opportunities",
                         "research_path": research_path,
-                        "sources": [{"type": "research", "path": research_path}],
+                        "sources": [
+                            {"type": "research", "path": p}
+                            for p in (sources or [research_path])
+                        ],
                         "suggested_time": None,
                     }
                     created_path = idea_path

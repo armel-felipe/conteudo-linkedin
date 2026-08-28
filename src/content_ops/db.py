@@ -484,11 +484,14 @@ class Database:
         pillar: str,
         research_path: str,
         connection: sqlite3.Connection | None = None,
+        sources: list[str] | None = None,
     ) -> int:
         """Persist an idea linked to one approved pillar and captured report."""
         if connection is None:
             with self.transaction() as transaction:
-                return self.create_idea(title, pillar, research_path, transaction)
+                return self.create_idea(
+                    title, pillar, research_path, transaction, sources=sources
+                )
         row = connection.execute(
             """
             SELECT pillars.id AS pillar_id, research_reports.id AS research_report_id
@@ -512,14 +515,15 @@ class Database:
                 separators=(",", ":"),
             ).encode("utf-8")
         ).hexdigest()
+        sources_json = json.dumps(sources or [], ensure_ascii=False, sort_keys=True)
         connection.execute(
             """
             INSERT INTO ideas (
-                title, pillar_id, research_report_id, idea_key
-            ) VALUES (?, ?, ?, ?)
+                title, pillar_id, research_report_id, idea_key, sources
+            ) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(idea_key) DO NOTHING
             """,
-            (title, row["pillar_id"], row["research_report_id"], idea_key),
+            (title, row["pillar_id"], row["research_report_id"], idea_key, sources_json),
         )
         idea_row = connection.execute(
             "SELECT id FROM ideas WHERE idea_key = ?", (idea_key,)

@@ -275,6 +275,25 @@ class DatabaseTests(unittest.TestCase):
         self.assertIn("pillar", columns)
         self.assertIsNone(pillar)
 
+    def test_create_idea_stores_multi_research_sources(self):
+        self.db.create_research_report("IA", "research/ia.md", pillar="IA aplicada")
+        self.db.upsert_pillar("IA aplicada")
+        self.db.approve_pillar("IA aplicada")
+        import json
+
+        idea_id = self.db.create_idea(
+            "Ideia cruzada",
+            "IA aplicada",
+            "research/ia.md",
+            sources=["research/ia.md", "research/ia2.md"],
+        )
+
+        with sqlite3.connect(self.path) as connection:
+            sources = connection.execute(
+                "SELECT sources FROM ideas WHERE id = ?", (idea_id,)
+            ).fetchone()[0]
+        self.assertEqual(json.loads(sources), ["research/ia.md", "research/ia2.md"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -51,6 +51,10 @@ def build_parser() -> argparse.ArgumentParser:
     idea_creation.add_argument("--research", required=True)
     idea_creation.add_argument("--pillar", required=True)
     idea_creation.add_argument("--angle", required=True)
+    idea_creation.add_argument(
+        "--sources",
+        help="Comma-separated research paths that sustain this idea (multi-pesquisa)",
+    )
     draft = commands.add_parser("draft", help="Create non-approved Markdown drafts")
     draft_commands = draft.add_subparsers(dest="draft_command")
     draft_creation = draft_commands.add_parser("create", help="Create a draft from an idea")
@@ -274,6 +278,9 @@ def main(
             "ideas",
             "create",
         ):
+            sources = None
+            if arguments.sources:
+                sources = [s.strip() for s in arguments.sources.split(",") if s.strip()]
             try:
                 idea = create_idea(
                     database,
@@ -281,6 +288,7 @@ def main(
                     arguments.pillar,
                     arguments.angle,
                     ideas_directory=repository_root / "content" / "ideas",
+                    sources=sources,
                 )
             except ValueError as error:
                 parser.error(str(error))
