@@ -443,6 +443,29 @@ class Database:
             ).fetchall()
         return [(row["topic"], row["path"], row["pillar"]) for row in rows]
 
+    def create_round(self, pillar: str, plano_path: str) -> int:
+        """Create an open work round and return its identifier."""
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "INSERT INTO rounds (pillar, plano_path) VALUES (?, ?)",
+                (pillar, plano_path),
+            )
+            return cursor.lastrowid
+
+    def list_rounds(self) -> list[sqlite3.Row]:
+        """Return all rounds ordered by creation."""
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT id, created_at, pillar, status, plano_path FROM rounds ORDER BY id"
+            ).fetchall()
+
+    def close_round(self, round_id: int) -> None:
+        """Mark a round as closed (all its blocks finished)."""
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,)
+            )
+
     def create_idea(
         self,
         title: str,
