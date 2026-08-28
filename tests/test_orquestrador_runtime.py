@@ -7,6 +7,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 BLOCKS: dict[str, str] = {
     "B1": "orquestrador-runtime",
+    "B2": "pilar",
 }
 
 APPROVAL_KEYS = [
