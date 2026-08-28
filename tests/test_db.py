@@ -163,6 +163,18 @@ class DatabaseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.db.transition_post(999, PostStatus.DRAFT)
 
+    def test_approved_post_can_transition_to_published(self):
+        from content_ops.models import PostStatus
+
+        post_id = self.db.create_post(PostStatus.APPROVED, "Aprovado")
+        self.db.transition_post(post_id, PostStatus.PUBLISHED)
+
+        with sqlite3.connect(self.path) as connection:
+            status = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()[0]
+        self.assertEqual(status, "published")
+
     def test_transaction_acquires_the_write_lock_before_reading_approval_count(self):
         with patch.object(self.db, "_begin_immediate", wraps=self.db._begin_immediate) as begin:
             with self.db.transaction() as connection:

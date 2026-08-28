@@ -107,6 +107,36 @@ def schedule_post(
     )
 
 
+def publish_complete(
+    post_id: int,
+    published_url: str,
+    markdown_path: str | Path,
+    database: Database,
+) -> Path:
+    """Move an approved record to content/published/ and record the publication."""
+    path = Path(markdown_path)
+    metadata, body = read_post_record(path)
+    if metadata.get("status") != PostStatus.APPROVED.value or metadata.get("approved") is not True:
+        raise SchedulingValidationError("Post is not approved")
+    if not isinstance(published_url, str) or not published_url.startswith("https://"):
+        raise SchedulingValidationError("published_url must be an https URL")
+    published_path = path.parent.parent / "published" / path.name
+    published_path.parent.mkdir(parents=True, exist_ok=True)
+    updated = dict(metadata)
+    updated["status"] = PostStatus.PUBLISHED.value
+    updated["published_url"] = published_url
+    try:
+        with database.transaction() as connection:
+            database.transition_post(post_id, PostStatus.PUBLISHED, connection)
+            write_post_record(published_path, updated, body)
+            path.unlink()
+    except BaseException:
+        if published_path.exists():
+            published_path.unlink(missing_ok=True)
+        raise
+    return published_path
+
+
 def reconcile_schedule(
     post_id: int,
     markdown_path: str | Path,
