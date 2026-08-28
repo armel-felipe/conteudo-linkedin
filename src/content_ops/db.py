@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
 
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 
 @dataclass(frozen=True)
@@ -47,6 +47,7 @@ class Database:
                 self._migrate_to_v2,
                 self._migrate_to_v3,
                 self._migrate_to_v4,
+                self._migrate_to_v5,
             )
             for target_version in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
                 migrations[target_version - 1](connection)
@@ -414,15 +415,15 @@ class Database:
         ).fetchone()
         return bool(row and row["approved"])
 
-    def create_research_report(self, topic: str, path: str) -> int:
+    def create_research_report(self, topic: str, path: str, pillar: str | None = None) -> int:
         """Record a successfully captured research report."""
         with self._connect() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO research_reports (topic, path) VALUES (?, ?)
-                ON CONFLICT(path) DO UPDATE SET topic = excluded.topic
+                INSERT INTO research_reports (topic, path, pillar) VALUES (?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET topic = excluded.topic, pillar = excluded.pillar
                 """,
-                (topic, path),
+                (topic, path, pillar),
             )
             return cursor.lastrowid
 
@@ -432,6 +433,14 @@ class Database:
             return connection.execute(
                 "SELECT 1 FROM research_reports WHERE path = ?", (path,)
             ).fetchone() is not None
+
+    def list_research_reports(self) -> list[tuple[str, str, str | None]]:
+        """Return (topic, path, pillar) for every captured research report."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT topic, path, pillar FROM research_reports ORDER BY id"
+            ).fetchall()
+        return [(row["topic"], row["path"], row["pillar"]) for row in rows]
 
     def create_idea(
         self,
@@ -728,6 +737,14 @@ class Database:
                 "suggested_time": "TEXT",
                 "sources": "TEXT NOT NULL DEFAULT '[]'",
             },
+        )
+
+    @classmethod
+    def _migrate_to_v5(cls, connection: sqlite3.Connection) -> None:
+        cls._add_columns(
+            connection,
+            "research_reports",
+            {"pillar": "TEXT"},
         )
 
     @staticmethod

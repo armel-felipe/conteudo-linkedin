@@ -121,6 +121,53 @@ class EditorialCliEndToEndTests(unittest.TestCase):
 
         self.assertEqual(output, f"Post {post_id} failed.\n")
 
+    def test_research_discover_records_optional_pillar(self):
+        from content_ops.research import capture_research
+
+        with (
+            patch.dict(
+                "content_ops.cli.os.environ",
+                {"LAST30DAYS_COMMAND": "echo research-output"},
+            ),
+            patch.object(capture_research, "__wrapped__", None, create=True),
+        ):
+            output = self.run_cli(
+                [
+                    "research",
+                    "discover",
+                    "liderança em times",
+                    "--pillar",
+                    "Liderança e gestão de times",
+                ]
+            )
+
+        self.assertIn("Captured research in", output)
+        with self.database._connect() as connection:
+            row = connection.execute(
+                "SELECT pillar FROM research_reports WHERE topic = ?",
+                ("liderança em times",),
+            ).fetchone()
+        self.assertEqual(row[0], "Liderança e gestão de times")
+
+    def test_pillars_propose_uses_captured_research(self):
+        self.database.create_research_report(
+            "liderança em times de alta performance",
+            "research/lideranca-times.md",
+            pillar="Liderança e gestão de times",
+        )
+        self.database.create_research_report(
+            "problem solving metodologia mckinsey",
+            "research/problem-solving.md",
+            pillar="Liderança e gestão de times",
+        )
+
+        output = self.run_cli(["pillars", "propose"])
+
+        self.assertIn("Proposed 2 pillars", output)
+        document = (self.root / "docs" / "pillars.md").read_text(encoding="utf-8")
+        self.assertIn("## Liderança e gestão de times", document)
+        self.assertIn("evidence_ids: research/lideranca-times.md, research/problem-solving.md", document)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -170,6 +170,51 @@ class DatabaseTests(unittest.TestCase):
 
         begin.assert_called_once()
 
+    def test_research_report_can_record_an_optional_pillar(self):
+        self.db.create_research_report("Liderança", "research/lideranca.md", pillar="Liderança e gestão de times")
+
+        with sqlite3.connect(self.path) as connection:
+            row = connection.execute(
+                "SELECT topic, path, pillar FROM research_reports WHERE path = ?",
+                ("research/lideranca.md",),
+            ).fetchone()
+        self.assertEqual(row[0], "Liderança")
+        self.assertEqual(row[2], "Liderança e gestão de times")
+
+    def test_research_report_without_pillar_stores_null(self):
+        self.db.create_research_report("IA", "research/ia.md")
+
+        with sqlite3.connect(self.path) as connection:
+            pillar = connection.execute(
+                "SELECT pillar FROM research_reports WHERE path = ?",
+                ("research/ia.md",),
+            ).fetchone()[0]
+        self.assertIsNone(pillar)
+
+    def test_initialize_migrates_pillar_column_on_an_existing_database(self):
+        legacy_path = Path(self.temporary_directory.name) / "legacy-research.db"
+        with sqlite3.connect(legacy_path) as connection:
+            connection.execute(
+                "CREATE TABLE research_reports ("
+                "id INTEGER PRIMARY KEY, topic TEXT NOT NULL, path TEXT NOT NULL, "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            connection.execute(
+                "INSERT INTO research_reports (topic, path) VALUES ('IA', 'research/ia.md')"
+            )
+
+        from content_ops.db import Database
+
+        Database(legacy_path).initialize()
+
+        with sqlite3.connect(legacy_path) as connection:
+            columns = {row[1] for row in connection.execute("PRAGMA table_info(research_reports)")}
+            pillar = connection.execute(
+                "SELECT pillar FROM research_reports WHERE path = ?", ("research/ia.md",)
+            ).fetchone()[0]
+        self.assertIn("pillar", columns)
+        self.assertIsNone(pillar)
+
 
 if __name__ == "__main__":
     unittest.main()

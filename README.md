@@ -58,3 +58,12 @@ são salvas no SQLite e no Markdown editorial.
 Não versione `.env` nem compartilhe credenciais em conversas, documentos ou
 artefatos editoriais. Agendamentos e publicações exigem confirmação explícita do
 usuário.
+
+## Permissões do agente (workspace)
+
+O arquivo `opencode.jsonc` na raiz define permissões locais de aprovação do agente:
+`read`, `edit`, `glob`, `grep`, `task`, `skill`, `webfetch`, `websearch` e
+`bash` estão em `allow`. `.env` continua protegido pelo default do OpenCode e não
+é afetado por essa configuração. `external_directory` não foi liberado (acesso
+fora desta pasta segue pedindo aprovação). Para reverter, apague ou edite o
+arquivo `opencode.jsonc`.

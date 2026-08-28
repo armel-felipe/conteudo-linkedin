@@ -341,5 +341,90 @@ class PillarCommandTests(unittest.TestCase):
         self.assertEqual(approval.name, "Python e dados")
 
 
+class ResearchDrivenPillarTests(unittest.TestCase):
+    def setUp(self):
+        from content_ops.db import Database
+
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        root = Path(self.temporary_directory.name)
+        self.database = Database(root / "content.db")
+        self.database.initialize()
+        self.path = root / "pillars.md"
+
+    def tearDown(self):
+        self.temporary_directory.cleanup()
+
+    def test_proposes_pillars_from_declared_research_pillars(self):
+        from content_ops.pillars import propose_pillars_from_research
+
+        self.database.create_research_report(
+            "liderança em times de alta performance",
+            "research/lideranca-times.md",
+            pillar="Liderança e gestão de times",
+        )
+        self.database.create_research_report(
+            "problem solving metodologia mckinsey",
+            "research/problem-solving.md",
+            pillar="Liderança e gestão de times",
+        )
+        self.database.create_research_report(
+            "ia aplicada a gerentes de negocio",
+            "research/ia-gerentes.md",
+            pillar="IA aplicada",
+        )
+
+        proposals = propose_pillars_from_research(self.database)
+
+        self.assertEqual(
+            [proposal.name for proposal in proposals],
+            ["Liderança e gestão de times", "IA aplicada"],
+        )
+        lideranca = next(p for p in proposals if p.name == "Liderança e gestão de times")
+        self.assertEqual(lideranca.count, 2)
+        self.assertEqual(
+            lideranca.evidence_ids,
+            ("research/lideranca-times.md", "research/problem-solving.md"),
+        )
+
+    def test_fallback_groups_unassigned_research_by_topic_similarity(self):
+        from content_ops.pillars import propose_pillars_from_research
+
+        self.database.create_research_report(
+            "liderança em times de alta performance", "research/lideranca-times.md"
+        )
+        self.database.create_research_report(
+            "liderança e cultura de equipe", "research/lideranca-cultura.md"
+        )
+        self.database.create_research_report(
+            "problem solving metodologia mckinsey", "research/problem-solving.md"
+        )
+
+        proposals = propose_pillars_from_research(self.database)
+
+        self.assertEqual(proposals[0].name, "Liderança")
+        self.assertEqual(proposals[0].count, 2)
+        self.assertEqual(
+            proposals[0].evidence_ids,
+            ("research/lideranca-cultura.md", "research/lideranca-times.md"),
+        )
+
+    def test_write_pillar_proposals_from_research_persists_document(self):
+        from content_ops.pillars import write_pillar_proposals_from_research
+
+        self.database.create_research_report(
+            "liderança em times de alta performance",
+            "research/lideranca-times.md",
+            pillar="Liderança e gestão de times",
+        )
+
+        write_pillar_proposals_from_research(self.path, self.database)
+
+        document = self.path.read_text(encoding="utf-8")
+        self.assertIn("## Liderança e gestão de times", document)
+        self.assertIn("evidence_ids: research/lideranca-times.md", document)
+        self.assertIn("approved: false", document)
+        self.assertIn("Propostas derivadas de pesquisas capturadas.", document)
+
+
 if __name__ == "__main__":
     unittest.main()

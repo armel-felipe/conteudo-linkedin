@@ -42,6 +42,9 @@ def build_parser() -> argparse.ArgumentParser:
         "discover", help="Capture configured Last30days output without creating ideas"
     )
     discovery.add_argument("topic")
+    discovery.add_argument(
+        "--pillar", help="Optional editorial theme this research belongs to"
+    )
     ideas = commands.add_parser("ideas", help="Create research-backed content ideas")
     idea_commands = ideas.add_subparsers(dest="ideas_command")
     idea_creation = idea_commands.add_parser("create", help="Create an idea from captured research")
@@ -257,7 +260,11 @@ def main(
             relative_path = Path("research") / _research_filename(arguments.topic)
             try:
                 capture_research(arguments.topic, command, repository_root / relative_path)
-                database.create_research_report(arguments.topic, str(relative_path))
+                database.create_research_report(
+                    arguments.topic,
+                    str(relative_path),
+                    pillar=arguments.pillar,
+                )
             except (RuntimeError, ValueError) as error:
                 parser.error(str(error))
             print(f"Captured research in {relative_path}.")
@@ -302,14 +309,17 @@ def main(
 
     if arguments.command == "pillars":
         from content_ops.db import Database
-        from content_ops.pillars import approve_pillar, write_pillar_proposals
+        from content_ops.pillars import (
+            approve_pillar,
+            write_pillar_proposals_from_research,
+        )
 
         database = Database(repository_root / "data" / "content.db")
         database.initialize()
         document_path = repository_root / "docs" / "pillars.md"
         if arguments.pillars_command == "propose":
-            proposals = write_pillar_proposals(
-                document_path, database, database.list_published_posts()
+            proposals = write_pillar_proposals_from_research(
+                document_path, database
             )
             print(f"Proposed {len(proposals)} pillars in {document_path.relative_to(repository_root)}.")
         elif arguments.pillars_command == "approve":

@@ -78,6 +78,74 @@ def propose_pillars(posts: Iterable[str | tuple[str, str]], limit: int = 5) -> l
     return proposals[:limit]
 
 
+def propose_pillars_from_research(
+    database: Database, limit: int = 5
+) -> list[PillarProposal]:
+    """Propose pillars from captured research reports.
+
+    Reports with a declared ``pillar`` group under that theme. Reports without
+    one fall back to their most frequent shared topic term, so the proposal
+    set stays auditable: every pillar shows the research paths it came from.
+    """
+    if limit < 0:
+        raise ValueError("limit must not be negative")
+    limit = min(limit, 5)
+
+    reports = database.list_research_reports()
+    declared: dict[str, list[str]] = defaultdict(list)
+    unassigned: list[tuple[str, str]] = []
+    for topic, path, pillar in reports:
+        if pillar:
+            declared[pillar].append(path)
+        else:
+            unassigned.append((path, topic))
+
+    fallback_terms = Counter(
+        term for _, topic in unassigned for term in _useful_terms(topic)
+    )
+    for path, topic in unassigned:
+        terms = _useful_terms(topic)
+        name = next(
+            (label for label, keywords in TOPIC_RULES if set(terms) & keywords), None
+        )
+        if name is None:
+            # Research-driven themes use the dominant shared term as the theme
+            # name, so unassigned reports group under a readable topic.
+            dominant = max(terms, key=lambda term: (fallback_terms[term], term), default=None)
+            name = dominant.capitalize() if dominant else None
+        if name:
+            declared[name].append(path)
+
+    proposals = [
+        PillarProposal(name, len(evidence_ids), tuple(sorted(evidence_ids)))
+        for name, evidence_ids in declared.items()
+    ]
+    proposals.sort(key=lambda proposal: (-proposal.count, proposal.name))
+    return proposals[:limit]
+
+
+def write_pillar_proposals_from_research(
+    path: str | Path,
+    database: Database,
+    limit: int = 5,
+) -> list[PillarProposal]:
+    """Persist research-driven proposals in SQLite and render the editorial record."""
+    proposals = propose_pillars_from_research(database, limit=limit)
+    document_path = Path(path)
+    _synchronize_document(
+        document_path,
+        database,
+        lambda connection, _: _render_document(
+            proposals, database, connection, header="Propostas derivadas de pesquisas capturadas."
+        ),
+        lambda connection: database.replace_pillars(
+            [(proposal.name, proposal.count, proposal.evidence_ids) for proposal in proposals],
+            connection,
+        ),
+    )
+    return proposals
+
+
 def write_pillar_proposals(
     path: str | Path,
     database: Database,
@@ -164,8 +232,9 @@ def _render_document(
     proposals: Sequence[PillarProposal],
     database: Database,
     connection: sqlite3.Connection,
+    header: str = "Propostas geradas do histórico importado.",
 ) -> str:
-    lines = ["# Pilares editoriais", "", "Propostas geradas do histórico importado.", ""]
+    lines = ["# Pilares editoriais", "", header, ""]
     for proposal in proposals:
         lines.extend(
             [
