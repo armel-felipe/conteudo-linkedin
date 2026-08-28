@@ -408,6 +408,23 @@ class ResearchDrivenPillarTests(unittest.TestCase):
             ("research/lideranca-cultura.md", "research/lideranca-times.md"),
         )
 
+    def test_proposes_pillars_ignores_round_and_label_fields(self):
+        from content_ops.pillars import propose_pillars_from_research
+
+        round_id = self.database.create_round("Liderança e gestão de times", "runtime/rodadas/x.md")
+        self.database.create_research_report(
+            "liderança em times de alta performance",
+            "research/lideranca-times.md",
+            pillar="Liderança e gestão de times",
+            round_id=round_id,
+            label="2026_08_28 lideranca-gestao-times cultura-times-alta-perf",
+        )
+
+        proposals = propose_pillars_from_research(self.database)
+
+        self.assertEqual(proposals[0].name, "Liderança e gestão de times")
+        self.assertEqual(proposals[0].evidence_ids, ("research/lideranca-times.md",))
+
     def test_write_pillar_proposals_from_research_persists_document(self):
         from content_ops.pillars import write_pillar_proposals_from_research
 

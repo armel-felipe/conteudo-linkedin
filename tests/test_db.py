@@ -163,6 +163,18 @@ class DatabaseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.db.transition_post(999, PostStatus.DRAFT)
 
+    def test_approved_post_can_transition_to_published(self):
+        from content_ops.models import PostStatus
+
+        post_id = self.db.create_post(PostStatus.APPROVED, "Aprovado")
+        self.db.transition_post(post_id, PostStatus.PUBLISHED)
+
+        with sqlite3.connect(self.path) as connection:
+            status = connection.execute(
+                "SELECT status FROM posts WHERE id = ?", (post_id,)
+            ).fetchone()[0]
+        self.assertEqual(status, "published")
+
     def test_transaction_acquires_the_write_lock_before_reading_approval_count(self):
         with patch.object(self.db, "_begin_immediate", wraps=self.db._begin_immediate) as begin:
             with self.db.transaction() as connection:
@@ -191,6 +203,66 @@ class DatabaseTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertIsNone(pillar)
 
+    def test_initialize_migrates_round_and_label_columns(self):
+        legacy_path = Path(self.temporary_directory.name) / "legacy-rounds.db"
+        with sqlite3.connect(legacy_path) as connection:
+            connection.execute(
+                "CREATE TABLE research_reports ("
+                "id INTEGER PRIMARY KEY, topic TEXT NOT NULL, path TEXT NOT NULL, "
+                "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, pillar TEXT)"
+            )
+            connection.execute(
+                "CREATE TABLE ideas ("
+                "id INTEGER PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'idea', "
+                "pillar_id INTEGER, research_report_id INTEGER, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            connection.execute(
+                "INSERT INTO research_reports (topic, path) VALUES ('IA', 'research/ia.md')"
+            )
+
+        from content_ops.db import CURRENT_SCHEMA_VERSION, Database
+
+        Database(legacy_path).initialize()
+
+        with sqlite3.connect(legacy_path) as connection:
+            version = connection.execute("PRAGMA user_version").fetchone()[0]
+            tables = {row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            rr_cols = {row[1] for row in connection.execute("PRAGMA table_info(research_reports)")}
+            ideas_cols = {row[1] for row in connection.execute("PRAGMA table_info(ideas)")}
+        self.assertEqual(version, CURRENT_SCHEMA_VERSION)
+        self.assertIn("rounds", tables)
+        self.assertTrue({"round_id", "label"} <= rr_cols)
+        self.assertIn("sources", ideas_cols)
+
+    def test_round_lifecycle_create_list_close(self):
+        round_id = self.db.create_round("Liderança e gestão de times", "runtime/rodadas/2026-08-28.md")
+        self.assertIsInstance(round_id, int)
+
+        rounds = self.db.list_rounds()
+        self.assertEqual(len(rounds), 1)
+        self.assertEqual(rounds[0]["pillar"], "Liderança e gestão de times")
+        self.assertEqual(rounds[0]["status"], "open")
+
+        self.db.close_round(round_id)
+        self.assertEqual(self.db.list_rounds()[0]["status"], "closed")
+
+    def test_research_report_records_round_and_label(self):
+        round_id = self.db.create_round("Liderança e gestão de times", "runtime/rodadas/x.md")
+        self.db.create_research_report(
+            "liderança em times de alta performance",
+            "research/lideranca-times.md",
+            pillar="Liderança e gestão de times",
+            round_id=round_id,
+            label="2026_08_28 lideranca-gestao-times cultura-times-alta-perf",
+        )
+
+        reports = self.db.list_research_reports()
+        self.assertEqual(len(reports), 1)
+        topic, path, pillar, rid, label = reports[0]
+        self.assertEqual(rid, round_id)
+        self.assertEqual(label, "2026_08_28 lideranca-gestao-times cultura-times-alta-perf")
+
     def test_initialize_migrates_pillar_column_on_an_existing_database(self):
         legacy_path = Path(self.temporary_directory.name) / "legacy-research.db"
         with sqlite3.connect(legacy_path) as connection:
@@ -214,6 +286,37 @@ class DatabaseTests(unittest.TestCase):
             ).fetchone()[0]
         self.assertIn("pillar", columns)
         self.assertIsNone(pillar)
+
+    def test_block_validation_records_reviewer_approval(self):
+        self.db.record_block_validation("B4", "research/lideranca-times.md")
+
+        with sqlite3.connect(self.path) as connection:
+            row = connection.execute(
+                "SELECT block, artifact_path, approved FROM block_validations WHERE block = ?",
+                ("B4",),
+            ).fetchone()
+        self.assertEqual(row[0], "B4")
+        self.assertEqual(row[1], "research/lideranca-times.md")
+        self.assertEqual(row[2], 1)
+
+    def test_create_idea_stores_multi_research_sources(self):
+        self.db.create_research_report("IA", "research/ia.md", pillar="IA aplicada")
+        self.db.upsert_pillar("IA aplicada")
+        self.db.approve_pillar("IA aplicada")
+        import json
+
+        idea_id = self.db.create_idea(
+            "Ideia cruzada",
+            "IA aplicada",
+            "research/ia.md",
+            sources=["research/ia.md", "research/ia2.md"],
+        )
+
+        with sqlite3.connect(self.path) as connection:
+            sources = connection.execute(
+                "SELECT sources FROM ideas WHERE id = ?", (idea_id,)
+            ).fetchone()[0]
+        self.assertEqual(json.loads(sources), ["research/ia.md", "research/ia2.md"])
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
 
 
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,7 @@ class Database:
                 self._migrate_to_v3,
                 self._migrate_to_v4,
                 self._migrate_to_v5,
+                self._migrate_to_v6,
             )
             for target_version in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
                 migrations[target_version - 1](connection)
@@ -415,15 +416,27 @@ class Database:
         ).fetchone()
         return bool(row and row["approved"])
 
-    def create_research_report(self, topic: str, path: str, pillar: str | None = None) -> int:
+    def create_research_report(
+        self,
+        topic: str,
+        path: str,
+        pillar: str | None = None,
+        round_id: int | None = None,
+        label: str | None = None,
+    ) -> int:
         """Record a successfully captured research report."""
         with self._connect() as connection:
             cursor = connection.execute(
                 """
-                INSERT INTO research_reports (topic, path, pillar) VALUES (?, ?, ?)
-                ON CONFLICT(path) DO UPDATE SET topic = excluded.topic, pillar = excluded.pillar
+                INSERT INTO research_reports (topic, path, pillar, round_id, label)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                    topic = excluded.topic,
+                    pillar = excluded.pillar,
+                    round_id = excluded.round_id,
+                    label = excluded.label
                 """,
-                (topic, path, pillar),
+                (topic, path, pillar, round_id, label),
             )
             return cursor.lastrowid
 
@@ -434,13 +447,36 @@ class Database:
                 "SELECT 1 FROM research_reports WHERE path = ?", (path,)
             ).fetchone() is not None
 
-    def list_research_reports(self) -> list[tuple[str, str, str | None]]:
-        """Return (topic, path, pillar) for every captured research report."""
+    def list_research_reports(self) -> list[tuple[str, str, str | None, int | None, str | None]]:
+        """Return (topic, path, pillar, round_id, label) for every captured report."""
         with self._connect() as connection:
             rows = connection.execute(
-                "SELECT topic, path, pillar FROM research_reports ORDER BY id"
+                "SELECT topic, path, pillar, round_id, label FROM research_reports ORDER BY id"
             ).fetchall()
-        return [(row["topic"], row["path"], row["pillar"]) for row in rows]
+        return [(row["topic"], row["path"], row["pillar"], row["round_id"], row["label"]) for row in rows]
+
+    def create_round(self, pillar: str, plano_path: str) -> int:
+        """Create an open work round and return its identifier."""
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "INSERT INTO rounds (pillar, plano_path) VALUES (?, ?)",
+                (pillar, plano_path),
+            )
+            return cursor.lastrowid
+
+    def list_rounds(self) -> list[sqlite3.Row]:
+        """Return all rounds ordered by creation."""
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT id, created_at, pillar, status, plano_path FROM rounds ORDER BY id"
+            ).fetchall()
+
+    def close_round(self, round_id: int) -> None:
+        """Mark a round as closed (all its blocks finished)."""
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,)
+            )
 
     def create_idea(
         self,
@@ -448,11 +484,14 @@ class Database:
         pillar: str,
         research_path: str,
         connection: sqlite3.Connection | None = None,
+        sources: list[str] | None = None,
     ) -> int:
         """Persist an idea linked to one approved pillar and captured report."""
         if connection is None:
             with self.transaction() as transaction:
-                return self.create_idea(title, pillar, research_path, transaction)
+                return self.create_idea(
+                    title, pillar, research_path, transaction, sources=sources
+                )
         row = connection.execute(
             """
             SELECT pillars.id AS pillar_id, research_reports.id AS research_report_id
@@ -476,14 +515,15 @@ class Database:
                 separators=(",", ":"),
             ).encode("utf-8")
         ).hexdigest()
+        sources_json = json.dumps(sources or [], ensure_ascii=False, sort_keys=True)
         connection.execute(
             """
             INSERT INTO ideas (
-                title, pillar_id, research_report_id, idea_key
-            ) VALUES (?, ?, ?, ?)
+                title, pillar_id, research_report_id, idea_key, sources
+            ) VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(idea_key) DO NOTHING
             """,
-            (title, row["pillar_id"], row["research_report_id"], idea_key),
+            (title, row["pillar_id"], row["research_report_id"], idea_key, sources_json),
         )
         idea_row = connection.execute(
             "SELECT id FROM ideas WHERE idea_key = ?", (idea_key,)
@@ -559,6 +599,14 @@ class Database:
             "post_id": post_id,
             "created": created,
         }
+
+    def record_block_validation(self, block: str, artifact_path: str) -> None:
+        """Record a reviewer's approval for one block's artifact."""
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",
+                (block, artifact_path),
+            )
 
     def get_idea(self, idea_id: int) -> dict[str, object]:
         """Return an idea with the links needed to create its draft."""
@@ -745,6 +793,40 @@ class Database:
             connection,
             "research_reports",
             {"pillar": "TEXT"},
+        )
+
+    @classmethod
+    def _migrate_to_v6(cls, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS rounds (
+                id INTEGER PRIMARY KEY,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                pillar TEXT,
+                status TEXT NOT NULL DEFAULT 'open',
+                plano_path TEXT
+            );
+            CREATE TABLE IF NOT EXISTS block_validations (
+                id INTEGER PRIMARY KEY,
+                block TEXT NOT NULL,
+                artifact_path TEXT NOT NULL,
+                approved INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+        cls._add_columns(
+            connection,
+            "research_reports",
+            {
+                "round_id": "INTEGER REFERENCES rounds(id)",
+                "label": "TEXT",
+            },
+        )
+        cls._add_columns(
+            connection,
+            "ideas",
+            {"sources": "TEXT NOT NULL DEFAULT '[]'"},
         )
 
     @staticmethod

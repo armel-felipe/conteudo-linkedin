@@ -94,7 +94,7 @@ def propose_pillars_from_research(
     reports = database.list_research_reports()
     declared: dict[str, list[str]] = defaultdict(list)
     unassigned: list[tuple[str, str]] = []
-    for topic, path, pillar in reports:
+    for topic, path, pillar, _round_id, _label in reports:
         if pillar:
             declared[pillar].append(path)
         else:

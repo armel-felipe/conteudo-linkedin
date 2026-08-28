@@ -23,7 +23,13 @@ ALLOWED_POST_TRANSITIONS: dict[PostStatus, frozenset[PostStatus]] = {
         {PostStatus.APPROVED, PostStatus.REJECTED, PostStatus.DRAFT}
     ),
     PostStatus.APPROVED: frozenset(
-        {PostStatus.SCHEDULED, PostStatus.DRAFT, PostStatus.FAILED, PostStatus.INDETERMINATE}
+        {
+            PostStatus.SCHEDULED,
+            PostStatus.DRAFT,
+            PostStatus.FAILED,
+            PostStatus.INDETERMINATE,
+            PostStatus.PUBLISHED,
+        }
     ),
     PostStatus.SCHEDULED: frozenset(
         {PostStatus.PUBLISHED, PostStatus.FAILED, PostStatus.INDETERMINATE}

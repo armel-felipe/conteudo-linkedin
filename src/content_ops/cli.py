@@ -31,6 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_subparsers(dest="history_command").add_parser(
         "import", help="Import external posts without publishing"
     )
+    blocks = commands.add_parser("bloco-ok", help="Register a reviewer's block validation")
+    blocks.add_argument("bloco")
+    blocks.add_argument("artefato")
     pillars = commands.add_parser("pillars", help="Propose and approve editorial pillars")
     pillar_commands = pillars.add_subparsers(dest="pillars_command")
     pillar_commands.add_parser("propose", help="Propose pillars from published history")
@@ -51,6 +54,10 @@ def build_parser() -> argparse.ArgumentParser:
     idea_creation.add_argument("--research", required=True)
     idea_creation.add_argument("--pillar", required=True)
     idea_creation.add_argument("--angle", required=True)
+    idea_creation.add_argument(
+        "--sources",
+        help="Comma-separated research paths that sustain this idea (multi-pesquisa)",
+    )
     draft = commands.add_parser("draft", help="Create non-approved Markdown drafts")
     draft_commands = draft.add_subparsers(dest="draft_command")
     draft_creation = draft_commands.add_parser("create", help="Create a draft from an idea")
@@ -68,6 +75,11 @@ def build_parser() -> argparse.ArgumentParser:
     schedule.add_argument("reconcile_post_id", nargs="?")
     schedule.add_argument("--at", dest="scheduled_for")
     schedule.add_argument("--confirm", action="store_true")
+    publish = commands.add_parser(
+        "publish-complete", help="Move an approved post to content/published/"
+    )
+    publish.add_argument("post_id", type=int)
+    publish.add_argument("url")
     report = commands.add_parser("report", help="Inspect local operational metrics")
     report_commands = report.add_subparsers(dest="report_command")
     weekly = report_commands.add_parser("weekly", help="Show one Monday-to-Sunday report")
@@ -184,6 +196,28 @@ def main(
         print(messages[status])
         return
 
+    if arguments.command == "publish-complete":
+        from content_ops.db import Database
+        from content_ops.workflow import (
+            SchedulingValidationError,
+            publish_complete,
+        )
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+        try:
+            markdown_path = _find_post_markdown(repository_root, arguments.post_id)
+            published_path = publish_complete(
+                arguments.post_id,
+                arguments.url,
+                markdown_path,
+                database,
+            )
+        except (SchedulingValidationError, ValueError) as error:
+            parser.error(str(error))
+        print(f"Published post {arguments.post_id} -> {published_path.relative_to(repository_root)}.")
+        return
+
     if arguments.command in {"review", "schedule"}:
         from content_ops.db import Database
         from content_ops.workflow import (
@@ -274,6 +308,9 @@ def main(
             "ideas",
             "create",
         ):
+            sources = None
+            if arguments.sources:
+                sources = [s.strip() for s in arguments.sources.split(",") if s.strip()]
             try:
                 idea = create_idea(
                     database,
@@ -281,6 +318,7 @@ def main(
                     arguments.pillar,
                     arguments.angle,
                     ideas_directory=repository_root / "content" / "ideas",
+                    sources=sources,
                 )
             except ValueError as error:
                 parser.error(str(error))
@@ -305,6 +343,15 @@ def main(
             print(f"Created draft {path.relative_to(repository_root)} (post {idea['post_id']}).")
             return
 
+        return
+
+    if arguments.command == "bloco-ok":
+        from content_ops.db import Database
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+        database.record_block_validation(arguments.bloco, arguments.artefato)
+        print(f"Registered validation for {arguments.bloco}.")
         return
 
     if arguments.command == "pillars":
