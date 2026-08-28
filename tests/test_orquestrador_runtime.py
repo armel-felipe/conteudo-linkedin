@@ -62,6 +62,11 @@ class OrquestradorRuntimeStructureTests(unittest.TestCase):
                 self.assertIn("## Contrato", content, f"{block} {role} missing Contrato")
                 self.assertIn("## Processo", content, f"{block} {role} missing Processo")
 
+    def test_env_example_has_all_approval_keys(self):
+        env = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
+        for key in APPROVAL_KEYS:
+            self.assertIn(key, env, f".env.example missing {key}")
+
 
 if __name__ == "__main__":
     unittest.main()
