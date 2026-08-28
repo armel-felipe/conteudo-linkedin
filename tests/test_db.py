@@ -275,6 +275,18 @@ class DatabaseTests(unittest.TestCase):
         self.assertIn("pillar", columns)
         self.assertIsNone(pillar)
 
+    def test_block_validation_records_reviewer_approval(self):
+        self.db.record_block_validation("B4", "research/lideranca-times.md")
+
+        with sqlite3.connect(self.path) as connection:
+            row = connection.execute(
+                "SELECT block, artifact_path, approved FROM block_validations WHERE block = ?",
+                ("B4",),
+            ).fetchone()
+        self.assertEqual(row[0], "B4")
+        self.assertEqual(row[1], "research/lideranca-times.md")
+        self.assertEqual(row[2], 1)
+
     def test_create_idea_stores_multi_research_sources(self):
         self.db.create_research_report("IA", "research/ia.md", pillar="IA aplicada")
         self.db.upsert_pillar("IA aplicada")

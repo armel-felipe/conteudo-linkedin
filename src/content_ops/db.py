@@ -600,6 +600,14 @@ class Database:
             "created": created,
         }
 
+    def record_block_validation(self, block: str, artifact_path: str) -> None:
+        """Record a reviewer's approval for one block's artifact."""
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",
+                (block, artifact_path),
+            )
+
     def get_idea(self, idea_id: int) -> dict[str, object]:
         """Return an idea with the links needed to create its draft."""
         with self._connect() as connection:
@@ -797,6 +805,13 @@ class Database:
                 pillar TEXT,
                 status TEXT NOT NULL DEFAULT 'open',
                 plano_path TEXT
+            );
+            CREATE TABLE IF NOT EXISTS block_validations (
+                id INTEGER PRIMARY KEY,
+                block TEXT NOT NULL,
+                artifact_path TEXT NOT NULL,
+                approved INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             """
         )

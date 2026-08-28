@@ -149,6 +149,17 @@ class EditorialCliEndToEndTests(unittest.TestCase):
             ).fetchone()
         self.assertEqual(row[0], "Liderança e gestão de times")
 
+    def test_bloco_ok_registers_reviewer_validation(self):
+        output = self.run_cli(["bloco-ok", "B4", "research/ia.md"])
+
+        self.assertIn("Registered validation for B4", output)
+        with self.database._connect() as connection:
+            row = connection.execute(
+                "SELECT block, approved FROM block_validations WHERE block = ?", ("B4",)
+            ).fetchone()
+        self.assertEqual(row[0], "B4")
+        self.assertEqual(row[1], 1)
+
     def test_pillars_propose_uses_captured_research(self):
         self.database.create_research_report(
             "liderança em times de alta performance",

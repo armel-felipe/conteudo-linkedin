@@ -31,6 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_subparsers(dest="history_command").add_parser(
         "import", help="Import external posts without publishing"
     )
+    blocks = commands.add_parser("bloco-ok", help="Register a reviewer's block validation")
+    blocks.add_argument("bloco")
+    blocks.add_argument("artefato")
     pillars = commands.add_parser("pillars", help="Propose and approve editorial pillars")
     pillar_commands = pillars.add_subparsers(dest="pillars_command")
     pillar_commands.add_parser("propose", help="Propose pillars from published history")
@@ -313,6 +316,15 @@ def main(
             print(f"Created draft {path.relative_to(repository_root)} (post {idea['post_id']}).")
             return
 
+        return
+
+    if arguments.command == "bloco-ok":
+        from content_ops.db import Database
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+        database.record_block_validation(arguments.bloco, arguments.artefato)
+        print(f"Registered validation for {arguments.bloco}.")
         return
 
     if arguments.command == "pillars":
