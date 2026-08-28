@@ -20,7 +20,8 @@ description: Executor do bloco B1 (Convoca) — produz o plano de rodada.
 
 ## Formato de saída
 - Artefato: `runtime/rodadas/<ts>.md` (plano de rodada).
-- Estado: rodada criada no banco via `Database.create_round`.
+- Estado: rodada criada no banco via:
+  `PYTHONPATH="$PWD/src" /Users/mac/.pyenv/shims/python3.12 -c "from content_ops.db import Database; db = Database('data/content.db'); db.initialize(); print(db.create_round('<pilar>', 'runtime/rodadas/<ts>.md'))"`
 
 ## Contrato
 - O plano é coerente com o estado real (não inventar pilares/pesquisas).

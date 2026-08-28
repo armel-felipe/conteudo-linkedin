@@ -17,7 +17,10 @@ description: Executor do bloco B4 (Executa pesquisa) — captura pesquisa multic
 2. Executar `LAST30DAYS_COMMAND` (configurado no .env) e preservar o stdout verbatim.
 3. Registrar o link individual de cada postagem do LinkedIn (formato /feed/update/urn:li:activity:...), abrindo cada post e capturando a URL da barra de endereço no momento da coleta.
 4. Gravar relatório em `research/<ts>-<slug>.md`.
-5. Registrar no banco: `contentctl research discover <topic> --pillar <pilar>` + round_id/label.
+5. Registrar no banco:
+   - `contentctl research discover <topic> --pillar <pilar>` (captura o relatório e registra com pillar).
+   - Atualizar round_id e label via upsert idempotente:
+     `PYTHONPATH="$PWD/src" /Users/mac/.pyenv/shims/python3.12 -c "from content_ops.db import Database; db = Database('data/content.db'); db.initialize(); db.create_research_report('<topic>', '<path>', pillar='<pilar>', round_id=<round_id>, label='<label>')"`
 
 ## Formato de saída
 - Artefato: `research/<ts>-<slug>.md` (relatório completo).

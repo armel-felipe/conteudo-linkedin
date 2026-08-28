@@ -14,7 +14,7 @@ description: Revisor do bloco B4 (Executa pesquisa) — valida a captura.
 ## Processo
 1. Verificar que o relatório existe em `research/` e que o stdout do LAST30DAYS_COMMAND foi preservado verbatim.
 2. Conferir que a pesquisa começa pelo LinkedIn e que o link individual de cada postagem foi capturado.
-3. Conferir que o registro no banco tem pillar, round_id e label (≤50 chars).
+3. Conferir que o registro no banco tem pillar, round_id e label (≤50 chars) — o executor define round_id/label via upsert `Database.create_research_report`.
 4. Conferir que não há credenciais vazadas.
 5. Decidir aprovado ou feedback.
 
