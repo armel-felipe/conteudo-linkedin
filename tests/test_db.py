@@ -92,6 +92,25 @@ class DatabaseTests(unittest.TestCase):
         self.assertFalse(self.db.review_is_approved(round_id, "B5", "other.md", 1))
         self.assertFalse(self.db.review_is_approved(round_id, "B5", "content/drafts/x.md", 2))
 
+    def test_generic_cycle_start_cannot_regress_an_approved_block(self):
+        from content_ops.orchestration import resume_round
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "approved", result)
+
+        self.assertEqual(resume_round(self.db, round_id), "complete:B5")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(
+                round_id,
+                "B5",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
+        self.assertEqual(resume_round(self.db, round_id), "complete:B5")
+
     def test_orchestration_constraints_reject_invalid_decision_and_json(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
         self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))

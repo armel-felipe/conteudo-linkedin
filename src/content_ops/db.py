@@ -594,6 +594,11 @@ class Database:
                 ).fetchone()
                 if cycle_row is None:
                     raise ValueError("No matching block cycle")
+                if event == "cycle_started" and connection.execute(
+                    "SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = 'approved' LIMIT 1",
+                    (cycle_row["id"],),
+                ).fetchone():
+                    raise ValueError("Cannot restart a cycle with an approved review")
                 if event in {"review_approved", "review_feedback"}:
                     receipt = connection.execute(
                         "SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = ? LIMIT 1",
