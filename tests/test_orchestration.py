@@ -1,7 +1,9 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from content_ops.db import Database
 from content_ops.orchestration import (
@@ -9,7 +11,10 @@ from content_ops.orchestration import (
     ReviewResult,
     WorkflowBlocked,
     can_complete_block,
+    complete_block,
     parse_review_result,
+    record_review,
+    start_block_cycle,
     validate_block_order,
 )
 
@@ -100,6 +105,28 @@ class OrchestrationTests(unittest.TestCase):
         self.database.record_review_result(b7_id, "revisor", "approved", self.result())
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B7", "content/drafts/x.md", 1)
+
+    def test_completion_api_checks_and_records_once(self):
+        for block in ("B1", "B2", "B3", "B4"):
+            start_block_cycle(self.database, self.round_id, block, "content/drafts/x.md")
+            record_review(self.database, self.round_id, block, "content/drafts/x.md", 1, "revisor", self.result())
+            complete_block(self.database, self.round_id, block, "content/drafts/x.md", 1)
+        start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B5", "content/drafts/x.md", 1, "revisor", self.result())
+        complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
+        with self.assertRaises(WorkflowBlocked):
+            complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
+
+    def test_cycle_start_validates_and_limits_three_cycles(self):
+        with patch.dict(os.environ, {"ORCHESTRATOR_MAX_REVIEW_CYCLES": "3"}):
+            for cycle in range(1, 4):
+                start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
+            with self.assertRaises(WorkflowBlocked):
+                start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, self.round_id, "NOPE", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, self.round_id, "B6", "missing.md")
 
 
 if __name__ == "__main__":

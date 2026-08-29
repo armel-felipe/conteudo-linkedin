@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 
 from content_ops.db import Database
@@ -75,7 +76,7 @@ def can_complete_block(database: Database, round_id: int, block: str, artifact_p
     if block == "B7":
         raise WorkflowBlocked("B7 requires mandatory human completion")
     _artifact_path(database, artifact_path)
-    with database._connect() as connection:
+    with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None or round_row["status"] != "open":
             raise WorkflowBlocked("Round is not active")
@@ -91,6 +92,100 @@ def can_complete_block(database: Database, round_id: int, block: str, artifact_p
                 (round_id,),
             )
         }
-    validate_block_order(completed, block)
-    if not database.review_is_approved(round_id, block, artifact_path, cycle):
-        raise WorkflowBlocked("An approved review receipt is required")
+        validate_block_order(completed, block)
+        if not connection.execute(
+            """SELECT 1 FROM review_receipts
+               WHERE cycle_id = ? AND decision = 'approved' LIMIT 1""",
+            (cycle_row["id"],),
+        ).fetchone():
+            raise WorkflowBlocked("An approved review receipt is required")
+
+
+def _max_review_cycles() -> int:
+    try:
+        maximum = int(os.environ.get("ORCHESTRATOR_MAX_REVIEW_CYCLES", "3"))
+    except ValueError:
+        raise WorkflowBlocked("ORCHESTRATOR_MAX_REVIEW_CYCLES must be an integer") from None
+    if maximum < 1:
+        raise WorkflowBlocked("ORCHESTRATOR_MAX_REVIEW_CYCLES must be positive")
+    return maximum
+
+
+def start_block_cycle(database: Database, round_id: int, block: str, artifact_path: str) -> int:
+    """Validate and atomically start the next bounded executor cycle."""
+    if block not in BLOCK_ORDER:
+        raise WorkflowBlocked(f"Unknown workflow block: {block}")
+    _artifact_path(database, artifact_path)
+    with database.transaction() as connection:
+        round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+        if round_row is None or round_row["status"] != "open":
+            raise WorkflowBlocked("Round is not active")
+        row = connection.execute(
+            "SELECT COALESCE(MAX(cycle), 0) AS cycle FROM block_cycles WHERE round_id = ? AND block = ?",
+            (round_id, block),
+        ).fetchone()
+        cycle = row["cycle"] + 1
+        if cycle > _max_review_cycles():
+            raise WorkflowBlocked(f"Review cycle limit reached for {block}")
+        connection.execute(
+            "INSERT INTO block_cycles (round_id, block, cycle, artifact_path) VALUES (?, ?, ?, ?)",
+            (round_id, block, cycle, artifact_path),
+        )
+        connection.execute(
+            "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'cycle_started', ?)",
+            (round_id, block, json.dumps({"cycle": cycle, "artifact": artifact_path})),
+        )
+    return cycle
+
+
+def record_review(database: Database, round_id: int, block: str, artifact_path: str, cycle: int, reviewer: str, raw: str) -> ReviewResult:
+    """Validate and persist one review receipt without private DB access at the CLI."""
+    result = parse_review_result(raw)
+    if result.artifact != artifact_path:
+        raise WorkflowBlocked("Review artifact does not match the requested artifact")
+    _artifact_path(database, artifact_path)
+    if block == "B7" and result.decision == "approved":
+        raise WorkflowBlocked("B7 cannot be approved automatically")
+    with database.transaction() as connection:
+        cycle_row = connection.execute(
+            "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
+            (round_id, block, cycle, artifact_path),
+        ).fetchone()
+        if cycle_row is None:
+            raise WorkflowBlocked("No matching block cycle")
+        connection.execute(
+            "INSERT INTO review_receipts (cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
+            (cycle_row["id"], reviewer, result.decision, raw),
+        )
+    return result
+
+
+def complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> int:
+    """Check gates and record exactly one completion event in one transaction."""
+    if block == "B7":
+        raise WorkflowBlocked("B7 requires mandatory human completion")
+    _artifact_path(database, artifact_path)
+    with database.transaction() as connection:
+        round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+        if round_row is None or round_row["status"] != "open":
+            raise WorkflowBlocked("Round is not active")
+        cycle_row = connection.execute(
+            "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
+            (round_id, block, cycle, artifact_path),
+        ).fetchone()
+        if cycle_row is None:
+            raise WorkflowBlocked("No matching block cycle")
+        completed = {row["block"] for row in connection.execute(
+            "SELECT block FROM workflow_events WHERE round_id = ? AND event = 'block_completed'", (round_id,)
+        )}
+        validate_block_order(completed, block)
+        if not connection.execute(
+            """SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = 'approved' LIMIT 1""",
+            (cycle_row["id"],),
+        ).fetchone():
+            raise WorkflowBlocked("An approved review receipt is required")
+        event = connection.execute(
+            "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'block_completed', ?)",
+            (round_id, block, json.dumps({"cycle": cycle})),
+        )
+        return event.lastrowid

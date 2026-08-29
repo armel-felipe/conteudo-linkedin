@@ -1,7 +1,6 @@
 """Command-line entry point for local content operations."""
 
 import argparse
-import json
 import os
 import re
 import unicodedata
@@ -152,45 +151,23 @@ def main(
         from content_ops.orchestration import (
             InvalidReviewResult,
             WorkflowBlocked,
-            can_complete_block,
-            parse_review_result,
+            complete_block,
+            record_review,
+            start_block_cycle,
         )
 
         database = Database(repository_root / "data" / "content.db")
         database.initialize()
         try:
             if arguments.command == "workflow-cycle-start":
-                cycle_id = database.start_block_cycle(arguments.round_id, arguments.block, arguments.artifact)
-                database.record_workflow_event(
-                    arguments.round_id, arguments.block, "cycle_started", json.dumps({"artifact": arguments.artifact})
-                )
-                with database._connect() as connection:
-                    cycle = connection.execute("SELECT cycle FROM block_cycles WHERE id = ?", (cycle_id,)).fetchone()[0]
-                print(cycle)
+                print(start_block_cycle(database, arguments.round_id, arguments.block, arguments.artifact))
                 return
             if arguments.command == "workflow-review":
-                result = parse_review_result(arguments.result)
-                if result.artifact != arguments.artifact:
-                    raise WorkflowBlocked("Review artifact does not match the requested artifact")
-                can_review = (repository_root / arguments.artifact).resolve()
-                if not can_review.is_file() or not can_review.is_relative_to(repository_root.resolve()):
-                    raise WorkflowBlocked("Artifact does not exist within the repository")
-                with database._connect() as connection:
-                    cycle_row = connection.execute(
-                        "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
-                        (arguments.round_id, arguments.block, arguments.cycle, arguments.artifact),
-                    ).fetchone()
-                if cycle_row is None:
-                    raise WorkflowBlocked("No matching block cycle")
-                database.record_review_result(
-                    cycle_row["id"], arguments.reviewer, result.decision, arguments.result
-                )
+                record_review(database, arguments.round_id, arguments.block, arguments.artifact,
+                              arguments.cycle, arguments.reviewer, arguments.result)
                 print(f"Recorded review for {arguments.block} cycle {arguments.cycle}.")
                 return
-            can_complete_block(database, arguments.round_id, arguments.block, arguments.artifact, arguments.cycle)
-            database.record_workflow_event(
-                arguments.round_id, arguments.block, "block_completed", json.dumps({"cycle": arguments.cycle})
-            )
+            complete_block(database, arguments.round_id, arguments.block, arguments.artifact, arguments.cycle)
             print(f"Completed {arguments.block}.")
             return
         except (InvalidReviewResult, WorkflowBlocked, ValueError) as error:
@@ -418,16 +395,13 @@ def main(
 
         database = Database(repository_root / "data" / "content.db")
         database.initialize()
-        if arguments.round_id is not None or arguments.cycle is not None:
-            if arguments.round_id is None or arguments.cycle is None:
-                parser.error("--round and --cycle must be used together")
-            from content_ops.orchestration import can_complete_block
-
-            try:
-                can_complete_block(database, arguments.round_id, arguments.bloco, arguments.artefato, arguments.cycle)
-            except ValueError as error:
-                parser.error(str(error))
-        database.record_block_validation(arguments.bloco, arguments.artefato)
+        if arguments.round_id is None or arguments.cycle is None:
+            parser.error("bloco-ok requires --round and --cycle; use workflow-block-complete")
+        from content_ops.orchestration import complete_block
+        try:
+            complete_block(database, arguments.round_id, arguments.bloco, arguments.artefato, arguments.cycle)
+        except ValueError as error:
+            parser.error(str(error))
         print(f"Registered validation for {arguments.bloco}.")
         return
 

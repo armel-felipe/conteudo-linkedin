@@ -2,6 +2,10 @@ import os
 import subprocess
 import tempfile
 import unittest
+import json
+import tempfile
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -51,3 +55,43 @@ class CliSmokeTests(unittest.TestCase):
 
                 self.assertEqual(os.environ["FROM_FILE"], "loaded")
                 self.assertEqual(os.environ["EXISTING"], "from-environment")
+
+    def test_workflow_cli_runs_cycle_review_and_completion_once(self):
+        from content_ops.cli import main
+        from content_ops.db import Database
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "content" / "drafts" / "x.md"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text("draft", encoding="utf-8")
+            database = Database(root / "data" / "content.db")
+            database.initialize()
+            round_id = database.create_round("Pilar", "round.md")
+            for block in ("B1", "B2", "B3", "B4"):
+                database.record_workflow_event(round_id, block, "block_completed")
+            main(["workflow-cycle-start", str(round_id), "B5", "content/drafts/x.md"], repository_root=root)
+            result = json.dumps({"decision": "approved", "artifact": "content/drafts/x.md", "feedback": [], "checks": [{"name": "x", "status": "pass", "evidence": "ok"}]})
+            main(["workflow-review", str(round_id), "B5", "content/drafts/x.md", "1", "revisor", result], repository_root=root)
+            output = StringIO()
+            with redirect_stdout(output):
+                main(["workflow-block-complete", str(round_id), "B5", "content/drafts/x.md", "1"], repository_root=root)
+            self.assertIn("Completed B5", output.getvalue())
+            with self.assertRaises(SystemExit):
+                main(["workflow-block-complete", str(round_id), "B5", "content/drafts/x.md", "1"], repository_root=root)
+
+    def test_workflow_cli_rejects_b7_and_legacy_bloco_ok(self):
+        from content_ops.cli import main
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaises(SystemExit):
+                main(["bloco-ok", "B5", "x.md"], repository_root=root)
+            database = __import__("content_ops.db", fromlist=["Database"]).Database(root / "data" / "content.db")
+            database.initialize()
+            round_id = database.create_round("Pilar", "round.md")
+            artifact = root / "artifact.md"
+            artifact.write_text("draft", encoding="utf-8")
+            main(["workflow-cycle-start", str(round_id), "B7", "artifact.md"], repository_root=root)
+            result = json.dumps({"decision": "approved", "artifact": "artifact.md", "feedback": [], "checks": [{"name": "x", "status": "pass", "evidence": "ok"}]})
+            with self.assertRaises(SystemExit):
+                main(["workflow-review", str(round_id), "B7", "artifact.md", "1", "revisor", result], repository_root=root)
