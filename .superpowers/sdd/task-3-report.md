@@ -11,7 +11,7 @@ fail-closed. As regras de domínio dos blocos foram preservadas.
 
 - `c1b2342 feat: define OpenCode reviewer dispatch protocol`
 - `d3a937e docs: add Task 3 implementation report`
-- commits desta correção serão registrados após a verificação final
+- `c795594 fix: align reviewer protocol with workflow schema`
 
 ## Arquivos
 
