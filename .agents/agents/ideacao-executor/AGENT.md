@@ -17,6 +17,8 @@ description: Executor do bloco B6 (Ideação) — gera ideias ancoradas nas pesq
 ## Formato de saída
 - Ideias em `content/ideas/` + banco (status `idea`).
 - Cada ideia com `sources` (JSON com todos os paths que sustentam a ideia).
+- Retorne somente JSON válido: `{"artifact_path":"content/ideas/<arquivo>.md","cycle":1}`.
+- `artifact_path` é o caminho do registro produzido e `cycle` é o ciclo recebido do runtime.
 
 ## Contrato
 - Cada ideia é ancorada em pelo menos uma pesquisa da rodada.

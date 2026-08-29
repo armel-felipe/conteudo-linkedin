@@ -468,6 +468,31 @@ class OrchestrationTests(unittest.TestCase):
         self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
         self.assertEqual(resume_round(self.database, self.round_id), "blocked")
 
+    def test_unreadable_artifact_during_review_persists_generic_blocked_state(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        with patch("pathlib.Path.read_text", side_effect=OSError("private artifact bytes")):
+            with self.assertRaises(WorkflowBlocked):
+                record_review(
+                    self.database, self.round_id, "B1", "content/drafts/x.md", 1,
+                    "revisor", self.result(),
+                )
+
+        state = self.database.latest_block_state(self.round_id, "B1")
+        self.assertEqual(state["event"], "blocked")
+        self.assertNotIn("private artifact bytes", state["payload_json"])
+        self.assertEqual(resume_round(self.database, self.round_id), "blocked")
+
+    def test_undecodable_artifact_during_completion_persists_generic_blocked_state(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        with patch("pathlib.Path.read_text", side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "private bytes")):
+            with self.assertRaises(WorkflowBlocked):
+                complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+
+        state = self.database.latest_block_state(self.round_id, "B1")
+        self.assertEqual(state["event"], "blocked")
+        self.assertNotIn("private bytes", state["payload_json"])
+        self.assertEqual(resume_round(self.database, self.round_id), "blocked")
+
     def test_workflow_event_api_allows_only_valid_cycle_or_review_events(self):
         start_block_cycle(self.database, self.round_id, "B1", "future/B1.md")
         event_id = self.database.record_workflow_event(

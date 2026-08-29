@@ -105,6 +105,13 @@ class OrquestradorRuntimeStructureTests(unittest.TestCase):
             self.assertIn("cycle", content, f"{slug} executor missing cycle")
             self.assertIn('"cycle":1', content, f"{slug} executor example must start at cycle 1")
 
+    def test_final_executors_declare_mandatory_artifact_cycle_json(self):
+        for slug in ("escrita", "escrita-humana", "ideacao", "publicar-linkedin"):
+            content = (REPO_ROOT / ".agents" / "agents" / f"{slug}-executor" / "AGENT.md").read_text(encoding="utf-8")
+            self.assertIn("Retorne somente JSON válido", content)
+            self.assertIn('"artifact_path"', content)
+            self.assertIn('"cycle"', content)
+
     def test_reviewers_require_review_result_and_cannot_approve_themselves(self):
         for slug in BLOCKS.values():
             content = (REPO_ROOT / ".agents" / "agents" / f"{slug}-revisor" / "AGENT.md").read_text(encoding="utf-8")

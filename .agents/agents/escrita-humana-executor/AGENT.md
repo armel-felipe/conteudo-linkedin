@@ -17,6 +17,8 @@ description: Executor do bloco B10 (Escrita-humana) — refina o texto base com 
 ## Formato de saída
 - Texto refinado em `content/drafts/`.
 - Fontes reanexadas (≤5, com peso).
+- Retorne somente JSON válido: `{"artifact_path":"content/drafts/<arquivo>.md","cycle":1}`.
+- `artifact_path` é o caminho do texto refinado e `cycle` é o ciclo recebido do runtime.
 
 ## Contrato
 - Delta ≤15% em relação ao texto base.

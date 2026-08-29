@@ -17,6 +17,8 @@ description: Executor do bloco B11 (Publica) — publica conteúdo aprovado no L
 ## Formato de saída
 - Post publicado no LinkedIn.
 - Estado: arquivo em `content/published/` + status `published` no banco.
+- Retorne somente JSON válido: `{"artifact_path":"content/published/<arquivo>.md","cycle":1}`.
+- `artifact_path` é o caminho do conteúdo publicado e `cycle` é o ciclo recebido do runtime.
 
 ## Contrato
 - O conteúdo publicado vem somente de `content/approved/`.

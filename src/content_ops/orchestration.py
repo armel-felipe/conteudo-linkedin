@@ -170,15 +170,21 @@ def validate_block_order(completed: set[str], requested: str) -> None:
 
 
 def _artifact_path(database: Database, artifact_path: str, *, require_exists: bool = True) -> Path:
-    if not artifact_path or Path(artifact_path).is_absolute():
-        raise WorkflowBlocked("Artifact path must be relative to the repository")
-    root = database.path.parent.parent.resolve()
-    path = (root / artifact_path).resolve()
-    if not path.is_relative_to(root) or (require_exists and not path.is_file()):
-        raise WorkflowBlocked("Artifact does not exist within the repository")
-    if require_exists and path.is_file() and _SECRET_VALUE.search(path.read_text(encoding="utf-8")):
-        raise WorkflowBlocked("Artifact contains prohibited credential-shaped content")
-    return path
+    try:
+        if not artifact_path or Path(artifact_path).is_absolute():
+            raise WorkflowBlocked("Artifact path must be relative to the repository")
+        root = database.path.parent.parent.resolve()
+        path = (root / artifact_path).resolve()
+        if not path.is_relative_to(root) or (require_exists and not path.is_file()):
+            raise WorkflowBlocked("Artifact does not exist within the repository")
+        if require_exists and path.is_file() and _SECRET_VALUE.search(path.read_text(encoding="utf-8")):
+            raise WorkflowBlocked("Artifact contains prohibited credential-shaped content")
+        return path
+    except WorkflowBlocked:
+        raise
+    except (OSError, UnicodeError):
+        # Never persist filesystem error details, which may contain artifact data.
+        raise WorkflowBlocked("Artifact could not be read safely") from None
 
 
 def _validate_reference(database: Database, block: str, reference: str, *, require_exists: bool = True) -> None:
