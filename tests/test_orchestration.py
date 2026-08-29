@@ -105,10 +105,7 @@ class OrchestrationTests(unittest.TestCase):
         self.database.record_review_result(cycle_id, "revisor", "approved", self.result())
         can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
-        self.database.record_workflow_event(
-            self.round_id, "B5", "block_completed",
-            '{"cycle": 1, "artifact": "content/drafts/x.md"}',
-        )
+        complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
@@ -147,6 +144,12 @@ class OrchestrationTests(unittest.TestCase):
             start_block_cycle(self.database, 999, "B1", "content/drafts/x.md")
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B3", "content/drafts/x.md")
+        self.complete_prior_blocks(
+            ("B1", "B2", "B3", "B4", "B5", "B6")
+        )
+        start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
+        record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
+        self.complete_prior_blocks(("B8", "B10", "B9", "B11"))
         self.database.close_round(self.round_id)
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
@@ -165,7 +168,10 @@ class OrchestrationTests(unittest.TestCase):
             record_review(self.database, self.round_id, "B5", "content/drafts/x.md", 2, "revisor", self.result("feedback"))
 
     def test_review_rejects_closed_round_and_invalid_order(self):
-        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
+        start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
+        record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
+        self.complete_prior_blocks(("B8", "B10", "B9", "B11"))
         self.database.close_round(self.round_id)
         with self.assertRaises(WorkflowBlocked):
             record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result())
@@ -184,12 +190,24 @@ class OrchestrationTests(unittest.TestCase):
 
     def test_b7_human_completion_is_persisted_without_reviewer_approval(self):
         self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
+        start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
         event_id = record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
         self.assertIsInstance(event_id, int)
         state = self.database.latest_block_state(self.round_id, "B7")
         self.assertEqual(state["event"], "human_completed")
+        self.assertEqual(json.loads(state["payload_json"]), {
+            "artifact": "content/drafts/x.md", "cycle": 1, "selection": "idea-1"
+        })
 
         start_block_cycle(self.database, self.round_id, "B8", "content/drafts/x.md")
+
+    def test_human_completion_requires_matching_b7_cycle(self):
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
+        with self.assertRaises(WorkflowBlocked):
+            record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
+        start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_human_completion(self.database, self.round_id, "B7", "other.md", "idea-1")
 
     def test_public_review_and_event_apis_reject_invalid_workflow_state(self):
         with self.assertRaises(InvalidReviewResult):
@@ -197,6 +215,10 @@ class OrchestrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.database.record_workflow_event(
                 self.round_id, "B1", "block_completed", '{"cycle": 1}'
+            )
+        with self.assertRaises(ValueError):
+            self.database.record_workflow_event(
+                self.round_id, "B7", "human_completed", '{"selection": "idea-1"}'
             )
         with self.assertRaises(ValueError):
             self.database.record_block_validation("B1", "content/drafts/x.md")

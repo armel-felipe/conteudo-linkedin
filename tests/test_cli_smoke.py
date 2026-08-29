@@ -121,5 +121,6 @@ class CliSmokeTests(unittest.TestCase):
             database.initialize()
             round_id = database.create_round("Pilar", "round.md")
             self._complete_prior_blocks(database, round_id, ("B1", "B2", "B3", "B4", "B5", "B6"), "artifact.md")
+            main(["workflow-cycle-start", str(round_id), "B7", "artifact.md"], repository_root=root)
             main(["workflow-human-complete", str(round_id), "B7", "artifact.md", "idea-1"], repository_root=root)
             self.assertEqual(database.latest_block_state(round_id, "B7")["event"], "human_completed")

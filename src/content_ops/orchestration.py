@@ -208,9 +208,21 @@ def record_human_completion(database: Database, round_id: int, block: str, artif
             "SELECT block FROM workflow_events WHERE round_id = ? AND event IN ('block_completed', 'human_completed')", (round_id,)
         )}
         validate_block_order(completed, block)
+        cycle_row = connection.execute(
+            "SELECT cycle FROM block_cycles "
+            "WHERE round_id = ? AND block = ? AND artifact_path = ? "
+            "ORDER BY cycle DESC LIMIT 1",
+            (round_id, block, artifact_path),
+        ).fetchone()
+        if cycle_row is None:
+            raise WorkflowBlocked("No matching B7 block cycle")
         event = connection.execute(
             "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'human_completed', ?)",
-            (round_id, block, json.dumps({"selection": selection})),
+            (round_id, block, json.dumps({
+                "artifact": artifact_path,
+                "cycle": cycle_row["cycle"],
+                "selection": selection,
+            })),
         )
         return event.lastrowid
 

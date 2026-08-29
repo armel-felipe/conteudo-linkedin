@@ -474,7 +474,25 @@ class Database:
 
     def close_round(self, round_id: int) -> None:
         """Mark a round as closed (all its blocks finished)."""
+        from content_ops.orchestration import BLOCK_ORDER
+
         with self._connect() as connection:
+            round_row = connection.execute(
+                "SELECT status FROM rounds WHERE id = ?", (round_id,)
+            ).fetchone()
+            if round_row is None:
+                raise ValueError(f"Round {round_id} does not exist")
+            completed = {
+                row["block"]
+                for row in connection.execute(
+                    "SELECT block FROM workflow_events "
+                    "WHERE round_id = ? AND event IN ('block_completed', 'human_completed')",
+                    (round_id,),
+                )
+            }
+            missing = [block for block in BLOCK_ORDER if block not in completed]
+            if missing:
+                raise ValueError(f"Round cannot close; incomplete blocks: {', '.join(missing)}")
             connection.execute(
                 "UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,)
             )
@@ -531,30 +549,10 @@ class Database:
     def record_workflow_event(
         self, round_id: int, block: str, event: str, payload_json: str = "{}"
     ) -> int:
-        """Append a durable event to a block's workflow history."""
-        self._validate_json(payload_json, "Workflow event payload")
-        if event == "block_completed":
-            from content_ops.orchestration import complete_block
-
-            payload = json.loads(payload_json)
-            if not isinstance(payload, dict) or not isinstance(payload.get("cycle"), int):
-                raise ValueError("block_completed requires a cycle and artifact")
-            artifact_path = payload.get("artifact")
-            if not isinstance(artifact_path, str):
-                raise ValueError("block_completed requires a cycle and artifact")
-            return complete_block(self, round_id, block, artifact_path, payload["cycle"])
-        with self.transaction() as connection:
-            row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
-            if row is None:
-                raise ValueError(f"Round {round_id} does not exist")
-            if row["status"] != "open":
-                raise ValueError("Round is not active")
-            cursor = connection.execute(
-                "INSERT INTO workflow_events (round_id, block, event, payload_json) "
-                "VALUES (?, ?, ?, ?)",
-                (round_id, block, event, payload_json),
-            )
-            return cursor.lastrowid
+        """Reject generic writes; workflow domain APIs own event persistence."""
+        raise ValueError(
+            "Workflow events must be persisted through a domain-specific API"
+        )
 
     def latest_block_state(self, round_id: int, block: str) -> sqlite3.Row | None:
         """Return the latest event for a block, or none when it has no events."""

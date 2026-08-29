@@ -65,21 +65,16 @@ class DatabaseTests(unittest.TestCase):
         self.db.record_review_result(
             cycle_id, "cruzamento-revisor", "feedback", result
         )
-        event_id = self.db.record_workflow_event(
-            round_id, "B5", "review_recorded", '{"cycle":1}'
-        )
-
         with sqlite3.connect(self.path) as connection:
             self.assertIsNotNone(
                 connection.execute(
                     "SELECT 1 FROM review_receipts WHERE cycle_id = ?", (cycle_id,)
                 ).fetchone()
             )
-            self.assertIsNotNone(
-                connection.execute(
-                    "SELECT 1 FROM workflow_events WHERE id = ?", (event_id,)
-                ).fetchone()
-            )
+            self.assertEqual(connection.execute(
+                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? ORDER BY id DESC LIMIT 1",
+                (round_id, "B5"),
+            ).fetchone()[0], "cycle_started")
 
     def test_orchestration_review_approval_is_scoped_to_round_block_artifact_and_cycle(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
@@ -137,7 +132,7 @@ class DatabaseTests(unittest.TestCase):
         self.assertIsInstance(cycle_id, int)
 
     def test_public_workflow_apis_reject_unscoped_completion_and_closed_round(self):
-        from content_ops.orchestration import WorkflowBlocked, start_block_cycle
+        from content_ops.orchestration import WorkflowBlocked, record_human_completion, start_block_cycle
 
         artifact = self.path.parent.parent / "artifact.md"
         artifact.write_text("draft", encoding="utf-8")
@@ -146,7 +141,10 @@ class DatabaseTests(unittest.TestCase):
             self.db.record_workflow_event(round_id, "B1", "block_completed")
         with self.assertRaises(ValueError):
             self.db.record_block_validation("B1", "artifact.md")
-        start_block_cycle(self.db, round_id, "B1", "artifact.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4", "B5", "B6"))
+        start_block_cycle(self.db, round_id, "B7", "artifact.md")
+        record_human_completion(self.db, round_id, "B7", "artifact.md", "idea-1")
+        self.complete_prior_blocks(round_id, ("B8", "B10", "B9", "B11"))
         self.db.close_round(round_id)
         with self.assertRaises(WorkflowBlocked):
             self.db.record_review_result(
@@ -159,12 +157,9 @@ class DatabaseTests(unittest.TestCase):
     def test_latest_block_state_returns_latest_event(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
         self.assertIsNone(self.db.latest_block_state(round_id, "B5"))
-        self.db.record_workflow_event(round_id, "B5", "cycle_started")
-        self.db.record_workflow_event(round_id, "B5", "review_recorded", '{"cycle":1}')
-
-        state = self.db.latest_block_state(round_id, "B5")
-        self.assertEqual(state["event"], "review_recorded")
-        self.assertEqual(state["payload_json"], '{"cycle":1}')
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(round_id, "B5", "cycle_started")
+        self.assertIsNone(self.db.latest_block_state(round_id, "B5"))
 
     def test_upsert_is_idempotent_by_external_id(self):
         self.db.upsert_post("linkedin:1", "A", "published")
@@ -382,6 +377,20 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(rounds[0]["pillar"], "Liderança e gestão de times")
         self.assertEqual(rounds[0]["status"], "open")
 
+        with self.assertRaises(ValueError):
+            self.db.close_round(round_id)
+        self.assertEqual(self.db.list_rounds()[0]["status"], "open")
+
+    def test_close_round_requires_all_blocks_and_human_b7_completion(self):
+        from content_ops.orchestration import record_human_completion
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4", "B5", "B6"))
+        self.db.start_block_cycle(round_id, "B7", "content/drafts/x.md")
+        with self.assertRaises(ValueError):
+            self.db.close_round(round_id)
+        record_human_completion(self.db, round_id, "B7", "content/drafts/x.md", "idea-1")
+        self.complete_prior_blocks(round_id, ("B8", "B10", "B9", "B11"))
         self.db.close_round(round_id)
         self.assertEqual(self.db.list_rounds()[0]["status"], "closed")
 
