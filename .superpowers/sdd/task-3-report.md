@@ -42,5 +42,4 @@ fail-closed. As regras de domínio dos blocos foram preservadas.
 ## Concerns
 
 - O runtime continua sendo uma skill documental; a execução efetiva do dispatch depende do agente seguir o procedimento descrito.
-- O runtime continua sendo uma skill documental; a execução efetiva do dispatch depende do agente seguir o procedimento descrito.
 - A mudança em `src/content_ops/orchestration.py` é a validação necessária para o ciclo futuro B1-B3, sem avançar a Task 4.
