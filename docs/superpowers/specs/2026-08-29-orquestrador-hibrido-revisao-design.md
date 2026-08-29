@@ -82,6 +82,8 @@ Cada aprovação terá rodada, bloco, artefato, ciclo, agente revisor, resultado
 
 Após interrupção, a retomada parte do último evento persistido, sem repetir blocos concluídos ou pular revisões.
 
+O comando `workflow-resume` deriva a próxima ação exclusivamente do último evento persistido por bloco. Falhas e estados desconhecidos permanecem bloqueados, e payloads de eventos são redigidos recursivamente antes da persistência.
+
 ## Falhas e segurança
 
 - Timeout: registrar falha e repetir dentro do limite.

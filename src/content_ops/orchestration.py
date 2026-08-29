@@ -5,11 +5,14 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 
 from content_ops.db import Database
 
 
 BLOCK_ORDER = ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B10", "B9", "B11")
+_SECRET_KEY = re.compile(r"(?:^|_)(?:API_KEY|TOKEN|PASSWORD)$|^CT0$", re.IGNORECASE)
+_REDACTED = "[REDACTED]"
 
 
 class InvalidReviewResult(ValueError):
@@ -26,6 +29,24 @@ class ReviewResult:
     artifact: str
     feedback: list[object]
     checks: list[dict[str, object]]
+
+
+def redact_event_payload(payload: dict) -> dict:
+    """Return a defensive, recursively redacted copy suitable for event storage."""
+    def redact(value: object) -> object:
+        if isinstance(value, dict):
+            return {
+                key: _REDACTED if isinstance(key, str) and _SECRET_KEY.search(key)
+                else redact(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [redact(item) for item in value]
+        if isinstance(value, tuple):
+            return [redact(item) for item in value]
+        return value
+
+    return redact(payload)
 
 
 def parse_review_result(raw: str) -> ReviewResult:
@@ -49,6 +70,73 @@ def parse_review_result(raw: str) -> ReviewResult:
             raise InvalidReviewResult("Check name, status, and evidence must be non-empty strings")
         checks.append(check)
     return ReviewResult(value["decision"], value["artifact"], value["feedback"], checks)
+
+
+def _feedback_hash(result: ReviewResult) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            redact_event_payload({"feedback": result.feedback})["feedback"],
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _event(connection, round_id: int, block: str, event: str, payload: dict) -> int:
+    return connection.execute(
+        "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, ?, ?)",
+        (round_id, block, event, json.dumps(redact_event_payload(payload), ensure_ascii=False, sort_keys=True)),
+    ).lastrowid
+
+
+def resume_round(database: Database, round_id: int) -> str:
+    """Return the next fail-closed action derived only from committed events."""
+    with database.transaction() as connection:
+        round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+        if round_row is None:
+            raise WorkflowBlocked("Round does not exist")
+        if round_row["status"] != "open":
+            return "complete" if round_row["status"] == "closed" else "blocked"
+        for block in BLOCK_ORDER:
+            state = connection.execute(
+                "SELECT event, payload_json FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1", (round_id, block)
+            ).fetchone()
+            if state is None:
+                return f"start:{block}"
+            if state["event"] in {"failed", "blocked"}:
+                return "blocked"
+            if state["event"] in {"block_completed", "human_completed"}:
+                continue
+            payload = json.loads(state["payload_json"])
+            if block == "B7":
+                return "human:B7"
+            if state["event"] == "cycle_started":
+                if payload.get("review_decision") == "approved":
+                    return f"complete:{block}"
+                if payload.get("review_decision") == "feedback":
+                    cycle = int(payload["cycle"])
+                    if cycle >= _max_review_cycles():
+                        _event(connection, round_id, block, "blocked", {
+                            "cycle": cycle, "reason": "review cycle limit reached"
+                        })
+                        return "blocked"
+                    return f"start:{block}:{cycle + 1}"
+                return f"review:{block}"
+            if state["event"] == "review_approved":
+                return f"complete:{block}"
+            if state["event"] == "review_feedback":
+                cycle = int(payload["cycle"])
+                if cycle >= _max_review_cycles():
+                    _event(connection, round_id, block, "blocked", {
+                        "cycle": cycle, "reason": "review cycle limit reached"
+                    })
+                    return "blocked"
+                return f"start:{block}:{cycle + 1}"
+            _event(connection, round_id, block, "blocked", {"reason": "unknown workflow event"})
+            return "blocked"
+        return "complete"
 
 
 def validate_block_order(completed: set[str], requested: str) -> None:
@@ -143,10 +231,7 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
             "INSERT INTO block_cycles (round_id, block, cycle, artifact_path) VALUES (?, ?, ?, ?)",
             (round_id, block, cycle, artifact_path),
         )
-        connection.execute(
-            "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'cycle_started', ?)",
-            (round_id, block, json.dumps({"cycle": cycle, "artifact": artifact_path})),
-        )
+        _event(connection, round_id, block, "cycle_started", {"cycle": cycle, "artifact": artifact_path})
     return cycle
 
 
@@ -158,9 +243,6 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
     _artifact_path(database, artifact_path)
     if block == "B7" and result.decision == "approved":
         raise WorkflowBlocked("B7 cannot be approved automatically")
-    result_hash = hashlib.sha256(
-        json.dumps(json.loads(raw), sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None or round_row["status"] != "open":
@@ -181,15 +263,24 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
             "WHERE block_cycles.round_id = ? AND block_cycles.block = ? AND block_cycles.artifact_path = ?",
             (round_id, block, artifact_path),
         ):
-            prior_hash = hashlib.sha256(
-                json.dumps(json.loads(row["result_json"]), sort_keys=True, separators=(",", ":")).encode("utf-8")
-            ).hexdigest()
-            if prior_hash == result_hash:
+            prior = parse_review_result(row["result_json"])
+            if result.decision == "feedback" and _feedback_hash(prior) == _feedback_hash(result):
                 raise WorkflowBlocked("Repeated review result indicates an unproductive loop")
+        stored_result = json.dumps(
+            redact_event_payload(json.loads(raw)), ensure_ascii=False, sort_keys=True
+        )
         connection.execute(
             "INSERT INTO review_receipts (cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
-            (cycle_row["id"], reviewer, result.decision, raw),
+            (cycle_row["id"], reviewer, result.decision, stored_result),
         )
+        _event(connection, round_id, block, f"review_{result.decision}", {
+            "cycle": cycle, "artifact": artifact_path, "feedback": result.feedback,
+            "feedback_hash": _feedback_hash(result),
+        })
+        # Keep the original cycle marker as the compatibility-facing latest state.
+        _event(connection, round_id, block, "cycle_started", {
+            "cycle": cycle, "artifact": artifact_path, "review_decision": result.decision,
+        })
     return result
 
 
@@ -216,15 +307,12 @@ def record_human_completion(database: Database, round_id: int, block: str, artif
         ).fetchone()
         if cycle_row is None:
             raise WorkflowBlocked("No matching B7 block cycle")
-        event = connection.execute(
-            "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'human_completed', ?)",
-            (round_id, block, json.dumps({
+        event_id = _event(connection, round_id, block, "human_completed", {
                 "artifact": artifact_path,
                 "cycle": cycle_row["cycle"],
                 "selection": selection,
-            })),
-        )
-        return event.lastrowid
+            })
+        return event_id
 
 
 def complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> int:
@@ -256,8 +344,4 @@ def _complete_block_in_transaction(
     connection, round_id: int, block: str, artifact_path: str, cycle: int
 ) -> int:
     _validate_completion(connection, round_id, block, artifact_path, cycle)
-    event = connection.execute(
-        "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'block_completed', ?)",
-        (round_id, block, json.dumps({"cycle": cycle, "artifact": artifact_path})),
-    )
-    return event.lastrowid
+    return _event(connection, round_id, block, "block_completed", {"cycle": cycle, "artifact": artifact_path})

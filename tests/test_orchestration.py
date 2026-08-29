@@ -16,6 +16,8 @@ from content_ops.orchestration import (
     record_review,
     record_human_completion,
     start_block_cycle,
+    redact_event_payload,
+    resume_round,
     validate_block_order,
 )
 
@@ -250,6 +252,68 @@ class OrchestrationTests(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             self.database.record_block_validation("B1", "content/drafts/x.md")
+
+    def test_redact_event_payload_removes_secret_shaped_values_recursively(self):
+        payload = {
+            "OPENAI_API_KEY": "key",
+            "nested": {"session_TOKEN": "token", "PASSWORD": "password"},
+            "headers": [{"AUTH_TOKEN": "auth", "CT0": "ct0", "safe": "ok"}],
+        }
+
+        redacted = redact_event_payload(payload)
+
+        self.assertEqual(redacted["OPENAI_API_KEY"], "[REDACTED]")
+        self.assertEqual(redacted["nested"]["session_TOKEN"], "[REDACTED]")
+        self.assertEqual(redacted["nested"]["PASSWORD"], "[REDACTED]")
+        self.assertEqual(redacted["headers"][0]["AUTH_TOKEN"], "[REDACTED]")
+        self.assertEqual(redacted["headers"][0]["CT0"], "[REDACTED]")
+        self.assertEqual(redacted["headers"][0]["safe"], "ok")
+        self.assertEqual(payload["OPENAI_API_KEY"], "key")
+
+    def test_resume_after_cycle_start_returns_review_state(self):
+        start_block_cycle(self.database, self.round_id, "B1", "future/B1.md")
+
+        self.assertEqual(resume_round(self.database, self.round_id), "review:B1")
+
+    def test_resume_after_feedback_returns_next_cycle_and_rejects_unchanged_feedback(self):
+        artifact = self.root / "content" / "drafts" / "x.md"
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        feedback = self.result("feedback")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", feedback)
+
+        self.assertEqual(resume_round(self.database, self.round_id), "start:B1:2")
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 2, "revisor", feedback)
+
+    def test_resume_after_approval_requires_completion_and_duplicate_completion_is_blocked(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result())
+
+        self.assertEqual(resume_round(self.database, self.round_id), "complete:B1")
+        complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+        self.assertEqual(resume_round(self.database, self.round_id), "start:B2")
+        with self.assertRaises(WorkflowBlocked):
+            complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+
+    def test_resume_records_timeout_as_failed_and_never_advances(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        self.database.record_workflow_failure(self.round_id, "B1", "timeout", {"PASSWORD": "secret"})
+
+        self.assertEqual(resume_round(self.database, self.round_id), "blocked")
+        state = self.database.latest_block_state(self.round_id, "B1")
+        self.assertEqual(state["event"], "failed")
+        self.assertNotIn("secret", state["payload_json"])
+
+    def test_resume_keeps_b7_human_only(self):
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
+        start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
+
+        self.assertEqual(resume_round(self.database, self.round_id), "human:B7")
+
+    def test_resume_invalid_round_is_blocked(self):
+        with self.assertRaises(WorkflowBlocked):
+            resume_round(self.database, 999)
 
 
 if __name__ == "__main__":

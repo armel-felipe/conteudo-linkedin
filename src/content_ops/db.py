@@ -554,6 +554,21 @@ class Database:
             "Workflow events must be persisted through a domain-specific API"
         )
 
+    def record_workflow_failure(
+        self, round_id: int, block: str, reason: str, details: dict | None = None
+    ) -> int:
+        """Persist a sanitized failure marker so restart cannot infer progress."""
+        from content_ops.orchestration import redact_event_payload
+
+        payload = redact_event_payload({"reason": reason, "details": details or {}})
+        with self.transaction() as connection:
+            if connection.execute("SELECT id FROM rounds WHERE id = ?", (round_id,)).fetchone() is None:
+                raise ValueError(f"Round {round_id} does not exist")
+            return connection.execute(
+                "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'failed', ?)",
+                (round_id, block, json.dumps(payload, ensure_ascii=False, sort_keys=True)),
+            ).lastrowid
+
     def latest_block_state(self, round_id: int, block: str) -> sqlite3.Row | None:
         """Return the latest event for a block, or none when it has no events."""
         with self.transaction() as connection:

@@ -1,5 +1,7 @@
 """Command-line entry point for local content operations."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import re
@@ -57,6 +59,8 @@ def build_parser() -> argparse.ArgumentParser:
     human_complete.add_argument("block")
     human_complete.add_argument("artifact")
     human_complete.add_argument("selection")
+    workflow_resume = commands.add_parser("workflow-resume", help="Show the next safe workflow action")
+    workflow_resume.add_argument("round_id", type=int)
     pillars = commands.add_parser("pillars", help="Propose and approve editorial pillars")
     pillar_commands = pillars.add_subparsers(dest="pillars_command")
     pillar_commands.add_parser("propose", help="Propose pillars from published history")
@@ -151,7 +155,7 @@ def main(
     parser = build_parser()
     arguments = parser.parse_args(argv)
 
-    if arguments.command in {"workflow-cycle-start", "workflow-review", "workflow-block-complete", "workflow-human-complete"}:
+    if arguments.command in {"workflow-cycle-start", "workflow-review", "workflow-block-complete", "workflow-human-complete", "workflow-resume"}:
         from content_ops.db import Database
         from content_ops.orchestration import (
             InvalidReviewResult,
@@ -160,6 +164,7 @@ def main(
             record_human_completion,
             record_review,
             start_block_cycle,
+            resume_round,
         )
 
         database = Database(repository_root / "data" / "content.db")
@@ -167,6 +172,9 @@ def main(
         try:
             if arguments.command == "workflow-cycle-start":
                 print(start_block_cycle(database, arguments.round_id, arguments.block, arguments.artifact))
+                return
+            if arguments.command == "workflow-resume":
+                print(resume_round(database, arguments.round_id))
                 return
             if arguments.command == "workflow-review":
                 record_review(database, arguments.round_id, arguments.block, arguments.artifact,

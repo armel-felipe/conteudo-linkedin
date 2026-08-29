@@ -52,8 +52,22 @@ class CliSmokeTests(unittest.TestCase):
         result = subprocess.run(["./contentctl", "--help"], text=True, capture_output=True)
 
         self.assertEqual(result.returncode, 0)
-        for command in ("workflow-cycle-start", "workflow-review", "workflow-block-complete"):
+        for command in ("workflow-cycle-start", "workflow-review", "workflow-block-complete", "workflow-resume"):
             self.assertIn(command, result.stdout)
+
+    def test_workflow_resume_cli_reports_next_safe_action(self):
+        from content_ops.cli import main
+        from content_ops.db import Database
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            database = Database(root / "data" / "content.db")
+            database.initialize()
+            round_id = database.create_round("Pilar", "round.md")
+            output = StringIO()
+            with redirect_stdout(output):
+                main(["workflow-resume", str(round_id)], repository_root=root)
+            self.assertEqual(output.getvalue().strip(), "start:B1")
 
     def test_load_env_sets_missing_values_without_overriding_existing_ones(self):
         from content_ops.cli import load_env

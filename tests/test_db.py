@@ -161,6 +161,18 @@ class DatabaseTests(unittest.TestCase):
             self.db.record_workflow_event(round_id, "B5", "cycle_started")
         self.assertIsNone(self.db.latest_block_state(round_id, "B5"))
 
+    def test_workflow_failure_event_is_redacted_and_durable(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        event_id = self.db.record_workflow_failure(
+            round_id, "B1", "executor failed", {"SERVICE_API_KEY": "secret", "safe": "ok"}
+        )
+
+        self.assertIsInstance(event_id, int)
+        state = self.db.latest_block_state(round_id, "B1")
+        self.assertEqual(state["event"], "failed")
+        self.assertNotIn("secret", state["payload_json"])
+        self.assertIn("[REDACTED]", state["payload_json"])
+
     def test_upsert_is_idempotent_by_external_id(self):
         self.db.upsert_post("linkedin:1", "A", "published")
         self.db.upsert_post("linkedin:1", "A revisado", "published")
