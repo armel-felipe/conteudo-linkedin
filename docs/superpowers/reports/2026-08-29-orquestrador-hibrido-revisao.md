@@ -21,12 +21,13 @@ corrigidos no orquestrador híbrido.
 - Falhas de resolução, existência, leitura ou decodificação de artefato são convertidas em bloqueio genérico; `record_review` e `complete_block` persistem o evento sem vazar conteúdo e `resume_round()` permanece bloqueado.
 - A cobertura de aceitação inclui contratos dos executores e bloqueio persistido para artefatos ilegíveis.
 - `start_block_cycle` rejeita qualquer novo ciclo após o último estado `blocked` ou `failed`; a recuperação exige intervenção explícita separada.
+- `Database.record_workflow_event('cycle_started')` também rejeita blocos cujo último estado é `blocked` ou `failed`; nenhum dos dois caminhos públicos reabre um bloco terminal.
 - Um ciclo com `review_approved`, `cycle_started` aprovado ou `block_completed`/`human_completed` não pode ser substituído por outro ciclo.
 - Feedback repetido persiste `blocked` antes de retornar o erro, e `resume_round()` permanece em `blocked` sem reprocessamento.
 - `record_human_completion` valida o ciclo B7 mais recente por `round_id`/`block`, exige correspondência explícita do artefato e persiste bloqueio para artefato ausente ou ilegível.
 
 ## Verificação
 
-`python3.12 -m pytest -q`: 192 passed, 40 subtests passed.
+`python3.12 -m pytest -q`: 194 passed, 40 subtests passed.
 
 Também passaram `python3.12 -m compileall -q src tests`, `git diff --check` e `./contentctl --help`. O smoke manual em repositório temporário confirmou bloqueio do artefato e ausência do valor sensível no payload persistido.

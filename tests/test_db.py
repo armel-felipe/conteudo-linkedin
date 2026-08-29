@@ -134,6 +134,40 @@ class DatabaseTests(unittest.TestCase):
                 '{"cycle":1,"artifact":"content/drafts/x.md"}',
             )
 
+    def test_generic_cycle_start_rejects_a_blocked_terminal_state(self):
+        from content_ops.orchestration import WorkflowBlocked
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+        self.db.record_workflow_event(round_id, "B1", "blocked", '{"reason":"stop"}')
+
+        with self.assertRaisesRegex(ValueError, "Cannot restart a terminal block"):
+            self.db.record_workflow_event(
+                round_id,
+                "B1",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
+        with self.assertRaises(WorkflowBlocked):
+            self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+
+    def test_generic_cycle_start_rejects_a_failed_terminal_state(self):
+        from content_ops.orchestration import WorkflowBlocked
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+        self.db.record_workflow_failure(round_id, "B1", "stop")
+
+        with self.assertRaisesRegex(ValueError, "Cannot restart a terminal block"):
+            self.db.record_workflow_event(
+                round_id,
+                "B1",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
+        with self.assertRaises(WorkflowBlocked):
+            self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+
     def test_orchestration_constraints_reject_invalid_decision_and_json(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
         self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))

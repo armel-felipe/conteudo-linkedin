@@ -587,6 +587,14 @@ class Database:
                 (round_id,),
             )}
             validate_block_order(completed, block)
+            if event == "cycle_started":
+                latest = connection.execute(
+                    "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                    "ORDER BY id DESC LIMIT 1",
+                    (round_id, block),
+                ).fetchone()
+                if latest is not None and latest["event"] in {"blocked", "failed"}:
+                    raise ValueError("Cannot restart a terminal block")
             if event in {"cycle_started", "review_approved", "review_feedback"}:
                 cycle_row = connection.execute(
                     "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
