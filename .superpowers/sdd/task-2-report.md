@@ -7,6 +7,7 @@ Status: DONE
 - `ec38f6f feat: enforce fail-closed workflow gates`
 - `8dde5c1 docs: record task 2 implementation report`
 - `6a1a8cd fix: close orchestration workflow bypasses`
+- `ed3a28f fix: validate workflow cycle ordering`
 
 ## Files
 
@@ -18,10 +19,8 @@ Status: DONE
 
 ## Tests
 
-- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py -k review -v`
-  - Result: PASS, 4 selected tests passed.
 - `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -v`
-  - Result: PASS, 40 tests passed, 37 subtests passed.
+  - Result: PASS, 42 tests passed, 37 subtests passed.
 - `python3.12 -m pytest tests/test_cli_end_to_end.py -v`
   - Result: PASS, 8 tests passed.
 - `python3.12 -m compileall -q src tests`
@@ -38,6 +37,8 @@ Status: DONE
 - Removed the unscoped `bloco-ok` bypass; it now requires round and cycle context.
 - Made cycle start and block completion domain operations transactional, with a configurable three-cycle default limit.
 - Removed private database access from the CLI and added CLI flow regressions.
+- Added cycle-start rejection tests for malformed JSON, invalid rounds, invalid order, and completed blocks.
+- Centralized completion validation for both the guard and the atomic completion API.
 
 ## Concerns
 
