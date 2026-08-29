@@ -30,6 +30,13 @@ class CliSmokeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("history", result.stdout)
 
+    def test_help_lists_workflow_commands(self):
+        result = subprocess.run(["./contentctl", "--help"], text=True, capture_output=True)
+
+        self.assertEqual(result.returncode, 0)
+        for command in ("workflow-cycle-start", "workflow-review", "workflow-block-complete"):
+            self.assertIn(command, result.stdout)
+
     def test_load_env_sets_missing_values_without_overriding_existing_ones(self):
         from content_ops.cli import load_env
 
