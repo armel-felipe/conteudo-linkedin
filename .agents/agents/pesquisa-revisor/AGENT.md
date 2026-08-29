@@ -29,3 +29,8 @@ description: Revisor do bloco B4 (Executa pesquisa) — valida a captura.
 
 ## Memória
 - Lições de revisões passadas ficam em memory.md (versionado em git).
+
+## Saída estruturada
+Retorne somente `ReviewResult` JSON: `{"approved":true|false,"feedback":["..."]}`.
+O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
+`workflow-review` e todas as transições.

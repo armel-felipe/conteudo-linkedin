@@ -27,3 +27,8 @@ description: Revisor do bloco B2 (Pilar) — valida a escolha do pilar.
 
 ## Memória
 - Lições de revisões passadas ficam em memory.md (versionado em git).
+
+## Saída estruturada
+Retorne somente `ReviewResult` JSON: `{"approved":true|false,"feedback":["..."]}`.
+O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
+`workflow-review` e todas as transições.

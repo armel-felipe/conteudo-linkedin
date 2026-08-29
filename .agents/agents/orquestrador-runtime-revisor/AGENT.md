@@ -30,3 +30,9 @@ description: Revisor do bloco B1 (Convoca) — valida o plano de rodada.
 
 ## Memória
 - Lições de revisões passadas ficam em memory.md (versionado em git).
+
+## Saída estruturada
+Retorne somente `ReviewResult` JSON: `{"approved":true|false,"feedback":["..."]}`.
+Com `approved=true`, `feedback` deve ser vazio; com `approved=false`, descreva cada correção.
+O revisor não pode editar artefatos nem registrar sua própria aprovação; apenas o runtime
+chama `workflow-review` e os comandos de transição.

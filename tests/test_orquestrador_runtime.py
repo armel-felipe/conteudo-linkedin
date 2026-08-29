@@ -17,6 +17,14 @@ BLOCKS: dict[str, str] = {
     "B11": "publicar-linkedin",
 }
 
+TASK3_BLOCKS = {
+    "B1": "orquestrador-runtime",
+    "B2": "pilar",
+    "B3": "pesquisa-mece",
+    "B4": "pesquisa",
+    "B5": "cruzamento",
+}
+
 APPROVAL_KEYS = [
     "APPROVAL_PILAR",
     "APPROVAL_PESQUISA",
@@ -66,6 +74,44 @@ class OrquestradorRuntimeStructureTests(unittest.TestCase):
         env = (REPO_ROOT / ".env.example").read_text(encoding="utf-8")
         for key in APPROVAL_KEYS:
             self.assertIn(key, env, f".env.example missing {key}")
+
+    def test_runtime_documents_bounded_explicit_task_protocol(self):
+        skill = (REPO_ROOT / ".agents" / "skills" / "orquestrador-runtime" / "SKILL.md").read_text(encoding="utf-8")
+        for required in (
+            "task",
+            "AGENT.md",
+            "memory.md",
+            "ORCHESTRATOR_MAX_REVIEW_CYCLES",
+            "ReviewResult",
+            "invalid",
+            "workflow-cycle-start",
+            "workflow-review",
+            "workflow-block-complete",
+            "fail-closed",
+        ):
+            self.assertIn(required, skill, f"runtime protocol missing {required}")
+
+    def test_runtime_documents_feedback_loop_and_limit(self):
+        skill = (REPO_ROOT / ".agents" / "skills" / "orquestrador-runtime" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("feedback", skill.lower())
+        self.assertIn("3", skill)
+        self.assertIn("feedback completo", skill.lower())
+
+    def test_executors_report_structured_artifact_and_cycle(self):
+        for slug in TASK3_BLOCKS.values():
+            content = (REPO_ROOT / ".agents" / "agents" / f"{slug}-executor" / "AGENT.md").read_text(encoding="utf-8")
+            self.assertIn("JSON", content, f"{slug} executor missing JSON output")
+            self.assertIn("artifact_path", content, f"{slug} executor missing artifact_path")
+            self.assertIn("cycle", content, f"{slug} executor missing cycle")
+
+    def test_reviewers_require_review_result_and_cannot_approve_themselves(self):
+        for slug in TASK3_BLOCKS.values():
+            content = (REPO_ROOT / ".agents" / "agents" / f"{slug}-revisor" / "AGENT.md").read_text(encoding="utf-8")
+            self.assertIn("ReviewResult", content, f"{slug} reviewer missing ReviewResult")
+            self.assertIn('"approved"', content, f"{slug} reviewer missing approved field")
+            self.assertIn('"feedback"', content, f"{slug} reviewer missing feedback field")
+            self.assertIn("não pode editar", content.lower(), f"{slug} reviewer may edit artifacts")
+            self.assertIn("registrar sua própria aprovação", content.lower(), f"{slug} reviewer may register approval")
 
 
 if __name__ == "__main__":

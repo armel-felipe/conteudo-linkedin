@@ -24,3 +24,7 @@ description: Executor do bloco B3 (Pesquisa MECE) — seleciona pesquisas mutuam
 ## Contrato
 - Exclusividade verificada contra o acervo inteiro, não só o da rodada.
 - Cobertura: as pesquisas propostas cobrem o pilar sem sobreposição.
+
+## Saída estruturada
+Retorne somente JSON válido no formato `{"artifact_path":"<pesquisa>","cycle":0}`.
+`artifact_path` identifica a seleção reportada e `cycle` é o ciclo recebido do runtime.

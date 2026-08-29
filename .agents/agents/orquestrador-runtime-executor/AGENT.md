@@ -27,3 +27,7 @@ description: Executor do bloco B1 (Convoca) — produz o plano de rodada.
 - O plano é coerente com o estado real (não inventar pilares/pesquisas).
 - B7 (escolha) é sempre humano — nunca listado como gate automático.
 - Sem credenciais em chat, arquivos, banco ou commits.
+
+## Saída estruturada
+Retorne somente JSON válido no formato `{"artifact_path":"runtime/rodadas/<ts>.md","cycle":0}`.
+`artifact_path` é o caminho do artefato produzido e `cycle` é o ciclo recebido do runtime.
