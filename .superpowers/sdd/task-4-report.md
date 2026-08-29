@@ -9,7 +9,7 @@ were implemented without breaking Tasks 1-3.
 ## Commit
 
 - `f5ff756 test: cover resumable reviewer orchestration`
-- Pending review-fix commit: cycle freshness, invalid-response failure events,
+- `7ef0f07 fix: close Task 4 orchestration review findings` (cycle freshness, invalid-response failure events,
   stricter failure validation, content redaction, and closed-round recovery.
 
 ## Files
