@@ -3,7 +3,6 @@ import subprocess
 import tempfile
 import unittest
 import json
-import tempfile
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -89,6 +88,8 @@ class CliSmokeTests(unittest.TestCase):
             database = __import__("content_ops.db", fromlist=["Database"]).Database(root / "data" / "content.db")
             database.initialize()
             round_id = database.create_round("Pilar", "round.md")
+            for block in ("B1", "B2", "B3", "B4", "B5", "B6"):
+                database.record_workflow_event(round_id, block, "block_completed")
             artifact = root / "artifact.md"
             artifact.write_text("draft", encoding="utf-8")
             main(["workflow-cycle-start", str(round_id), "B7", "artifact.md"], repository_root=root)

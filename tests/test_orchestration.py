@@ -53,6 +53,8 @@ class OrchestrationTests(unittest.TestCase):
     def test_invalid_reviewer_json_is_rejected(self):
         with self.assertRaises(InvalidReviewResult):
             parse_review_result('{"decision":"maybe"}')
+        with self.assertRaises(InvalidReviewResult):
+            parse_review_result("not-json")
 
     def test_review_result_requires_checks_and_feedback_list(self):
         with self.assertRaises(InvalidReviewResult):
@@ -118,6 +120,8 @@ class OrchestrationTests(unittest.TestCase):
             complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
     def test_cycle_start_validates_and_limits_three_cycles(self):
+        for block in ("B1", "B2", "B3", "B4"):
+            self.database.record_workflow_event(self.round_id, block, "block_completed")
         with patch.dict(os.environ, {"ORCHESTRATOR_MAX_REVIEW_CYCLES": "3"}):
             for cycle in range(1, 4):
                 start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
@@ -127,6 +131,20 @@ class OrchestrationTests(unittest.TestCase):
             start_block_cycle(self.database, self.round_id, "NOPE", "content/drafts/x.md")
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B6", "missing.md")
+
+    def test_cycle_start_rejects_unknown_round_closed_round_and_invalid_order(self):
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, 999, "B1", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, self.round_id, "B3", "content/drafts/x.md")
+        self.database.close_round(self.round_id)
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+
+    def test_cycle_start_rejects_block_already_completed(self):
+        self.database.record_workflow_event(self.round_id, "B1", "block_completed")
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
 
 
 if __name__ == "__main__":
