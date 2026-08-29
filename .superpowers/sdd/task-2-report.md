@@ -5,7 +5,7 @@ Status: DONE_WITH_CONCERNS
 ## Commits
 
 - `ec38f6f feat: enforce fail-closed workflow gates`
-- `TBD docs: record task 2 implementation report`
+- `8dde5c1 docs: record task 2 implementation report`
 
 ## Files
 
