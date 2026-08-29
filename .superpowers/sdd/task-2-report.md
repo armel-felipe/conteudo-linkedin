@@ -7,7 +7,7 @@ Complete. Task 3 was not started.
 ## Commits
 
 - `3fb8ee2 fix: close orchestration database bypasses`
-- A separate report-only commit contains this file.
+- A correction commit and a separate report-only commit contain the final changes.
 
 ## Changes
 
@@ -16,11 +16,13 @@ Complete. Task 3 was not started.
 - Counted `human_completed` as a completed workflow block so B7 releases B8 without automatic reviewer approval.
 - Persisted the artifact in completion event payloads.
 - Updated fixtures and direct API coverage for contextual artifacts, cycles, reviews, and legacy `bloco-ok` rejection.
+- Rejected all generic `record_workflow_event()` writes so cycle, review, automatic completion, and human completion events can only be persisted by domain APIs.
+- Required `record_human_completion()` to match an existing B7 cycle and persist round/block plus artifact, cycle, and selection context, without a reviewer receipt.
+- Made `close_round()` fail closed until every required block, including human B7, is complete.
 
 ## Commands and Results
 
-- `python3.12 -m pytest -q` -> `142 passed, 40 subtests passed`
-- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -q` -> `48 passed, 37 subtests passed`
+- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -q` -> `50 passed, 37 subtests passed`
 - Required final verification is run after this report is committed.
 
 ## Concerns
