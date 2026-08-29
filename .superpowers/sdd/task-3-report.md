@@ -2,14 +2,16 @@
 
 ## Status
 
-Concluída. O protocolo de dispatch explícito via `task`, carregamento dos contratos exatos
-e `memory.md`, saída estruturada, loop limitado e transições fail-closed foi documentado.
-As regras de domínio dos blocos foram preservadas.
+Concluída e corrigida após revisão. O protocolo usa o schema real `ReviewResult`
+(`decision`, `artifact`, `feedback`, `checks`), permite iniciar ciclos B1-B3 com artefato
+futuro, exige o arquivo antes de review/completion, e mantém configuração inválida
+fail-closed. As regras de domínio dos blocos foram preservadas.
 
 ## Commits
 
 - `c1b2342 feat: define OpenCode reviewer dispatch protocol`
 - `d3a937e docs: add Task 3 implementation report`
+- commits desta correção serão registrados após a verificação final
 
 ## Arquivos
 
@@ -25,15 +27,20 @@ As regras de domínio dos blocos foram preservadas.
 - `.agents/agents/cruzamento-executor/AGENT.md`
 - `.agents/agents/cruzamento-revisor/AGENT.md`
 - `tests/test_orquestrador_runtime.py`
+- `src/content_ops/orchestration.py`
+- `tests/test_orchestration.py`
+- `docs/superpowers/plans/2026-08-29-orquestrador-hibrido-revisao.md`
 
 ## Comandos e resultados
 
-- `python3.12 -m pytest tests/test_orquestrador_runtime.py -v`: RED inicial com 4 falhas; GREEN final com 10 passed.
-- `python3.12 -m pytest tests/test_orquestrador_runtime.py tests/test_orchestration.py tests/test_cli_smoke.py -v`: 33 passed, 8 subtests passed.
+- `python3.12 -m pytest tests/test_orquestrador_runtime.py -v`: 12 passed.
+- `python3.12 -m pytest tests/test_orquestrador_runtime.py tests/test_orchestration.py tests/test_cli_smoke.py -v`: 38 passed, 8 subtests passed.
+- `python3.12 -m pytest -v`: executado na verificação final.
 - `python3.12 -m compileall -q src tests`: passou sem saída.
 - `git diff --check`: passou sem saída.
 
 ## Concerns
 
 - O runtime continua sendo uma skill documental; a execução efetiva do dispatch depende do agente seguir o procedimento descrito.
-- A cobertura estrutural nova valida os cinco pares de agentes alterados pela Task 3; os demais blocos permanecem fora do escopo desta task.
+- O runtime continua sendo uma skill documental; a execução efetiva do dispatch depende do agente seguir o procedimento descrito.
+- A mudança em `src/content_ops/orchestration.py` é a validação necessária para o ciclo futuro B1-B3, sem avançar a Task 4.

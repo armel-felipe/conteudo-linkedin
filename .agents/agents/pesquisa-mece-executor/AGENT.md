@@ -26,5 +26,5 @@ description: Executor do bloco B3 (Pesquisa MECE) — seleciona pesquisas mutuam
 - Cobertura: as pesquisas propostas cobrem o pilar sem sobreposição.
 
 ## Saída estruturada
-Retorne somente JSON válido no formato `{"artifact_path":"<pesquisa>","cycle":0}`.
+Retorne somente JSON válido no formato `{"artifact_path":"<pesquisa>","cycle":1}`.
 `artifact_path` identifica a seleção reportada e `cycle` é o ciclo recebido do runtime.

@@ -19,8 +19,7 @@ description: Revisor do bloco B4 (Executa pesquisa) — valida a captura.
 5. Decidir aprovado ou feedback.
 
 ## Formato de feedback
-- Aprovado: `contentctl bloco-ok B4 <artefato>`.
-- Feedback: itens com o que corrigir, referenciando o contrato.
+- O runtime registra o resultado com `workflow-review`.
 
 ## Contrato
 - O stdout do LAST30DAYS_COMMAND é preservado verbatim — não sintetizar internamente.
@@ -31,6 +30,6 @@ description: Revisor do bloco B4 (Executa pesquisa) — valida a captura.
 - Lições de revisões passadas ficam em memory.md (versionado em git).
 
 ## Saída estruturada
-Retorne somente `ReviewResult` JSON: `{"approved":true|false,"feedback":["..."]}`.
+Retorne somente `ReviewResult` JSON: `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
 O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
 `workflow-review` e todas as transições.

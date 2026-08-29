@@ -103,15 +103,35 @@ class OrquestradorRuntimeStructureTests(unittest.TestCase):
             self.assertIn("JSON", content, f"{slug} executor missing JSON output")
             self.assertIn("artifact_path", content, f"{slug} executor missing artifact_path")
             self.assertIn("cycle", content, f"{slug} executor missing cycle")
+            self.assertIn('"cycle":1', content, f"{slug} executor example must start at cycle 1")
 
     def test_reviewers_require_review_result_and_cannot_approve_themselves(self):
-        for slug in TASK3_BLOCKS.values():
+        for slug in BLOCKS.values():
             content = (REPO_ROOT / ".agents" / "agents" / f"{slug}-revisor" / "AGENT.md").read_text(encoding="utf-8")
             self.assertIn("ReviewResult", content, f"{slug} reviewer missing ReviewResult")
-            self.assertIn('"approved"', content, f"{slug} reviewer missing approved field")
-            self.assertIn('"feedback"', content, f"{slug} reviewer missing feedback field")
+            for field in ('"decision"', '"artifact"', '"feedback"', '"checks"'):
+                self.assertIn(field, content, f"{slug} reviewer missing {field} field")
+            self.assertNotIn('"approved"', content, f"{slug} reviewer uses incompatible approved field")
             self.assertIn("não pode editar", content.lower(), f"{slug} reviewer may edit artifacts")
             self.assertIn("registrar sua própria aprovação", content.lower(), f"{slug} reviewer may register approval")
+
+    def test_runtime_describes_review_schema_and_transition_order(self):
+        skill = (REPO_ROOT / ".agents" / "skills" / "orquestrador-runtime" / "SKILL.md").read_text(encoding="utf-8")
+        for field in ("decision", "artifact", "feedback", "checks"):
+            self.assertIn(field, skill)
+        self.assertNotIn('"approved"', skill)
+        procedure = skill[skill.index("### Procedimento copiável") :]
+        self.assertLess(procedure.index("workflow-cycle-start"), procedure.index("workflow-review"))
+        self.assertLess(procedure.index("workflow-review"), procedure.index("workflow-block-complete"))
+
+    def test_runtime_text_has_executor_reviewer_completion_flow(self):
+        skill = (REPO_ROOT / ".agents" / "skills" / "orquestrador-runtime" / "SKILL.md").read_text(encoding="utf-8")
+        procedure = skill[skill.index("### Procedimento copiável") :]
+        executor = procedure.index("<slug>-executor/AGENT.md")
+        reviewer = procedure.index("<slug>-revisor/AGENT.md")
+        self.assertLess(procedure.index("task", executor - 100), reviewer)
+        self.assertLess(reviewer, procedure.index("workflow-review"))
+        self.assertLess(procedure.index("workflow-review"), procedure.index("workflow-block-complete"))
 
 
 if __name__ == "__main__":

@@ -62,12 +62,12 @@ def validate_block_order(completed: set[str], requested: str) -> None:
         raise WorkflowBlocked(f"Block {requested} is out of order; missing {', '.join(missing)}")
 
 
-def _artifact_path(database: Database, artifact_path: str) -> Path:
+def _artifact_path(database: Database, artifact_path: str, *, require_exists: bool = True) -> Path:
     if not artifact_path or Path(artifact_path).is_absolute():
         raise WorkflowBlocked("Artifact path must be relative to the repository")
     root = database.path.parent.parent.resolve()
     path = (root / artifact_path).resolve()
-    if not path.is_relative_to(root) or not path.is_file():
+    if not path.is_relative_to(root) or (require_exists and not path.is_file()):
         raise WorkflowBlocked("Artifact does not exist within the repository")
     return path
 
@@ -122,7 +122,7 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
     """Validate and atomically start the next bounded executor cycle."""
     if block not in BLOCK_ORDER:
         raise WorkflowBlocked(f"Unknown workflow block: {block}")
-    _artifact_path(database, artifact_path)
+    _artifact_path(database, artifact_path, require_exists=block not in {"B1", "B2", "B3"})
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None or round_row["status"] != "open":

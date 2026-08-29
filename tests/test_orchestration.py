@@ -139,6 +139,34 @@ class OrchestrationTests(unittest.TestCase):
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B6", "missing.md")
 
+    def test_cycle_start_allows_future_artifact_only_for_early_blocks(self):
+        for block in ("B1", "B2", "B3"):
+            artifact = f"future/{block}.md"
+            cycle = start_block_cycle(self.database, self.round_id, block, artifact)
+            self.assertEqual(cycle, 1)
+            path = self.root / artifact
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("artifact", encoding="utf-8")
+            result = self.result()
+            result = json.loads(result)
+            result["artifact"] = artifact
+            record_review(self.database, self.round_id, block, artifact, cycle, "revisor", json.dumps(result))
+            complete_block(self.database, self.round_id, block, artifact, cycle)
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, self.round_id, "B4", "future/B4.md")
+
+    def test_future_artifact_is_still_required_before_review_and_completion(self):
+        start_block_cycle(self.database, self.round_id, "B1", "future/B1.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_review(self.database, self.round_id, "B1", "future/B1.md", 1, "revisor", self.result())
+        with self.assertRaises(WorkflowBlocked):
+            can_complete_block(self.database, self.round_id, "B1", "future/B1.md", 1)
+
+    def test_invalid_cycle_limit_configuration_fails_closed(self):
+        with patch.dict(os.environ, {"ORCHESTRATOR_MAX_REVIEW_CYCLES": "invalid"}):
+            with self.assertRaises(WorkflowBlocked):
+                start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+
     def test_cycle_start_rejects_unknown_round_closed_round_and_invalid_order(self):
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, 999, "B1", "content/drafts/x.md")

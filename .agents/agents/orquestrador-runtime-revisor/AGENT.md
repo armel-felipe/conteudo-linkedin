@@ -20,8 +20,7 @@ description: Revisor do bloco B1 (Convoca) — valida o plano de rodada.
 5. Decidir aprovado ou feedback.
 
 ## Formato de feedback
-- Aprovado: `contentctl bloco-ok B1 <plano>`.
-- Feedback: itens com o que corrigir, referenciando o contrato.
+- O runtime registra o resultado com `workflow-review`.
 
 ## Contrato
 - O plano é coerente com o estado real (não inventar pilares/pesquisas).
@@ -32,7 +31,7 @@ description: Revisor do bloco B1 (Convoca) — valida o plano de rodada.
 - Lições de revisões passadas ficam em memory.md (versionado em git).
 
 ## Saída estruturada
-Retorne somente `ReviewResult` JSON: `{"approved":true|false,"feedback":["..."]}`.
-Com `approved=true`, `feedback` deve ser vazio; com `approved=false`, descreva cada correção.
+Retorne somente `ReviewResult` JSON: `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
+Use `decision=approved` quando passar; use `decision=feedback` e descreva cada correção quando não passar.
 O revisor não pode editar artefatos nem registrar sua própria aprovação; apenas o runtime
 chama `workflow-review` e os comandos de transição.

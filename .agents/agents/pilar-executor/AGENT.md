@@ -23,5 +23,5 @@ description: Executor do bloco B2 (Pilar) — escolhe o pilar editorial.
 - Só pilares com approved=true são elegíveis.
 
 ## Saída estruturada
-Retorne somente JSON válido no formato `{"artifact_path":"<pilar>","cycle":0}`.
+Retorne somente JSON válido no formato `{"artifact_path":"<pilar>","cycle":1}`.
 `artifact_path` identifica a seleção reportada e `cycle` é o ciclo recebido do runtime.

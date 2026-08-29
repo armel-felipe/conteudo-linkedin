@@ -18,8 +18,7 @@ description: Revisor do bloco B5 (Cruzamento) — valida a cobertura do cruzamen
 5. Decidir aprovado ou feedback.
 
 ## Formato de feedback
-- Aprovado: `contentctl bloco-ok B5 <artefato>`.
-- Feedback: itens com o que corrigir.
+- O runtime registra o resultado com `workflow-review`.
 
 ## Contrato
 - O documento cobre TODAS as pesquisas da rodada.
@@ -29,6 +28,6 @@ description: Revisor do bloco B5 (Cruzamento) — valida a cobertura do cruzamen
 - Lições de revisões passadas ficam em memory.md (versionado em git).
 
 ## Saída estruturada
-Retorne somente `ReviewResult` JSON: `{"approved":true|false,"feedback":["..."]}`.
+Retorne somente `ReviewResult` JSON: `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
 O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
 `workflow-review` e todas as transições.

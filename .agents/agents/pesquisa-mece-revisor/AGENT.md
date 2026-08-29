@@ -19,8 +19,7 @@ description: Revisor do bloco B3 (Pesquisa MECE) — valida exclusividade e cobe
 5. Decidir aprovado ou feedback.
 
 ## Formato de feedback
-- Aprovado: `contentctl bloco-ok B3 <pesquisa>`.
-- Feedback: itens com o que corrigir.
+- O runtime registra o resultado com `workflow-review`.
 
 ## Contrato
 - Exclusividade verificada contra o acervo inteiro, não só o da rodada.
@@ -30,6 +29,6 @@ description: Revisor do bloco B3 (Pesquisa MECE) — valida exclusividade e cobe
 - Lições de revisões passadas ficam em memory.md (versionado em git).
 
 ## Saída estruturada
-Retorne somente `ReviewResult` JSON: `{"approved":true|false,"feedback":["..."]}`.
+Retorne somente `ReviewResult` JSON: `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
 O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
 `workflow-review` e todas as transições.

@@ -33,5 +33,5 @@ description: Executor do bloco B4 (Executa pesquisa) — captura pesquisa multic
 - Sem credenciais em chat, arquivos, banco ou commits.
 
 ## Saída estruturada
-Retorne somente JSON válido no formato `{"artifact_path":"research/<ts>-<slug>.md","cycle":0}`.
+Retorne somente JSON válido no formato `{"artifact_path":"research/<ts>-<slug>.md","cycle":1}`.
 `artifact_path` é o relatório produzido e `cycle` é o ciclo recebido do runtime.
