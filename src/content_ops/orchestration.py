@@ -231,9 +231,33 @@ def complete_block(database: Database, round_id: int, block: str, artifact_path:
     """Check gates and record exactly one completion event in one transaction."""
     _validate_completion_request(database, block, artifact_path)
     with database.transaction() as connection:
-        _validate_completion(connection, round_id, block, artifact_path, cycle)
-        event = connection.execute(
-            "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'block_completed', ?)",
-            (round_id, block, json.dumps({"cycle": cycle, "artifact": artifact_path})),
+        return _complete_block_in_transaction(
+            connection, round_id, block, artifact_path, cycle
         )
-        return event.lastrowid
+
+
+def complete_block_with_compatibility(
+    database: Database, round_id: int, block: str, artifact_path: str, cycle: int
+) -> int:
+    """Complete a block and write the legacy validation row atomically."""
+    _validate_completion_request(database, block, artifact_path)
+    with database.transaction() as connection:
+        event_id = _complete_block_in_transaction(
+            connection, round_id, block, artifact_path, cycle
+        )
+        connection.execute(
+            "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",
+            (block, artifact_path),
+        )
+        return event_id
+
+
+def _complete_block_in_transaction(
+    connection, round_id: int, block: str, artifact_path: str, cycle: int
+) -> int:
+    _validate_completion(connection, round_id, block, artifact_path, cycle)
+    event = connection.execute(
+        "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'block_completed', ?)",
+        (round_id, block, json.dumps({"cycle": cycle, "artifact": artifact_path})),
+    )
+    return event.lastrowid

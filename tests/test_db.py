@@ -451,6 +451,37 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(row[1], "content/drafts/x.md")
         self.assertEqual(row[2], 1)
 
+    def test_block_validation_rolls_back_completion_when_compatibility_insert_fails(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3"))
+        cycle_id = self.db.start_block_cycle(round_id, "B4", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "approved", result)
+        with sqlite3.connect(self.path) as connection:
+            connection.execute(
+                """
+                CREATE TRIGGER reject_compatibility_validation
+                BEFORE INSERT ON block_validations
+                WHEN NEW.block = 'B4'
+                BEGIN
+                    SELECT RAISE(ABORT, 'compatibility insert failed');
+                END
+                """
+            )
+
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.record_block_validation("B4", "content/drafts/x.md", round_id, 1)
+
+        with sqlite3.connect(self.path) as connection:
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM workflow_events WHERE round_id = ? AND block = ? AND event = 'block_completed'",
+                (round_id, "B4"),
+            ).fetchone())
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM block_validations WHERE block = ?",
+                ("B4",),
+            ).fetchone())
+
     def test_create_idea_stores_multi_research_sources(self):
         self.db.create_research_report("IA", "research/ia.md", pillar="IA aplicada")
         self.db.upsert_pillar("IA aplicada")

@@ -692,14 +692,9 @@ class Database:
         """Record a validated block only through the central completion gate."""
         if round_id is None or cycle is None:
             raise ValueError("Block validation requires round_id and cycle")
-        from content_ops.orchestration import complete_block
+        from content_ops.orchestration import complete_block_with_compatibility
 
-        complete_block(self, round_id, block, artifact_path, cycle)
-        with self._connect() as connection:
-            connection.execute(
-                "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",
-                (block, artifact_path),
-            )
+        complete_block_with_compatibility(self, round_id, block, artifact_path, cycle)
 
     def get_idea(self, idea_id: int) -> dict[str, object]:
         """Return an idea with the links needed to create its draft."""

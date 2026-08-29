@@ -19,10 +19,13 @@ Complete. Task 3 was not started.
 - Rejected all generic `record_workflow_event()` writes so cycle, review, automatic completion, and human completion events can only be persisted by domain APIs.
 - Required `record_human_completion()` to match an existing B7 cycle and persist round/block plus artifact, cycle, and selection context, without a reviewer receipt.
 - Made `close_round()` fail closed until every required block, including human B7, is complete.
+- Made compatibility persistence atomic: `record_block_validation()` now uses one domain transaction for `block_completed` and `block_validations`, with rollback coverage when the compatibility insert fails.
 
 ## Commands and Results
 
-- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -q` -> `50 passed, 37 subtests passed`
+- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -v` -> `51 passed, 37 subtests passed`
+- `python3.12 -m pytest -q` -> `145 passed, 40 subtests passed`
+- The atomic compatibility rollback regression is included in the Task 2 suite.
 - Required final verification is run after this report is committed.
 
 ## Concerns
