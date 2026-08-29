@@ -28,6 +28,63 @@ class DatabaseTests(unittest.TestCase):
 
         self.assertTrue({"posts", "pillars", "research_reports", "ideas"} <= tables)
 
+    def test_initialize_creates_orchestration_tables(self):
+        with sqlite3.connect(self.path) as connection:
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
+
+        self.assertTrue({"workflow_events", "review_receipts"} <= tables)
+
+    def test_orchestration_writes_are_durable(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        self.db.record_review_result(
+            cycle_id, "cruzamento-revisor", "feedback", '{"decision":"feedback"}'
+        )
+        event_id = self.db.record_workflow_event(
+            round_id, "B5", "review_recorded", '{"cycle":1}'
+        )
+
+        with sqlite3.connect(self.path) as connection:
+            self.assertIsNotNone(
+                connection.execute(
+                    "SELECT 1 FROM review_receipts WHERE cycle_id = ?", (cycle_id,)
+                ).fetchone()
+            )
+            self.assertIsNotNone(
+                connection.execute(
+                    "SELECT 1 FROM workflow_events WHERE id = ?", (event_id,)
+                ).fetchone()
+            )
+
+    def test_review_approval_is_scoped_to_round_block_artifact_and_cycle(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        self.db.record_review_result(
+            cycle_id, "cruzamento-revisor", "approved", '{"decision":"approved"}'
+        )
+
+        self.assertTrue(
+            self.db.review_is_approved(round_id, "B5", "content/drafts/x.md", 1)
+        )
+        self.assertFalse(self.db.review_is_approved(round_id, "B6", "content/drafts/x.md", 1))
+        self.assertFalse(self.db.review_is_approved(round_id, "B5", "other.md", 1))
+        self.assertFalse(self.db.review_is_approved(round_id, "B5", "content/drafts/x.md", 2))
+
+    def test_latest_block_state_returns_latest_event(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.assertIsNone(self.db.latest_block_state(round_id, "B5"))
+        self.db.record_workflow_event(round_id, "B5", "cycle_started")
+        self.db.record_workflow_event(round_id, "B5", "review_recorded", '{"cycle":1}')
+
+        state = self.db.latest_block_state(round_id, "B5")
+        self.assertEqual(state["event"], "review_recorded")
+        self.assertEqual(state["payload_json"], '{"cycle":1}')
+
     def test_upsert_is_idempotent_by_external_id(self):
         self.db.upsert_post("linkedin:1", "A", "published")
         self.db.upsert_post("linkedin:1", "A revisado", "published")

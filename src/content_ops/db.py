@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
 
 
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
 
 
 @dataclass(frozen=True)
@@ -49,6 +49,7 @@ class Database:
                 self._migrate_to_v4,
                 self._migrate_to_v5,
                 self._migrate_to_v6,
+                self._migrate_to_v7,
             )
             for target_version in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
                 migrations[target_version - 1](connection)
@@ -478,6 +479,86 @@ class Database:
                 "UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,)
             )
 
+    def start_block_cycle(self, round_id: int, block: str, artifact_path: str) -> int:
+        """Start the next review cycle for a block artifact."""
+        with self.transaction() as connection:
+            if connection.execute("SELECT 1 FROM rounds WHERE id = ?", (round_id,)).fetchone() is None:
+                raise ValueError(f"Round {round_id} does not exist")
+            cycle = connection.execute(
+                "SELECT COALESCE(MAX(cycle), 0) + 1 FROM block_cycles "
+                "WHERE round_id = ? AND block = ?",
+                (round_id, block),
+            ).fetchone()[0]
+            cursor = connection.execute(
+                "INSERT INTO block_cycles (round_id, block, cycle, artifact_path) "
+                "VALUES (?, ?, ?, ?)",
+                (round_id, block, cycle, artifact_path),
+            )
+            return cursor.lastrowid
+
+    def record_review_result(
+        self, cycle_id: int, reviewer_agent: str, decision: str, result_json: str
+    ) -> None:
+        """Persist one review receipt for a previously started block cycle."""
+        if decision not in {"approved", "feedback"}:
+            raise ValueError("Review decision must be 'approved' or 'feedback'")
+        self._validate_json(result_json, "Review result")
+        with self.transaction() as connection:
+            if connection.execute(
+                "SELECT 1 FROM block_cycles WHERE id = ?", (cycle_id,)
+            ).fetchone() is None:
+                raise ValueError(f"Block cycle {cycle_id} does not exist")
+            connection.execute(
+                "INSERT INTO review_receipts "
+                "(cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
+                (cycle_id, reviewer_agent, decision, result_json),
+            )
+
+    def review_is_approved(
+        self, round_id: int, block: str, artifact_path: str, cycle: int
+    ) -> bool:
+        """Return whether the exact block cycle has an approval receipt."""
+        with self.transaction() as connection:
+            return connection.execute(
+                """
+                SELECT 1
+                FROM review_receipts
+                JOIN block_cycles ON block_cycles.id = review_receipts.cycle_id
+                WHERE block_cycles.round_id = ?
+                  AND block_cycles.block = ?
+                  AND block_cycles.artifact_path = ?
+                  AND block_cycles.cycle = ?
+                  AND review_receipts.decision = 'approved'
+                LIMIT 1
+                """,
+                (round_id, block, artifact_path, cycle),
+            ).fetchone() is not None
+
+    def record_workflow_event(
+        self, round_id: int, block: str, event: str, payload_json: str = "{}"
+    ) -> int:
+        """Append a durable event to a block's workflow history."""
+        self._validate_json(payload_json, "Workflow event payload")
+        with self.transaction() as connection:
+            if connection.execute("SELECT 1 FROM rounds WHERE id = ?", (round_id,)).fetchone() is None:
+                raise ValueError(f"Round {round_id} does not exist")
+            cursor = connection.execute(
+                "INSERT INTO workflow_events (round_id, block, event, payload_json) "
+                "VALUES (?, ?, ?, ?)",
+                (round_id, block, event, payload_json),
+            )
+            return cursor.lastrowid
+
+    def latest_block_state(self, round_id: int, block: str) -> sqlite3.Row | None:
+        """Return the latest event for a block, or none when it has no events."""
+        with self.transaction() as connection:
+            return connection.execute(
+                "SELECT id, round_id, block, event, payload_json, created_at "
+                "FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1",
+                (round_id, block),
+            ).fetchone()
+
     def create_idea(
         self,
         title: str,
@@ -828,6 +909,45 @@ class Database:
             "ideas",
             {"sources": "TEXT NOT NULL DEFAULT '[]'"},
         )
+
+    @classmethod
+    def _migrate_to_v7(cls, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS block_cycles (
+                id INTEGER PRIMARY KEY,
+                round_id INTEGER NOT NULL REFERENCES rounds(id),
+                block TEXT NOT NULL,
+                cycle INTEGER NOT NULL CHECK (cycle > 0),
+                artifact_path TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (round_id, block, cycle, artifact_path)
+            );
+            CREATE TABLE IF NOT EXISTS review_receipts (
+                id INTEGER PRIMARY KEY,
+                cycle_id INTEGER NOT NULL REFERENCES block_cycles(id),
+                reviewer_agent TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK (decision IN ('approved', 'feedback')),
+                result_json TEXT NOT NULL CHECK (json_valid(result_json)),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS workflow_events (
+                id INTEGER PRIMARY KEY,
+                round_id INTEGER NOT NULL REFERENCES rounds(id),
+                block TEXT NOT NULL,
+                event TEXT NOT NULL,
+                payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+    @staticmethod
+    def _validate_json(value: str, label: str) -> None:
+        try:
+            json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            raise ValueError(f"{label} must be valid JSON") from None
 
     @staticmethod
     def _begin_immediate(connection: sqlite3.Connection) -> None:
