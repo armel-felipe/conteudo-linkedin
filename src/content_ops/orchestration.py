@@ -299,12 +299,7 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
             )}
             validate_block_order(completed, block)
             if cycle > _max_review_cycles():
-                latest = connection.execute(
-                    "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
-                    "ORDER BY id DESC LIMIT 1", (round_id, block)
-                ).fetchone()
-                if latest is None or latest["event"] not in {"blocked", "failed"}:
-                    raise WorkflowBlocked(f"Review cycle limit reached for {block}")
+                raise WorkflowBlocked(f"Review cycle limit reached for {block}")
             latest = connection.execute(
                 "SELECT event, payload_json FROM workflow_events WHERE round_id = ? AND block = ? "
                 "ORDER BY id DESC LIMIT 1", (round_id, block)

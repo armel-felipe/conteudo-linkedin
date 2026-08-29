@@ -188,16 +188,13 @@ class OrchestrationTests(unittest.TestCase):
             start_block_cycle(self.database, self.round_id, "B6", "missing.md")
 
     def test_cycle_start_can_restart_after_blocked_or_failed_state(self):
-        with patch.dict(os.environ, {"ORCHESTRATOR_MAX_REVIEW_CYCLES": "1"}):
-            start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
-            record_review(
-                self.database, self.round_id, "B1", "content/drafts/x.md", 1,
-                "revisor", self.result("feedback"),
-            )
-            self.assertEqual(resume_round(self.database, self.round_id), "blocked")
-            self.assertEqual(start_block_cycle(
-                self.database, self.round_id, "B1", "content/drafts/x.md"
-            ), 2)
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        self.database.record_workflow_event(
+            self.round_id, "B1", "blocked", '{"reason":"retryable block"}'
+        )
+        self.assertEqual(start_block_cycle(
+            self.database, self.round_id, "B1", "content/drafts/x.md"
+        ), 2)
 
         self.database.record_workflow_failure(self.round_id, "B1", "executor failed")
         self.assertEqual(start_block_cycle(
