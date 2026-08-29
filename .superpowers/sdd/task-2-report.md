@@ -8,6 +8,7 @@ Status: DONE
 - `8dde5c1 docs: record task 2 implementation report`
 - `6a1a8cd fix: close orchestration workflow bypasses`
 - `ed3a28f fix: validate workflow cycle ordering`
+- `9288c15 fix: prevent repeated workflow reviews`
 
 ## Files
 
@@ -20,7 +21,7 @@ Status: DONE
 ## Tests
 
 - `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -v`
-  - Result: PASS, 42 tests passed, 37 subtests passed.
+  - Result: PASS, 46 tests passed, 37 subtests passed.
 - `python3.12 -m pytest tests/test_cli_end_to_end.py -v`
   - Result: PASS, 8 tests passed.
 - `python3.12 -m compileall -q src tests`
@@ -39,6 +40,8 @@ Status: DONE
 - Removed private database access from the CLI and added CLI flow regressions.
 - Added cycle-start rejection tests for malformed JSON, invalid rounds, invalid order, and completed blocks.
 - Centralized completion validation for both the guard and the atomic completion API.
+- Blocked repeated semantic review results using stable hashes and added explicit persisted human B7 completion.
+- Rejected reviews for closed rounds or invalid block order before receipt persistence.
 
 ## Concerns
 
