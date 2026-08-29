@@ -16,6 +16,15 @@ _SECRET_VALUE = re.compile(
     r"(?P<name>(?:[A-Za-z0-9_]*(?:API[_-]?KEY|TOKEN|PASSWORD)|AUTH_TOKEN|CT0))\s*=\s*[^\s,;&]+",
     re.IGNORECASE,
 )
+_SECRET_STRUCTURED = re.compile(
+    r"(?P<prefix>[\"']?[A-Za-z0-9_-]*(?:API[_-]?KEY|TOKEN|PASSWORD)[\"']?\s*[:=]\s*[\"']?)"
+    r"(?P<value>[^\s\"',}\]]+)",
+    re.IGNORECASE,
+)
+_BEARER_VALUE = re.compile(
+    r"(?P<prefix>Authorization\s*:\s*Bearer\s+)(?P<value>[^\s,;\"']+)",
+    re.IGNORECASE,
+)
 _REDACTED = "[REDACTED]"
 
 
@@ -49,8 +58,14 @@ def redact_event_payload(payload: dict) -> dict:
         if isinstance(value, tuple):
             return [redact(item) for item in value]
         if isinstance(value, str):
+            redacted = _SECRET_STRUCTURED.sub(
+                lambda match: f"{match.group('prefix')}{_REDACTED}", value
+            )
+            redacted = _BEARER_VALUE.sub(
+                lambda match: f"{match.group('prefix')}{_REDACTED}", redacted
+            )
             return _SECRET_VALUE.sub(
-                lambda match: f"{match.group('name')}=[REDACTED]", value
+                lambda match: f"{match.group('name')}=[REDACTED]", redacted
             )
         return value
 
@@ -190,7 +205,7 @@ def _artifact_path(database: Database, artifact_path: str, *, require_exists: bo
         path = (root / artifact_path).resolve()
         if not path.is_relative_to(root) or (require_exists and not path.is_file()):
             raise WorkflowBlocked("Artifact does not exist within the repository")
-        if require_exists and path.is_file() and _SECRET_VALUE.search(path.read_text(encoding="utf-8")):
+        if require_exists and path.is_file() and _contains_secret(path.read_text(encoding="utf-8")):
             raise WorkflowBlocked("Artifact contains prohibited credential-shaped content")
         return path
     except WorkflowBlocked:
@@ -198,6 +213,10 @@ def _artifact_path(database: Database, artifact_path: str, *, require_exists: bo
     except (OSError, UnicodeError):
         # Never persist filesystem error details, which may contain artifact data.
         raise WorkflowBlocked("Artifact could not be read safely") from None
+
+
+def _contains_secret(value: str) -> bool:
+    return bool(_SECRET_VALUE.search(value) or _SECRET_STRUCTURED.search(value) or _BEARER_VALUE.search(value))
 
 
 def _validate_reference(database: Database, block: str, reference: str, *, require_exists: bool = True) -> None:
@@ -215,6 +234,14 @@ def _persist_blocked(database: Database, round_id: int, block: str, cycle: int, 
                 "SELECT status FROM rounds WHERE id = ?", (round_id,)
             ).fetchone()
             if round_row is None or block not in BLOCK_ORDER:
+                return
+            latest = connection.execute(
+                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1", (round_id, block)
+            ).fetchone()
+            if latest is not None and latest["event"] in {
+                "blocked", "failed", "block_completed", "human_completed"
+            }:
                 return
             _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": reason})
     except Exception:
@@ -366,6 +393,12 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None or round_row["status"] != "open":
             raise WorkflowBlocked("Round is not active")
+        latest = connection.execute(
+            "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+            "ORDER BY id DESC LIMIT 1", (round_id, block)
+        ).fetchone()
+        if latest is not None and latest["event"] in {"blocked", "failed"}:
+            raise WorkflowBlocked("Cannot record a review after a terminal block state")
         cycle_row = connection.execute(
             "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
             (round_id, block, cycle, artifact_path),

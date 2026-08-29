@@ -437,6 +437,70 @@ class OrchestrationTests(unittest.TestCase):
 
         self.assertEqual(resume_round(self.database, self.round_id), "complete:B1")
 
+    def test_review_rejects_mutation_after_blocked_or_failed_state(self):
+        for event in ("blocked", "failed"):
+            with self.subTest(event=event):
+                round_id = self.database.create_round("Pilar", f"round-{event}.md")
+                start_block_cycle(self.database, round_id, "B1", "content/drafts/x.md")
+                if event == "blocked":
+                    self.database.record_workflow_event(
+                        round_id, "B1", "blocked", '{"reason":"stop"}'
+                    )
+                else:
+                    self.database.record_workflow_failure(round_id, "B1", "stop")
+
+                with self.assertRaises(WorkflowBlocked):
+                    record_review(
+                        self.database, round_id, "B1", "content/drafts/x.md", 1,
+                        "revisor", self.result(),
+                    )
+                self.assertEqual(
+                    self.database.latest_block_state(round_id, "B1")["event"], event
+                )
+
+    def test_workflow_events_reject_every_mutation_after_blocked_or_failed_state(self):
+        for terminal in ("blocked", "failed"):
+            with self.subTest(terminal=terminal):
+                round_id = self.database.create_round("Pilar", f"events-{terminal}.md")
+                start_block_cycle(self.database, round_id, "B1", "content/drafts/x.md")
+                if terminal == "blocked":
+                    self.database.record_workflow_event(
+                        round_id, "B1", "blocked", '{"reason":"stop"}'
+                    )
+                else:
+                    self.database.record_workflow_failure(round_id, "B1", "stop")
+
+                for event, payload in (
+                    ("cycle_started", '{"cycle":1,"artifact":"content/drafts/x.md"}'),
+                    ("review_feedback", '{"cycle":1,"artifact":"content/drafts/x.md"}'),
+                    ("review_approved", '{"cycle":1,"artifact":"content/drafts/x.md"}'),
+                ):
+                    with self.subTest(event=event):
+                        with self.assertRaises(ValueError):
+                            self.database.record_workflow_event(round_id, "B1", event, payload)
+                self.assertEqual(
+                    self.database.latest_block_state(round_id, "B1")["event"], terminal
+                )
+
+    def test_persist_blocked_is_idempotent_and_preserves_completion(self):
+        from content_ops.orchestration import _persist_blocked
+
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        _persist_blocked(self.database, self.round_id, "B1", 1, "stop")
+        first = self.database.latest_block_state(self.round_id, "B1")
+        _persist_blocked(self.database, self.round_id, "B1", 1, "stop again")
+        second = self.database.latest_block_state(self.round_id, "B1")
+        self.assertEqual(first["id"], second["id"])
+
+        round_id = self.database.create_round("Pilar", "complete-round.md")
+        start_block_cycle(self.database, round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, round_id, "B1", "content/drafts/x.md", 1, "r", self.result())
+        complete_block(self.database, round_id, "B1", "content/drafts/x.md", 1)
+        _persist_blocked(self.database, round_id, "B1", 1, "late failure")
+        self.assertEqual(
+            self.database.latest_block_state(round_id, "B1")["event"], "block_completed"
+        )
+
     def test_resume_records_timeout_as_failed_and_never_advances(self):
         start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
         self.database.record_workflow_failure(self.round_id, "B1", "timeout", {"PASSWORD": "secret"})
@@ -497,10 +561,15 @@ class OrchestrationTests(unittest.TestCase):
         redacted = redact_event_payload({
             "message": "token=abc api_key = xyz password=last-secret",
             "nested": ["TOKEN=inner", {"safe": "api-key=another"}],
+            "structured": '{"api_key":"json-secret", "token": "json-token"}',
+            "yaml": "password: yaml-secret\nAuthorization: Bearer bearer-secret",
         })
 
         serialized = json.dumps(redacted)
-        for secret in ("abc", "xyz", "last-secret", "inner", "another"):
+        for secret in (
+            "abc", "xyz", "last-secret", "inner", "another", "json-secret",
+            "json-token", "yaml-secret", "bearer-secret",
+        ):
             self.assertNotIn(secret, serialized)
 
     def test_secret_artifact_is_blocked_before_review_and_completion(self):
@@ -515,6 +584,25 @@ class OrchestrationTests(unittest.TestCase):
         with self.assertRaises(WorkflowBlocked):
             complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
         self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
+
+    def test_structured_secret_artifacts_are_blocked_before_approval(self):
+        for content in (
+            '{"api_key": "json-secret"}',
+            "token: yaml-secret\npassword: yaml-password\n",
+            "Authorization: Bearer bearer-secret\n",
+        ):
+            with self.subTest(content=content):
+                self.artifact.write_text(content, encoding="utf-8")
+                start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+                with self.assertRaises(WorkflowBlocked):
+                    record_review(
+                        self.database, self.round_id, "B1", "content/drafts/x.md", 1,
+                        "revisor", self.result(),
+                    )
+                self.assertEqual(
+                    self.database.latest_block_state(self.round_id, "B1")["event"], "blocked"
+                )
+                self.round_id = self.database.create_round("Pilar", "next-round.md")
 
     def test_b2_selection_completes_without_a_file(self):
         self.database.replace_pillars([("IA aplicada", 1, ("post:1",))])

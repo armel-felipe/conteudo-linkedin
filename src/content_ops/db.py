@@ -582,6 +582,14 @@ class Database:
             round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
             if round_row is None or round_row["status"] != "open":
                 raise ValueError("Round is not open")
+            latest = connection.execute(
+                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1", (round_id, block)
+            ).fetchone()
+            if latest is not None and latest["event"] in {"blocked", "failed"}:
+                if event == "cycle_started":
+                    raise ValueError("Cannot restart a terminal block")
+                raise ValueError("Cannot mutate a terminal block")
             completed = {row["block"] for row in connection.execute(
                 "SELECT block FROM workflow_events WHERE round_id = ? AND event IN ('block_completed', 'human_completed')",
                 (round_id,),
@@ -634,6 +642,12 @@ class Database:
                 raise ValueError(f"Round {round_id} does not exist")
             if round_row["status"] != "open":
                 raise ValueError("Round is not open")
+            latest = connection.execute(
+                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1", (round_id, block)
+            ).fetchone()
+            if latest is not None and latest["event"] in {"blocked", "failed"}:
+                raise ValueError("Cannot mutate a terminal block")
             completed = {
                 row["block"] for row in connection.execute(
                     "SELECT block FROM workflow_events WHERE round_id = ? "

@@ -25,9 +25,12 @@ corrigidos no orquestrador híbrido.
 - Um ciclo com `review_approved`, `cycle_started` aprovado ou `block_completed`/`human_completed` não pode ser substituído por outro ciclo.
 - Feedback repetido persiste `blocked` antes de retornar o erro, e `resume_round()` permanece em `blocked` sem reprocessamento.
 - `record_human_completion` valida o ciclo B7 mais recente por `round_id`/`block`, exige correspondência explícita do artefato e persiste bloqueio para artefato ausente ou ilegível.
+- `record_review` e `record_workflow_event` rejeitam toda mutação após `blocked`/`failed`, incluindo aprovação genérica; falhas de parsing não acrescentam eventos terminais.
+- `_persist_blocked` é idempotente e preserva estados `blocked`, `failed`, `block_completed` e `human_completed`, evitando regressão após conclusão.
+- A detecção de artefatos cobre atribuições `NAME=value`, chaves JSON/YAML de `api_key`, `token` e `password`, e `Authorization: Bearer`; valores são redigidos antes de qualquer persistência e a aprovação é bloqueada.
 
 ## Verificação
 
-`python3.12 -m pytest -q`: 194 passed, 40 subtests passed.
+`python3.12 -m pytest -q`: 198 passed, 53 subtests passed.
 
 Também passaram `python3.12 -m compileall -q src tests`, `git diff --check` e `./contentctl --help`. O smoke manual em repositório temporário confirmou bloqueio do artefato e ausência do valor sensível no payload persistido.
