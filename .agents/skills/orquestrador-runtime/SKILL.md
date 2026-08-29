@@ -11,7 +11,7 @@ O orquestrador coordena os blocos processuais do pipeline editorial local. A cad
 1. Lê o estado (banco SQLite + pastas content/ + .env).
 2. Define a rodada: quais blocos rodam nesta chamada, validando pré-condições.
 3. Dispara executor → aguarda revisor → abre gate humano quando a chave APPROVAL_* exigir.
-4. Registra validações via `contentctl bloco-ok` e avança o estado.
+4. Registra as transições pelos comandos `workflow-review` e `workflow-block-complete`.
 
 ## Quando Usar / Quando NÃO Usar
 
@@ -54,12 +54,40 @@ B7 é sempre humano — não há chave.
 
 ## Ciclo de revisão (por bloco)
 
-1. Executor entrega artefato + dados de saída padronizados.
-2. Revisor lê o contrato do bloco (AGENT.md) + sua memory.md.
-3. Se memória ambígua/contraditória → revisor clarifica antes de revisar.
-4. Valida contra requisitos; decide aprovado ou feedback.
-5. Feedback → executor ajusta → revisor reavalia (loop).
-6. Aprovado → `contentctl bloco-ok <bloco> <artefato>` → orquestrador avança ou abre gate humano.
+O runtime não executa agentes implicitamente: cada executor e revisor é despachado
+explicitamente em uma nova chamada `task`. O limite é `ORCHESTRATOR_MAX_REVIEW_CYCLES`,
+com default `3`; uma configuração inválida bloqueia o fluxo (fail-closed).
+
+### Procedimento copiável
+
+Para cada bloco, o runtime deve executar exatamente esta sequência:
+
+1. Chamar `workflow-cycle-start` e guardar o id/ciclo retornado.
+2. Despachar o executor com `task`, carregando o caminho exato do contrato
+   `.agents/agents/<slug>-executor/AGENT.md` e `memory.md` quando existir. B2 é uma
+   seleção não-arquivo: seu `artifact_path` contém o nome exato do pilar aprovado e não
+   é resolvido no filesystem. Para B1 e B3, o executor pode declarar um `artifact_path`
+   futuro; a existência será exigida antes de review e completion.
+3. Exigir do executor somente JSON estruturado com `artifact_path` e `cycle`; executar
+   as verificações determinísticas do bloco.
+4. Despachar o revisor como um novo `task`, nunca reutilizando contexto, carregando os
+   caminhos exatos `.agents/agents/<slug>-revisor/AGENT.md` e
+   `.agents/agents/<slug>-revisor/memory.md`, além do estado atual e do artefato.
+5. Aceitar do revisor somente `ReviewResult` JSON:
+   `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
+   Resposta ausente, inválida ou
+   fora do schema é `invalid-response`: não avançar, não aprovar e fechar o fluxo.
+6. Chamar `workflow-review` com o `ReviewResult`. Se houver feedback, incluir o feedback completo
+   em uma nova tarefa `task` do executor, junto do contrato exato, estado e
+   artefato, e repetir desde a verificação determinística.
+7. Parar quando o ciclo atingir `ORCHESTRATOR_MAX_REVIEW_CYCLES`; sem aprovação até lá,
+   encerrar fail-closed, sem chamar comandos de transição.
+8. Somente após aprovação válida chamar `workflow-block-complete` e então avaliar o gate
+   humano `APPROVAL_*`. Nenhuma outra transição é permitida antes desses passos.
+
+Se o executor não retornar JSON válido, o artefato não existir, o revisor não retornar
+`ReviewResult` válido ou qualquer comando falhar, o estado fica fail-closed: registrar o
+   erro, não chamar `workflow-block-complete` e não avançar.
 
 ## Invocação
 
@@ -72,5 +100,7 @@ B7 é sempre humano — não há chave.
 
 - Pular o revisor: todo trabalho de executor passa por revisor antes de qualquer aprovação.
 - Pular B7: a escolha de ideias é sempre humana.
+- B7 é a exceção explícita: seleção humana não usa aprovação de revisor; registre
+  `workflow-human-complete` para persistir `human_completed` e liberar B8.
 - Publicar fora de approved/: o conteúdo publicado vem somente de content/approved/.
 - Sintetizar pesquisa: o stdout do LAST30DAYS_COMMAND é preservado verbatim.

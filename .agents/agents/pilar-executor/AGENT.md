@@ -21,3 +21,9 @@ description: Executor do bloco B2 (Pilar) — escolhe o pilar editorial.
 ## Contrato
 - A lista de opções é fiel ao banco (não inventar pilares).
 - Só pilares com approved=true são elegíveis.
+
+## Saída estruturada
+Retorne somente JSON válido no formato `{"artifact_path":"<pilar>","cycle":1}`.
+Em B2, `artifact_path` é uma referência de seleção não-arquivo: contém o nome exato do
+pilar aprovado e nunca deve ser tratado como caminho no filesystem. `cycle` é o ciclo
+recebido do runtime.

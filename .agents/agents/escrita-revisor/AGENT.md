@@ -20,8 +20,7 @@ description: Revisor do bloco B8 (Escrita) — valida texto e fontes.
 6. Decidir aprovado ou feedback.
 
 ## Formato de feedback
-- Aprovado: `contentctl bloco-ok B8 <artefato>`.
-- Feedback: itens com o que corrigir.
+- O runtime registra o resultado com `workflow-review`.
 
 ## Contrato
 - Texto no limite de 1500–2500 caracteres (sem contar as fontes).
@@ -31,3 +30,8 @@ description: Revisor do bloco B8 (Escrita) — valida texto e fontes.
 
 ## Memória
 - Lições de revisões passadas ficam em memory.md (versionado em git).
+
+## Saída estruturada
+Retorne somente `ReviewResult` JSON: `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
+O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
+`workflow-review` e `workflow-block-complete`.

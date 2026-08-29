@@ -17,6 +17,8 @@ description: Executor do bloco B8 (Escrita) — escreve o texto base do post.
 ## Formato de saída
 - Texto em `content/drafts/` (status `draft`).
 - Fontes: ≤5, com peso, referenciando as pesquisas.
+- Retorne somente JSON válido: `{"artifact_path":"content/drafts/<arquivo>.md","cycle":1}`.
+- `artifact_path` é o caminho do texto produzido e `cycle` é o ciclo recebido do runtime.
 
 ## Contrato
 - Texto no limite de 1500–2500 caracteres (sem contar as fontes).

@@ -56,3 +56,23 @@ OK
 ```
 
 No real network request was made; the Zernio client was a test double.
+
+## Follow-up reviewer fixes
+
+The orchestration protocol now persists sanitized `blocked` events for completion
+gates, cycle/order/round failures, unreadable artifacts during start or review,
+and automatic B7 approval attempts. `resume_round` returns `blocked` for an
+unknown round. `ReviewResult` feedback must be a non-empty list of objects with
+non-empty `contract`, `problem`, and `required_change`; approved results must
+have empty feedback.
+
+Regression coverage was added in `tests/test_orchestration.py`, with existing
+database fixtures updated to the stricter review schema.
+
+Verification: `python3.12 -m pytest -q` passed with 188 tests and 40 subtests;
+`python3.12 -m compileall -q src tests`, `git diff --check`, and
+`./contentctl --help` also passed.
+
+Concerns: an unknown round cannot receive an event because no valid foreign-key
+target exists; its mutation error remains preserved while `resume_round`
+returns `blocked`.

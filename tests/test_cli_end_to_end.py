@@ -149,16 +149,9 @@ class EditorialCliEndToEndTests(unittest.TestCase):
             ).fetchone()
         self.assertEqual(row[0], "Liderança e gestão de times")
 
-    def test_bloco_ok_registers_reviewer_validation(self):
-        output = self.run_cli(["bloco-ok", "B4", "research/ia.md"])
-
-        self.assertIn("Registered validation for B4", output)
-        with self.database._connect() as connection:
-            row = connection.execute(
-                "SELECT block, approved FROM block_validations WHERE block = ?", ("B4",)
-            ).fetchone()
-        self.assertEqual(row[0], "B4")
-        self.assertEqual(row[1], 1)
+    def test_bloco_ok_requires_workflow_context(self):
+        with self.assertRaises(SystemExit):
+            self.run_cli(["bloco-ok", "B4", "research/ia.md"])
 
     def test_publish_complete_moves_approved_to_published(self):
         from content_ops.markdown import read_post_record, write_post_record

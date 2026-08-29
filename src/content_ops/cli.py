@@ -1,5 +1,7 @@
 """Command-line entry point for local content operations."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import re
@@ -34,6 +36,31 @@ def build_parser() -> argparse.ArgumentParser:
     blocks = commands.add_parser("bloco-ok", help="Register a reviewer's block validation")
     blocks.add_argument("bloco")
     blocks.add_argument("artefato")
+    blocks.add_argument("--round", dest="round_id", type=int)
+    blocks.add_argument("--cycle", type=int)
+    cycle_start = commands.add_parser("workflow-cycle-start", help="Start a workflow block cycle")
+    cycle_start.add_argument("round_id", type=int)
+    cycle_start.add_argument("block")
+    cycle_start.add_argument("artifact")
+    workflow_review = commands.add_parser("workflow-review", help="Persist a structured reviewer receipt")
+    workflow_review.add_argument("round_id", type=int)
+    workflow_review.add_argument("block")
+    workflow_review.add_argument("artifact")
+    workflow_review.add_argument("cycle", type=int)
+    workflow_review.add_argument("reviewer")
+    workflow_review.add_argument("result")
+    block_complete = commands.add_parser("workflow-block-complete", help="Complete an approved workflow block")
+    block_complete.add_argument("round_id", type=int)
+    block_complete.add_argument("block")
+    block_complete.add_argument("artifact")
+    block_complete.add_argument("cycle", type=int)
+    human_complete = commands.add_parser("workflow-human-complete", help="Persist mandatory human B7 selection")
+    human_complete.add_argument("round_id", type=int)
+    human_complete.add_argument("block")
+    human_complete.add_argument("artifact")
+    human_complete.add_argument("selection")
+    workflow_resume = commands.add_parser("workflow-resume", help="Show the next safe workflow action")
+    workflow_resume.add_argument("round_id", type=int)
     pillars = commands.add_parser("pillars", help="Propose and approve editorial pillars")
     pillar_commands = pillars.add_subparsers(dest="pillars_command")
     pillar_commands.add_parser("propose", help="Propose pillars from published history")
@@ -127,6 +154,42 @@ def main(
     load_env(repository_root / ".env")
     parser = build_parser()
     arguments = parser.parse_args(argv)
+
+    if arguments.command in {"workflow-cycle-start", "workflow-review", "workflow-block-complete", "workflow-human-complete", "workflow-resume"}:
+        from content_ops.db import Database
+        from content_ops.orchestration import (
+            InvalidReviewResult,
+            WorkflowBlocked,
+            complete_block,
+            record_human_completion,
+            record_review,
+            start_block_cycle,
+            resume_round,
+        )
+
+        database = Database(repository_root / "data" / "content.db")
+        database.initialize()
+        try:
+            if arguments.command == "workflow-cycle-start":
+                print(start_block_cycle(database, arguments.round_id, arguments.block, arguments.artifact))
+                return
+            if arguments.command == "workflow-resume":
+                print(resume_round(database, arguments.round_id))
+                return
+            if arguments.command == "workflow-review":
+                record_review(database, arguments.round_id, arguments.block, arguments.artifact,
+                              arguments.cycle, arguments.reviewer, arguments.result)
+                print(f"Recorded review for {arguments.block} cycle {arguments.cycle}.")
+                return
+            if arguments.command == "workflow-human-complete":
+                record_human_completion(database, arguments.round_id, arguments.block, arguments.artifact, arguments.selection)
+                print(f"Completed human selection for {arguments.block}.")
+                return
+            complete_block(database, arguments.round_id, arguments.block, arguments.artifact, arguments.cycle)
+            print(f"Completed {arguments.block}.")
+            return
+        except (InvalidReviewResult, WorkflowBlocked, ValueError) as error:
+            parser.error(str(error))
 
     is_reconcile = (
         arguments.command == "schedule" and arguments.post_id == "reconcile"
@@ -350,7 +413,13 @@ def main(
 
         database = Database(repository_root / "data" / "content.db")
         database.initialize()
-        database.record_block_validation(arguments.bloco, arguments.artefato)
+        if arguments.round_id is None or arguments.cycle is None:
+            parser.error("bloco-ok requires --round and --cycle; use workflow-block-complete")
+        from content_ops.orchestration import complete_block
+        try:
+            complete_block(database, arguments.round_id, arguments.bloco, arguments.artefato, arguments.cycle)
+        except ValueError as error:
+            parser.error(str(error))
         print(f"Registered validation for {arguments.bloco}.")
         return
 

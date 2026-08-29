@@ -130,7 +130,7 @@ Require exactly `decision`, `artifact`, `feedback`, and `checks`; require `feedb
 
 - [ ] **Step 4: Add guarded CLI commands**
 
-`workflow-cycle-start` records executor start and returns a cycle number. `workflow-review` parses and persists the reviewer receipt only after the artifact and cycle match. `workflow-block-complete` calls `can_complete_block` and records completion only after an approved receipt. Preserve existing `bloco-ok` behavior for compatibility, but make it delegate to the same guard rather than blindly inserting a row.
+`workflow-cycle-start` records executor start and returns a cycle number. For B1-B3 it may record a future artifact path; `workflow-review` and `workflow-block-complete` require that artifact to exist and match the cycle. `workflow-review` parses and persists the reviewer receipt only after the artifact and cycle match. `workflow-block-complete` calls `can_complete_block` and records completion only after an approved receipt. The legacy `bloco-ok` command is not part of this protocol.
 
 - [ ] **Step 5: Run focused and full tests**
 
@@ -164,7 +164,7 @@ git commit -m "feat: enforce fail-closed workflow gates"
 **Interfaces:**
 - Runtime consumes the CLI commands from Task 2 and OpenCode `task`.
 - Runtime requires every reviewer response to match `ReviewResult`.
-- Runtime uses `ORCHESTRATOR_MAX_REVIEW_CYCLES` with default `3`.
+- Runtime uses `ORCHESTRATOR_MAX_REVIEW_CYCLES` with default `3`; invalid or non-positive values fail closed.
 
 - [ ] **Step 1: Add failing structural tests**
 
@@ -182,7 +182,7 @@ Add a copyable procedure: call `workflow-cycle-start`; dispatch the executor wit
 
 - [ ] **Step 4: Add machine-readable reviewer output to all agent contracts**
 
-Keep each block's domain rules unchanged, but require the reviewer to return only the approved/feedback JSON schema and require the executor to report its artifact path and cycle. Explicitly prohibit reviewers from editing artifacts or registering their own approval.
+Keep each block's domain rules unchanged, but require the reviewer to return only the `decision/artifact/feedback/checks` `ReviewResult` schema and require the executor to report its artifact path and cycle starting at `1`. Explicitly prohibit reviewers from editing artifacts or registering their own approval.
 
 - [ ] **Step 5: Run structural and full tests**
 

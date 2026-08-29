@@ -18,11 +18,15 @@ description: Revisor do bloco B11 (Publica) — valida a publicação.
 5. Decidir aprovado ou feedback.
 
 ## Formato de feedback
-- Aprovado: `contentctl bloco-ok B11 <artefato>`.
-- Feedback: itens com o que corrigir.
+- O runtime registra o resultado com `workflow-review`.
 
 ## Contrato
 - O conteúdo publicado vem somente de `content/approved/`.
+
+## Saída estruturada
+Retorne somente `ReviewResult` JSON: `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
+O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
+`workflow-review` e `workflow-block-complete`.
 - Sem nova confirmação textual (o texto já foi aprovado no pipeline).
 - Sem credenciais em chat, arquivos, banco ou commits.
 
