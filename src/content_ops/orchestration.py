@@ -299,7 +299,22 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
             )}
             validate_block_order(completed, block)
             if cycle > _max_review_cycles():
-                raise WorkflowBlocked(f"Review cycle limit reached for {block}")
+                latest = connection.execute(
+                    "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                    "ORDER BY id DESC LIMIT 1", (round_id, block)
+                ).fetchone()
+                if latest is None or latest["event"] not in {"blocked", "failed"}:
+                    raise WorkflowBlocked(f"Review cycle limit reached for {block}")
+            latest = connection.execute(
+                "SELECT event, payload_json FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1", (round_id, block)
+            ).fetchone()
+            if latest is not None:
+                latest_payload = json.loads(latest["payload_json"])
+                if latest["event"] in {"review_approved", "block_completed", "human_completed"}:
+                    raise WorkflowBlocked(f"Block {block} already has an approval or completion")
+                if latest["event"] == "cycle_started" and latest_payload.get("review_decision") == "approved":
+                    raise WorkflowBlocked(f"Block {block} already has an approval or completion")
             connection.execute(
                 "INSERT INTO block_cycles (round_id, block, cycle, artifact_path) VALUES (?, ?, ?, ?)",
                 (round_id, block, cycle, artifact_path),
@@ -336,6 +351,20 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
     if block == "B7" and result.decision == "approved":
         _persist_blocked(database, round_id, block, cycle, "B7 cannot be approved automatically")
         raise WorkflowBlocked("B7 cannot be approved automatically")
+    if result.decision == "feedback":
+        with database.transaction() as connection:
+            repeated = False
+            for row in connection.execute(
+                "SELECT result_json FROM review_receipts JOIN block_cycles ON block_cycles.id = review_receipts.cycle_id "
+                "WHERE block_cycles.round_id = ? AND block_cycles.block = ? AND block_cycles.artifact_path = ?",
+                (round_id, block, artifact_path),
+            ):
+                if _feedback_hash(parse_review_result(row["result_json"])) == _feedback_hash(result):
+                    repeated = True
+                    break
+        if repeated:
+            _persist_blocked(database, round_id, block, cycle, "Repeated review result indicates an unproductive loop")
+            raise WorkflowBlocked("Repeated review result indicates an unproductive loop")
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None or round_row["status"] != "open":
@@ -365,14 +394,6 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
             "AND event IN ('block_completed', 'human_completed')", (round_id,)
         )}
         validate_block_order(completed, block)
-        for row in connection.execute(
-            "SELECT result_json FROM review_receipts JOIN block_cycles ON block_cycles.id = review_receipts.cycle_id "
-            "WHERE block_cycles.round_id = ? AND block_cycles.block = ? AND block_cycles.artifact_path = ?",
-            (round_id, block, artifact_path),
-        ):
-            prior = parse_review_result(row["result_json"])
-            if result.decision == "feedback" and _feedback_hash(prior) == _feedback_hash(result):
-                raise WorkflowBlocked("Repeated review result indicates an unproductive loop")
         stored_result = json.dumps(
             redact_event_payload(json.loads(raw)), ensure_ascii=False, sort_keys=True
         )
@@ -394,33 +415,37 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
 
 def record_human_completion(database: Database, round_id: int, block: str, artifact_path: str, selection: str) -> int:
     """Persist the mandatory human B7 selection without a reviewer receipt."""
-    if block != "B7":
-        raise WorkflowBlocked("Human completion is only available for B7")
-    if not selection:
-        raise WorkflowBlocked("B7 human selection is required")
-    _artifact_path(database, artifact_path)
-    with database.transaction() as connection:
-        round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
-        if round_row is None or round_row["status"] != "open":
-            raise WorkflowBlocked("Round is not active")
-        completed = {row["block"] for row in connection.execute(
-            "SELECT block FROM workflow_events WHERE round_id = ? AND event IN ('block_completed', 'human_completed')", (round_id,)
-        )}
-        validate_block_order(completed, block)
-        cycle_row = connection.execute(
-            "SELECT cycle FROM block_cycles "
-            "WHERE round_id = ? AND block = ? AND artifact_path = ? "
-            "ORDER BY cycle DESC LIMIT 1",
-            (round_id, block, artifact_path),
-        ).fetchone()
-        if cycle_row is None:
-            raise WorkflowBlocked("No matching B7 block cycle")
-        event_id = _event(connection, round_id, block, "human_completed", {
+    try:
+        if block != "B7":
+            raise WorkflowBlocked("Human completion is only available for B7")
+        if not selection:
+            raise WorkflowBlocked("B7 human selection is required")
+        _artifact_path(database, artifact_path)
+        with database.transaction() as connection:
+            round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+            if round_row is None or round_row["status"] != "open":
+                raise WorkflowBlocked("Round is not active")
+            completed = {row["block"] for row in connection.execute(
+                "SELECT block FROM workflow_events WHERE round_id = ? AND event IN ('block_completed', 'human_completed')", (round_id,)
+            )}
+            validate_block_order(completed, block)
+            cycle_row = connection.execute(
+                "SELECT cycle, artifact_path FROM block_cycles "
+                "WHERE round_id = ? AND block = ? ORDER BY cycle DESC LIMIT 1",
+                (round_id, block),
+            ).fetchone()
+            if cycle_row is None:
+                raise WorkflowBlocked("No matching B7 block cycle")
+            if cycle_row["artifact_path"] != artifact_path:
+                raise WorkflowBlocked("B7 artifact does not match the latest block cycle")
+            return _event(connection, round_id, block, "human_completed", {
                 "artifact": artifact_path,
                 "cycle": cycle_row["cycle"],
                 "selection": selection,
             })
-        return event_id
+    except WorkflowBlocked as error:
+        _persist_blocked(database, round_id, block, 0, str(error))
+        raise
 
 
 def complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> int:
