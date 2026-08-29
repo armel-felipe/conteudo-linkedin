@@ -64,9 +64,10 @@ Para cada bloco, o runtime deve executar exatamente esta sequência:
 
 1. Chamar `workflow-cycle-start` e guardar o id/ciclo retornado.
 2. Despachar o executor com `task`, carregando o caminho exato do contrato
-   `.agents/agents/<slug>-executor/AGENT.md` e `memory.md` quando existir. Para B1, B2 e
-   B3, o executor pode declarar um `artifact_path` futuro; a existência será exigida antes
-   de review e completion.
+   `.agents/agents/<slug>-executor/AGENT.md` e `memory.md` quando existir. B2 é uma
+   seleção não-arquivo: seu `artifact_path` contém o nome exato do pilar aprovado e não
+   é resolvido no filesystem. Para B1 e B3, o executor pode declarar um `artifact_path`
+   futuro; a existência será exigida antes de review e completion.
 3. Exigir do executor somente JSON estruturado com `artifact_path` e `cycle`; executar
    as verificações determinísticas do bloco.
 4. Despachar o revisor como um novo `task`, nunca reutilizando contexto, carregando os
@@ -99,5 +100,7 @@ Se o executor não retornar JSON válido, o artefato não existir, o revisor nã
 
 - Pular o revisor: todo trabalho de executor passa por revisor antes de qualquer aprovação.
 - Pular B7: a escolha de ideias é sempre humana.
+- B7 é a exceção explícita: seleção humana não usa aprovação de revisor; registre
+  `workflow-human-complete` para persistir `human_completed` e liberar B8.
 - Publicar fora de approved/: o conteúdo publicado vem somente de content/approved/.
 - Sintetizar pesquisa: o stdout do LAST30DAYS_COMMAND é preservado verbatim.

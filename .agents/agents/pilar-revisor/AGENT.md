@@ -29,5 +29,6 @@ description: Revisor do bloco B2 (Pilar) — valida a escolha do pilar.
 
 ## Saída estruturada
 Retorne somente `ReviewResult` JSON: `{"decision":"approved|feedback","artifact":"<path>","feedback":["..."],"checks":[{"name":"...","status":"...","evidence":"..."}]}`.
+Para B2, `<path>` é a referência não-arquivo com o nome exato do pilar selecionado.
 O revisor não pode editar artefatos nem registrar sua própria aprovação; o runtime controla
 `workflow-review` e todas as transições.
