@@ -6,3 +6,4 @@ data/imports/*
 !data/imports/.gitkeep
 __pycache__/
 .DS_Store
+.worktrees/
