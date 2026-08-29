@@ -24,3 +24,7 @@ description: Executor do bloco B5 (Cruzamento) — cruza as pesquisas da rodada.
 ## Contrato
 - O documento cobre TODAS as pesquisas da rodada.
 - Cada afirmação referencia a pesquisa de origem (path).
+
+## Saída estruturada
+Retorne somente JSON válido no formato `{"artifact_path":"content/drafts/cruzamento-<rodada>.md","cycle":1}`.
+`artifact_path` é o documento produzido e `cycle` é o ciclo recebido do runtime.

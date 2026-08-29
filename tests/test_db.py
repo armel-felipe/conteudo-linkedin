@@ -10,9 +10,35 @@ class DatabaseTests(unittest.TestCase):
         from content_ops.db import Database
 
         self.temporary_directory = tempfile.TemporaryDirectory()
-        self.path = Path(self.temporary_directory.name) / "content.db"
+        self.path = Path(self.temporary_directory.name) / "data" / "content.db"
         self.db = Database(self.path)
         self.db.initialize()
+        self.artifact = self.path.parent.parent / "content" / "drafts" / "x.md"
+        self.artifact.parent.mkdir(parents=True)
+        self.artifact.write_text("draft", encoding="utf-8")
+
+    def complete_prior_blocks(self, round_id, blocks):
+        import json
+        from content_ops.orchestration import complete_block, record_review, start_block_cycle
+
+        result = json.dumps({
+            "decision": "approved",
+            "artifact": "content/drafts/x.md",
+            "feedback": [],
+            "checks": [{"name": "quality", "status": "pass", "evidence": "ok"}],
+        })
+        for block in blocks:
+            reference = "Pilar escolhido" if block == "B2" else "content/drafts/x.md"
+            if block == "B2":
+                self.db.replace_pillars([("Pilar escolhido", 1, ("post:1",))])
+                self.db.approve_pillar("Pilar escolhido")
+            block_result = json.loads(result)
+            block_result["artifact"] = reference
+            start_block_cycle(self.db, round_id, block, reference)
+            record_review(
+                self.db, round_id, block, reference, 1, "revisor", json.dumps(block_result)
+            )
+            complete_block(self.db, round_id, block, reference, 1)
 
     def tearDown(self):
         self.temporary_directory.cleanup()
@@ -27,6 +53,222 @@ class DatabaseTests(unittest.TestCase):
             }
 
         self.assertTrue({"posts", "pillars", "research_reports", "ideas"} <= tables)
+
+    def test_initialize_creates_orchestration_tables(self):
+        with sqlite3.connect(self.path) as connection:
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
+
+        self.assertTrue({"workflow_events", "review_receipts"} <= tables)
+
+    def test_orchestration_writes_are_durable(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":[{"contract":"quality","problem":"incomplete","required_change":"complete it"}],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(
+            cycle_id, "cruzamento-revisor", "feedback", result
+        )
+        with sqlite3.connect(self.path) as connection:
+            self.assertIsNotNone(
+                connection.execute(
+                    "SELECT 1 FROM review_receipts WHERE cycle_id = ?", (cycle_id,)
+                ).fetchone()
+            )
+            self.assertEqual(connection.execute(
+                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? ORDER BY id DESC LIMIT 1",
+                (round_id, "B5"),
+            ).fetchone()[0], "cycle_started")
+
+    def test_orchestration_review_approval_is_scoped_to_round_block_artifact_and_cycle(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(
+            cycle_id, "cruzamento-revisor", "approved", result
+        )
+
+        self.assertTrue(
+            self.db.review_is_approved(round_id, "B5", "content/drafts/x.md", 1)
+        )
+        self.assertFalse(self.db.review_is_approved(round_id, "B6", "content/drafts/x.md", 1))
+        self.assertFalse(self.db.review_is_approved(round_id, "B5", "other.md", 1))
+        self.assertFalse(self.db.review_is_approved(round_id, "B5", "content/drafts/x.md", 2))
+
+    def test_generic_cycle_start_cannot_regress_an_approved_block(self):
+        from content_ops.orchestration import resume_round
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "approved", result)
+
+        self.assertEqual(resume_round(self.db, round_id), "complete:B5")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(
+                round_id,
+                "B5",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
+        self.assertEqual(resume_round(self.db, round_id), "complete:B5")
+
+    def test_generic_cycle_start_rejects_a_cycle_with_feedback_receipt(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":[{"contract":"quality","problem":"incomplete","required_change":"complete it"}],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "feedback", result)
+
+        with self.assertRaisesRegex(ValueError, "Cannot restart a cycle with review"):
+            self.db.record_workflow_event(
+                round_id,
+                "B5",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
+
+    def test_generic_cycle_start_rejects_a_blocked_terminal_state(self):
+        from content_ops.orchestration import WorkflowBlocked
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+        self.db.record_workflow_event(round_id, "B1", "blocked", '{"reason":"stop"}')
+
+        with self.assertRaisesRegex(ValueError, "Cannot restart a terminal block"):
+            self.db.record_workflow_event(
+                round_id,
+                "B1",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
+        with self.assertRaises(WorkflowBlocked):
+            self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+
+    def test_generic_cycle_start_rejects_a_failed_terminal_state(self):
+        from content_ops.orchestration import WorkflowBlocked
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+        self.db.record_workflow_failure(round_id, "B1", "stop")
+
+        with self.assertRaisesRegex(ValueError, "Cannot restart a terminal block"):
+            self.db.record_workflow_event(
+                round_id,
+                "B1",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
+        with self.assertRaises(WorkflowBlocked):
+            self.db.start_block_cycle(round_id, "B1", "content/drafts/x.md")
+
+    def test_orchestration_constraints_reject_invalid_decision_and_json(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+
+        with self.assertRaises(ValueError):
+            self.db.record_review_result(cycle_id, "revisor", "unknown", "{}")
+        with self.assertRaises(ValueError):
+            self.db.record_review_result(cycle_id, "revisor", "approved", "not-json")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(round_id, "B5", "bad_payload", "not-json")
+
+    def test_orchestration_constraints_enforce_uniqueness_and_foreign_keys(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+
+        with self.db._connect() as connection:
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO block_cycles "
+                    "(round_id, block, cycle, artifact_path) VALUES (?, ?, ?, ?)",
+                    (round_id, "B5", 1, "content/drafts/x.md"),
+                )
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO review_receipts "
+                    "(cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
+                    (999, "revisor", "approved", "{}"),
+                )
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO workflow_events "
+                    "(round_id, block, event, payload_json) VALUES (?, ?, ?, ?)",
+                    (999, "B5", "event", "{}"),
+                )
+
+        self.assertIsInstance(cycle_id, int)
+
+    def test_public_workflow_apis_reject_unscoped_completion_and_closed_round(self):
+        from content_ops.orchestration import WorkflowBlocked, record_human_completion, start_block_cycle
+
+        artifact = self.path.parent.parent / "artifact.md"
+        artifact.write_text("draft", encoding="utf-8")
+        round_id = self.db.create_round("Pilar", "round.md")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(round_id, "B1", "block_completed")
+        with self.assertRaises(ValueError):
+            self.db.record_block_validation("B1", "artifact.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4", "B5", "B6"))
+        start_block_cycle(self.db, round_id, "B7", "artifact.md")
+        record_human_completion(self.db, round_id, "B7", "artifact.md", "idea-1")
+        self.complete_prior_blocks(round_id, ("B8", "B10", "B9", "B11"))
+        self.db.close_round(round_id)
+        with self.assertRaises(WorkflowBlocked):
+            self.db.record_review_result(
+                1,
+                "revisor",
+                "feedback",
+                '{"decision":"feedback","artifact":"artifact.md","feedback":[{"contract":"quality","problem":"incomplete","required_change":"complete it"}],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}',
+            )
+
+    def test_latest_block_state_returns_latest_event(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.assertIsNone(self.db.latest_block_state(round_id, "B5"))
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(round_id, "B5", "cycle_started")
+        self.assertIsNone(self.db.latest_block_state(round_id, "B5"))
+
+    def test_workflow_failure_event_is_redacted_and_durable(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        event_id = self.db.record_workflow_failure(
+            round_id, "B1", "executor failed", {"SERVICE_API_KEY": "secret", "safe": "ok"}
+        )
+
+        self.assertIsInstance(event_id, int)
+        state = self.db.latest_block_state(round_id, "B1")
+        self.assertEqual(state["event"], "failed")
+        self.assertNotIn("secret", state["payload_json"])
+        self.assertIn("[REDACTED]", state["payload_json"])
+
+    def test_workflow_failure_requires_open_known_canonical_round_state(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_failure(round_id, "NOPE", "failure")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_failure(round_id, "B2", "failure")
+
+        with sqlite3.connect(self.path) as connection:
+            connection.execute("UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,))
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_failure(round_id, "B1", "failure")
+
+    def test_resume_closed_incomplete_round_is_blocked(self):
+        from content_ops.orchestration import WorkflowBlocked, resume_round
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        with sqlite3.connect(self.path) as connection:
+            connection.execute("UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,))
+
+        self.assertEqual(resume_round(self.db, round_id), "blocked")
 
     def test_upsert_is_idempotent_by_external_id(self):
         self.db.upsert_post("linkedin:1", "A", "published")
@@ -244,6 +486,20 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(rounds[0]["pillar"], "Liderança e gestão de times")
         self.assertEqual(rounds[0]["status"], "open")
 
+        with self.assertRaises(ValueError):
+            self.db.close_round(round_id)
+        self.assertEqual(self.db.list_rounds()[0]["status"], "open")
+
+    def test_close_round_requires_all_blocks_and_human_b7_completion(self):
+        from content_ops.orchestration import record_human_completion
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4", "B5", "B6"))
+        self.db.start_block_cycle(round_id, "B7", "content/drafts/x.md")
+        with self.assertRaises(ValueError):
+            self.db.close_round(round_id)
+        record_human_completion(self.db, round_id, "B7", "content/drafts/x.md", "idea-1")
+        self.complete_prior_blocks(round_id, ("B8", "B10", "B9", "B11"))
         self.db.close_round(round_id)
         self.assertEqual(self.db.list_rounds()[0]["status"], "closed")
 
@@ -288,7 +544,12 @@ class DatabaseTests(unittest.TestCase):
         self.assertIsNone(pillar)
 
     def test_block_validation_records_reviewer_approval(self):
-        self.db.record_block_validation("B4", "research/lideranca-times.md")
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3"))
+        cycle_id = self.db.start_block_cycle(round_id, "B4", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "approved", result)
+        self.db.record_block_validation("B4", "content/drafts/x.md", round_id, 1)
 
         with sqlite3.connect(self.path) as connection:
             row = connection.execute(
@@ -296,8 +557,39 @@ class DatabaseTests(unittest.TestCase):
                 ("B4",),
             ).fetchone()
         self.assertEqual(row[0], "B4")
-        self.assertEqual(row[1], "research/lideranca-times.md")
+        self.assertEqual(row[1], "content/drafts/x.md")
         self.assertEqual(row[2], 1)
+
+    def test_block_validation_rolls_back_completion_when_compatibility_insert_fails(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3"))
+        cycle_id = self.db.start_block_cycle(round_id, "B4", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "approved", result)
+        with sqlite3.connect(self.path) as connection:
+            connection.execute(
+                """
+                CREATE TRIGGER reject_compatibility_validation
+                BEFORE INSERT ON block_validations
+                WHEN NEW.block = 'B4'
+                BEGIN
+                    SELECT RAISE(ABORT, 'compatibility insert failed');
+                END
+                """
+            )
+
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.record_block_validation("B4", "content/drafts/x.md", round_id, 1)
+
+        with sqlite3.connect(self.path) as connection:
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM workflow_events WHERE round_id = ? AND block = ? AND event = 'block_completed'",
+                (round_id, "B4"),
+            ).fetchone())
+            self.assertIsNone(connection.execute(
+                "SELECT 1 FROM block_validations WHERE block = ?",
+                ("B4",),
+            ).fetchone())
 
     def test_create_idea_stores_multi_research_sources(self):
         self.db.create_research_report("IA", "research/ia.md", pillar="IA aplicada")

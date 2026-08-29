@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 from content_ops.models import ALLOWED_POST_TRANSITIONS, PostStatus
 
 
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
 
 
 @dataclass(frozen=True)
@@ -49,6 +49,7 @@ class Database:
                 self._migrate_to_v4,
                 self._migrate_to_v5,
                 self._migrate_to_v6,
+                self._migrate_to_v7,
             )
             for target_version in range(version + 1, CURRENT_SCHEMA_VERSION + 1):
                 migrations[target_version - 1](connection)
@@ -473,10 +474,201 @@ class Database:
 
     def close_round(self, round_id: int) -> None:
         """Mark a round as closed (all its blocks finished)."""
+        from content_ops.orchestration import BLOCK_ORDER
+
         with self._connect() as connection:
+            round_row = connection.execute(
+                "SELECT status FROM rounds WHERE id = ?", (round_id,)
+            ).fetchone()
+            if round_row is None:
+                raise ValueError(f"Round {round_id} does not exist")
+            completed = {
+                row["block"]
+                for row in connection.execute(
+                    "SELECT block FROM workflow_events "
+                    "WHERE round_id = ? AND event IN ('block_completed', 'human_completed')",
+                    (round_id,),
+                )
+            }
+            missing = [block for block in BLOCK_ORDER if block not in completed]
+            if missing:
+                raise ValueError(f"Round cannot close; incomplete blocks: {', '.join(missing)}")
             connection.execute(
                 "UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,)
             )
+
+    def start_block_cycle(self, round_id: int, block: str, artifact_path: str) -> int:
+        """Start the next review cycle for a block artifact."""
+        from content_ops.orchestration import start_block_cycle
+
+        cycle = start_block_cycle(self, round_id, block, artifact_path)
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ?",
+                (round_id, block, cycle),
+            ).fetchone()[0]
+
+    def record_review_result(
+        self, cycle_id: int, reviewer_agent: str, decision: str, result_json: str
+    ) -> None:
+        """Persist one review receipt for a previously started block cycle."""
+        from content_ops.orchestration import record_review, parse_review_result
+
+        result = parse_review_result(result_json)
+        if result.decision != decision:
+            raise ValueError("Review decision does not match result JSON")
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT round_id, block, artifact_path, cycle FROM block_cycles WHERE id = ?",
+                (cycle_id,),
+            ).fetchone()
+        if row is None:
+            raise ValueError(f"Block cycle {cycle_id} does not exist")
+        record_review(self, row["round_id"], row["block"], row["artifact_path"], row["cycle"], reviewer_agent, result_json)
+
+    def review_is_approved(
+        self, round_id: int, block: str, artifact_path: str, cycle: int
+    ) -> bool:
+        """Return whether the exact block cycle has an approval receipt."""
+        with self.transaction() as connection:
+            return connection.execute(
+                """
+                SELECT 1
+                FROM review_receipts
+                JOIN block_cycles ON block_cycles.id = review_receipts.cycle_id
+                WHERE block_cycles.round_id = ?
+                  AND block_cycles.block = ?
+                  AND block_cycles.artifact_path = ?
+                  AND block_cycles.cycle = ?
+                  AND review_receipts.decision = 'approved'
+                LIMIT 1
+                """,
+                (round_id, block, artifact_path, cycle),
+            ).fetchone() is not None
+
+    def record_workflow_event(
+        self, round_id: int, block: str, event: str, payload_json: str = "{}"
+    ) -> int:
+        """Persist only scoped lifecycle events; completion has dedicated APIs."""
+        from content_ops.orchestration import (
+            BLOCK_ORDER,
+            _validate_reference,
+            redact_event_payload,
+            validate_block_order,
+        )
+
+        if event in {"block_completed", "human_completed"}:
+            raise ValueError(
+                "Use workflow-block-complete or workflow-human-complete APIs for this event"
+            )
+        if event not in {"cycle_started", "review_approved", "review_feedback", "failed", "blocked"}:
+            raise ValueError("Unsupported workflow event")
+        try:
+            payload = json.loads(payload_json)
+        except (TypeError, json.JSONDecodeError):
+            raise ValueError("Workflow event payload must be valid JSON") from None
+        if not isinstance(payload, dict):
+            raise ValueError("Workflow event payload must be an object")
+        if block not in BLOCK_ORDER:
+            raise ValueError(f"Unknown workflow block: {block}")
+        if event in {"cycle_started", "review_approved", "review_feedback"}:
+            if not isinstance(payload.get("cycle"), int) or not isinstance(payload.get("artifact"), str):
+                raise ValueError("Cycle and review events require cycle and artifact")
+            _validate_reference(self, block, payload["artifact"], require_exists=event != "cycle_started")
+        if event in {"failed", "blocked"}:
+            if not isinstance(payload.get("reason"), str) or not payload["reason"]:
+                raise ValueError("Failure events require a non-empty reason")
+        with self.transaction() as connection:
+            round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+            if round_row is None or round_row["status"] != "open":
+                raise ValueError("Round is not open")
+            latest = connection.execute(
+                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1", (round_id, block)
+            ).fetchone()
+            if latest is not None and latest["event"] in {"blocked", "failed"}:
+                if event == "cycle_started":
+                    raise ValueError("Cannot restart a terminal block")
+                raise ValueError("Cannot mutate a terminal block")
+            completed = {row["block"] for row in connection.execute(
+                "SELECT block FROM workflow_events WHERE round_id = ? AND event IN ('block_completed', 'human_completed')",
+                (round_id,),
+            )}
+            validate_block_order(completed, block)
+            if event == "cycle_started":
+                latest = connection.execute(
+                    "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                    "ORDER BY id DESC LIMIT 1",
+                    (round_id, block),
+                ).fetchone()
+                if latest is not None and latest["event"] in {"blocked", "failed"}:
+                    raise ValueError("Cannot restart a terminal block")
+            if event in {"cycle_started", "review_approved", "review_feedback"}:
+                cycle_row = connection.execute(
+                    "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
+                    (round_id, block, payload["cycle"], payload["artifact"]),
+                ).fetchone()
+                if cycle_row is None:
+                    raise ValueError("No matching block cycle")
+                if event == "cycle_started" and connection.execute(
+                    "SELECT 1 FROM review_receipts WHERE cycle_id = ? LIMIT 1",
+                    (cycle_row["id"],),
+                ).fetchone():
+                    raise ValueError("Cannot restart a cycle with review")
+                if event in {"review_approved", "review_feedback"}:
+                    receipt = connection.execute(
+                        "SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = ? LIMIT 1",
+                        (cycle_row["id"], "approved" if event == "review_approved" else "feedback"),
+                    ).fetchone()
+                    if receipt is None:
+                        raise ValueError("Review events require a matching review receipt")
+            return connection.execute(
+                "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, ?, ?)",
+                (round_id, block, event, json.dumps(redact_event_payload(payload), ensure_ascii=False, sort_keys=True)),
+            ).lastrowid
+
+    def record_workflow_failure(
+        self, round_id: int, block: str, reason: str, details: dict | None = None
+    ) -> int:
+        """Persist a sanitized failure marker so restart cannot infer progress."""
+        from content_ops.orchestration import redact_event_payload, validate_block_order
+
+        payload = redact_event_payload({"reason": reason, "details": details or {}})
+        with self.transaction() as connection:
+            round_row = connection.execute(
+                "SELECT status FROM rounds WHERE id = ?", (round_id,)
+            ).fetchone()
+            if round_row is None:
+                raise ValueError(f"Round {round_id} does not exist")
+            if round_row["status"] != "open":
+                raise ValueError("Round is not open")
+            latest = connection.execute(
+                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1", (round_id, block)
+            ).fetchone()
+            if latest is not None and latest["event"] in {"blocked", "failed"}:
+                raise ValueError("Cannot mutate a terminal block")
+            completed = {
+                row["block"] for row in connection.execute(
+                    "SELECT block FROM workflow_events WHERE round_id = ? "
+                    "AND event IN ('block_completed', 'human_completed')", (round_id,)
+                )
+            }
+            validate_block_order(completed, block)
+            return connection.execute(
+                "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'failed', ?)",
+                (round_id, block, json.dumps(payload, ensure_ascii=False, sort_keys=True)),
+            ).lastrowid
+
+    def latest_block_state(self, round_id: int, block: str) -> sqlite3.Row | None:
+        """Return the latest event for a block, or none when it has no events."""
+        with self.transaction() as connection:
+            return connection.execute(
+                "SELECT id, round_id, block, event, payload_json, created_at "
+                "FROM workflow_events WHERE round_id = ? AND block = ? "
+                "ORDER BY id DESC LIMIT 1",
+                (round_id, block),
+            ).fetchone()
 
     def create_idea(
         self,
@@ -600,13 +792,15 @@ class Database:
             "created": created,
         }
 
-    def record_block_validation(self, block: str, artifact_path: str) -> None:
-        """Record a reviewer's approval for one block's artifact."""
-        with self._connect() as connection:
-            connection.execute(
-                "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",
-                (block, artifact_path),
-            )
+    def record_block_validation(
+        self, block: str, artifact_path: str, round_id: int | None = None, cycle: int | None = None
+    ) -> None:
+        """Record a validated block only through the central completion gate."""
+        if round_id is None or cycle is None:
+            raise ValueError("Block validation requires round_id and cycle")
+        from content_ops.orchestration import complete_block_with_compatibility
+
+        complete_block_with_compatibility(self, round_id, block, artifact_path, cycle)
 
     def get_idea(self, idea_id: int) -> dict[str, object]:
         """Return an idea with the links needed to create its draft."""
@@ -828,6 +1022,45 @@ class Database:
             "ideas",
             {"sources": "TEXT NOT NULL DEFAULT '[]'"},
         )
+
+    @classmethod
+    def _migrate_to_v7(cls, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS block_cycles (
+                id INTEGER PRIMARY KEY,
+                round_id INTEGER NOT NULL REFERENCES rounds(id),
+                block TEXT NOT NULL,
+                cycle INTEGER NOT NULL CHECK (cycle > 0),
+                artifact_path TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (round_id, block, cycle, artifact_path)
+            );
+            CREATE TABLE IF NOT EXISTS review_receipts (
+                id INTEGER PRIMARY KEY,
+                cycle_id INTEGER NOT NULL REFERENCES block_cycles(id),
+                reviewer_agent TEXT NOT NULL,
+                decision TEXT NOT NULL CHECK (decision IN ('approved', 'feedback')),
+                result_json TEXT NOT NULL CHECK (json_valid(result_json)),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS workflow_events (
+                id INTEGER PRIMARY KEY,
+                round_id INTEGER NOT NULL REFERENCES rounds(id),
+                block TEXT NOT NULL,
+                event TEXT NOT NULL,
+                payload_json TEXT NOT NULL CHECK (json_valid(payload_json)),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+    @staticmethod
+    def _validate_json(value: str, label: str) -> None:
+        try:
+            json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            raise ValueError(f"{label} must be valid JSON") from None
 
     @staticmethod
     def _begin_immediate(connection: sqlite3.Connection) -> None:
