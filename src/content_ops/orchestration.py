@@ -230,22 +230,30 @@ def _validate_reference(database: Database, block: str, reference: str, *, requi
 def _persist_blocked(database: Database, round_id: int, block: str, cycle: int, reason: str) -> None:
     try:
         with database.transaction() as connection:
-            round_row = connection.execute(
-                "SELECT status FROM rounds WHERE id = ?", (round_id,)
-            ).fetchone()
-            if round_row is None or block not in BLOCK_ORDER:
-                return
-            latest = connection.execute(
-                "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
-                "ORDER BY id DESC LIMIT 1", (round_id, block)
-            ).fetchone()
-            if latest is not None and latest["event"] in {
-                "blocked", "failed", "block_completed", "human_completed"
-            }:
-                return
-            _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": reason})
+            _persist_blocked_in_transaction(connection, round_id, block, cycle, reason)
     except Exception:
         # Preserve the gate error if the diagnostic write itself cannot commit.
+        pass
+
+
+def _persist_blocked_in_transaction(connection, round_id: int, block: str, cycle: int, reason: str) -> None:
+    try:
+        round_row = connection.execute(
+            "SELECT status FROM rounds WHERE id = ?", (round_id,)
+        ).fetchone()
+        if round_row is None or block not in BLOCK_ORDER:
+            return
+        latest = connection.execute(
+            "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+            "ORDER BY id DESC LIMIT 1", (round_id, block)
+        ).fetchone()
+        if latest is not None and latest["event"] in {
+            "blocked", "failed", "block_completed", "human_completed"
+        }:
+            return
+        _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": reason})
+    except Exception:
+        # Preserve the gate error if the diagnostic write itself cannot proceed.
         pass
 
 
@@ -363,14 +371,12 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
             pass
         raise
     if result.artifact != artifact_path:
-        with database.transaction() as connection:
-            _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": "review artifact mismatch"})
+        _persist_blocked(database, round_id, block, cycle, "review artifact mismatch")
         raise WorkflowBlocked("Review artifact does not match the requested artifact")
     try:
         _validate_reference(database, block, artifact_path)
     except WorkflowBlocked as error:
-        with database.transaction() as connection:
-            _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": str(error)})
+        _persist_blocked(database, round_id, block, cycle, str(error))
         raise
     if block == "B7" and result.decision == "approved":
         _persist_blocked(database, round_id, block, cycle, "B7 cannot be approved automatically")
@@ -389,6 +395,7 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
         if repeated:
             _persist_blocked(database, round_id, block, cycle, "Repeated review result indicates an unproductive loop")
             raise WorkflowBlocked("Repeated review result indicates an unproductive loop")
+    stale_cycle = False
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None or round_row["status"] != "open":
@@ -410,36 +417,39 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
             (round_id, block),
         ).fetchone()["cycle"]
         if cycle != latest_cycle:
-            _event(connection, round_id, block, "blocked", {
-                "cycle": cycle, "reason": "review cycle is no longer active"
+            _persist_blocked_in_transaction(
+                connection, round_id, block, cycle, "review cycle is no longer active"
+            )
+            stale_cycle = True
+        else:
+            if connection.execute(
+                "SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = 'approved' LIMIT 1",
+                (cycle_row["id"],),
+            ).fetchone():
+                raise WorkflowBlocked("Cannot record a review after approval")
+            completed = {row["block"] for row in connection.execute(
+                "SELECT block FROM workflow_events WHERE round_id = ? "
+                "AND event IN ('block_completed', 'human_completed')", (round_id,)
+            )}
+            validate_block_order(completed, block)
+            stored_result = json.dumps(
+                redact_event_payload(json.loads(raw)), ensure_ascii=False, sort_keys=True
+            )
+            connection.execute(
+                "INSERT INTO review_receipts (cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
+                (cycle_row["id"], reviewer, result.decision, stored_result),
+            )
+            _event(connection, round_id, block, f"review_{result.decision}", {
+                "cycle": cycle, "artifact": artifact_path, "feedback": result.feedback,
+                "feedback_hash": _feedback_hash(result),
             })
-            raise WorkflowBlocked("Review cycle is no longer active")
-        if connection.execute(
-            "SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = 'approved' LIMIT 1",
-            (cycle_row["id"],),
-        ).fetchone():
-            raise WorkflowBlocked("Cannot record a review after approval")
-        completed = {row["block"] for row in connection.execute(
-            "SELECT block FROM workflow_events WHERE round_id = ? "
-            "AND event IN ('block_completed', 'human_completed')", (round_id,)
-        )}
-        validate_block_order(completed, block)
-        stored_result = json.dumps(
-            redact_event_payload(json.loads(raw)), ensure_ascii=False, sort_keys=True
-        )
-        connection.execute(
-            "INSERT INTO review_receipts (cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
-            (cycle_row["id"], reviewer, result.decision, stored_result),
-        )
-        _event(connection, round_id, block, f"review_{result.decision}", {
-            "cycle": cycle, "artifact": artifact_path, "feedback": result.feedback,
-            "feedback_hash": _feedback_hash(result),
-        })
-        # Keep the original cycle marker as the compatibility-facing latest state.
-        _event(connection, round_id, block, "cycle_started", {
-            "cycle": cycle, "artifact": artifact_path, "state": "reviewed",
-            "review_decision": result.decision,
-        })
+            # Keep the original cycle marker as the compatibility-facing latest state.
+            _event(connection, round_id, block, "cycle_started", {
+                "cycle": cycle, "artifact": artifact_path, "state": "reviewed",
+                "review_decision": result.decision,
+            })
+    if stale_cycle:
+        raise WorkflowBlocked("Review cycle is no longer active")
     return result
 
 

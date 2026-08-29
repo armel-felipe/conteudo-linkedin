@@ -437,6 +437,28 @@ class OrchestrationTests(unittest.TestCase):
 
         self.assertEqual(resume_round(self.database, self.round_id), "complete:B1")
 
+    def test_review_after_block_completion_rejects_divergence_without_mutating_terminal_state(self):
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
+        start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
+        record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
+        self.complete_prior_blocks(("B8", "B10", "B9"))
+        start_block_cycle(self.database, self.round_id, "B11", "content/drafts/x.md")
+        record_review(
+            self.database, self.round_id, "B11", "content/drafts/x.md", 1,
+            "revisor", self.result(),
+        )
+        complete_block(self.database, self.round_id, "B11", "content/drafts/x.md", 1)
+
+        with self.assertRaises(WorkflowBlocked):
+            record_review(
+                self.database, self.round_id, "B11", "other.md", 1,
+                "revisor-2", self.result(artifact="other.md"),
+            )
+
+        state = self.database.latest_block_state(self.round_id, "B11")
+        self.assertEqual(state["event"], "block_completed")
+        self.assertEqual(resume_round(self.database, self.round_id), "complete")
+
     def test_review_rejects_mutation_after_blocked_or_failed_state(self):
         for event in ("blocked", "failed"):
             with self.subTest(event=event):
