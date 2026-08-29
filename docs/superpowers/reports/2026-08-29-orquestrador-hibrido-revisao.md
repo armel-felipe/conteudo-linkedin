@@ -20,7 +20,7 @@ corrigidos no orquestrador híbrido.
 - Os executores B6, B8, B10 e B11 declaram saída obrigatória somente em JSON com `artifact_path` e `cycle`, preservando seus contratos editoriais.
 - Falhas de resolução, existência, leitura ou decodificação de artefato são convertidas em bloqueio genérico; `record_review` e `complete_block` persistem o evento sem vazar conteúdo e `resume_round()` permanece bloqueado.
 - A cobertura de aceitação inclui contratos dos executores e bloqueio persistido para artefatos ilegíveis.
-- `start_block_cycle` permite reinício após o último estado `blocked` ou `failed`, sem permitir que esse caminho substitua aprovação ou conclusão.
+- `start_block_cycle` rejeita qualquer novo ciclo após o último estado `blocked` ou `failed`; a recuperação exige intervenção explícita separada.
 - Um ciclo com `review_approved`, `cycle_started` aprovado ou `block_completed`/`human_completed` não pode ser substituído por outro ciclo.
 - Feedback repetido persiste `blocked` antes de retornar o erro, e `resume_round()` permanece em `blocked` sem reprocessamento.
 - `record_human_completion` valida o ciclo B7 mais recente por `round_id`/`block`, exige correspondência explícita do artefato e persiste bloqueio para artefato ausente ou ilegível.

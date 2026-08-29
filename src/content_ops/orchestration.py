@@ -306,6 +306,8 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
             ).fetchone()
             if latest is not None:
                 latest_payload = json.loads(latest["payload_json"])
+                if latest["event"] in {"blocked", "failed"}:
+                    raise WorkflowBlocked(f"Block {block} requires explicit recovery")
                 if latest["event"] in {"review_approved", "block_completed", "human_completed"}:
                     raise WorkflowBlocked(f"Block {block} already has an approval or completion")
                 if latest["event"] == "cycle_started" and latest_payload.get("review_decision") == "approved":

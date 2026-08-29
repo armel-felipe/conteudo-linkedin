@@ -103,9 +103,9 @@ class OrchestrationTests(unittest.TestCase):
 
     def test_completion_requires_existing_artifact_and_approved_receipt(self):
         self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
+        self.database.start_block_cycle(self.round_id, "B5", "content/drafts/x.md")
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B5", "missing.md", 1)
-        self.database.start_block_cycle(self.round_id, "B5", "content/drafts/x.md")
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
@@ -192,14 +192,16 @@ class OrchestrationTests(unittest.TestCase):
         self.database.record_workflow_event(
             self.round_id, "B1", "blocked", '{"reason":"retryable block"}'
         )
-        self.assertEqual(start_block_cycle(
-            self.database, self.round_id, "B1", "content/drafts/x.md"
-        ), 2)
+        self.assertEqual(resume_round(self.database, self.round_id), "blocked")
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
 
-        self.database.record_workflow_failure(self.round_id, "B1", "executor failed")
-        self.assertEqual(start_block_cycle(
-            self.database, self.round_id, "B1", "content/drafts/x.md"
-        ), 3)
+        failed_round_id = self.database.create_round("Pilar", "runtime/rodadas/2.md")
+        start_block_cycle(self.database, failed_round_id, "B1", "content/drafts/x.md")
+        self.database.record_workflow_failure(failed_round_id, "B1", "executor failed")
+        self.assertEqual(resume_round(self.database, failed_round_id), "blocked")
+        with self.assertRaises(WorkflowBlocked):
+            start_block_cycle(self.database, failed_round_id, "B1", "content/drafts/x.md")
 
     def test_cycle_start_cannot_replace_approval_or_completion(self):
         start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
@@ -250,6 +252,7 @@ class OrchestrationTests(unittest.TestCase):
             start_block_cycle(self.database, 999, "B1", "content/drafts/x.md")
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B3", "content/drafts/x.md")
+        self.round_id = self.database.create_round("Pilar", "runtime/rodadas/2.md")
         self.complete_prior_blocks(
             ("B1", "B2", "B3", "B4", "B5", "B6")
         )
@@ -324,8 +327,6 @@ class OrchestrationTests(unittest.TestCase):
 
     def test_human_completion_requires_matching_b7_cycle(self):
         self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
-        with self.assertRaises(WorkflowBlocked):
-            record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
         start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
         with self.assertRaises(WorkflowBlocked):
             record_human_completion(self.database, self.round_id, "B7", "other.md", "idea-1")
