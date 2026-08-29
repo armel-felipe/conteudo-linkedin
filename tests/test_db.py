@@ -69,7 +69,7 @@ class DatabaseTests(unittest.TestCase):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
         self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
         cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
-        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":[{"contract":"quality","problem":"incomplete","required_change":"complete it"}],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
         self.db.record_review_result(
             cycle_id, "cruzamento-revisor", "feedback", result
         )
@@ -123,7 +123,7 @@ class DatabaseTests(unittest.TestCase):
         round_id = self.db.create_round("Pilar", "round.md")
         self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
         cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
-        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":["fix"],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":[{"contract":"quality","problem":"incomplete","required_change":"complete it"}],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
         self.db.record_review_result(cycle_id, "revisor", "feedback", result)
 
         with self.assertRaisesRegex(ValueError, "Cannot restart a cycle with review"):
@@ -193,7 +193,7 @@ class DatabaseTests(unittest.TestCase):
                 1,
                 "revisor",
                 "feedback",
-                '{"decision":"feedback","artifact":"artifact.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}',
+                '{"decision":"feedback","artifact":"artifact.md","feedback":[{"contract":"quality","problem":"incomplete","required_change":"complete it"}],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}',
             )
 
     def test_latest_block_state_returns_latest_event(self):

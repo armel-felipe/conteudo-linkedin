@@ -40,7 +40,11 @@ class OrchestrationTests(unittest.TestCase):
         value = {
             "decision": decision,
             "artifact": "content/drafts/x.md",
-            "feedback": [] if decision == "approved" else ["melhorar"],
+            "feedback": [] if decision == "approved" else [{
+                "contract": "qualidade",
+                "problem": "texto incompleto",
+                "required_change": "completar o texto",
+            }],
             "checks": [{"name": "qualidade", "status": "pass", "evidence": "ok"}],
         }
         value.update(overrides)
@@ -80,6 +84,16 @@ class OrchestrationTests(unittest.TestCase):
         with self.assertRaises(InvalidReviewResult):
             parse_review_result(self.result(checks=[{"name": "x"}]))
 
+    def test_review_feedback_requires_complete_non_empty_items_and_approval_has_no_feedback(self):
+        for feedback in ([], [{"contract": "c", "problem": "p"}],
+                         [{"contract": "c", "problem": "p", "required_change": " "}]):
+            with self.assertRaises(InvalidReviewResult):
+                parse_review_result(self.result("feedback", feedback=feedback))
+        with self.assertRaises(InvalidReviewResult):
+            parse_review_result(self.result("approved", feedback=[{
+                "contract": "c", "problem": "p", "required_change": "r"
+            }]))
+
     def test_block_order_rejects_skips_and_duplicates(self):
         with self.assertRaises(WorkflowBlocked):
             validate_block_order({"B1"}, "B3")
@@ -105,6 +119,19 @@ class OrchestrationTests(unittest.TestCase):
         )
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B5")["event"], "blocked")
+
+    def test_completion_persists_blocked_for_invalid_cycle_order_and_round(self):
+        with self.assertRaises(WorkflowBlocked):
+            complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
+
+        with self.assertRaises(WorkflowBlocked):
+            can_complete_block(self.database, self.round_id, "B3", "content/drafts/x.md", 1)
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B3")["event"], "blocked")
+        with self.assertRaises(WorkflowBlocked):
+            complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 2)
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
 
     def test_completion_rejects_out_of_order_duplicate_and_b7(self):
         self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
@@ -124,6 +151,14 @@ class OrchestrationTests(unittest.TestCase):
             self.database.record_review_result(b7_id, "revisor", "approved", self.result())
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B7", "content/drafts/x.md", 1)
+
+    def test_b7_automatic_approval_persists_blocked_before_rejection(self):
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
+        start_block_cycle(self.database, self.round_id, "B7", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_review(self.database, self.round_id, "B7", "content/drafts/x.md", 1,
+                          "revisor", self.result())
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B7")["event"], "blocked")
 
     def test_completion_api_checks_and_records_once(self):
         for block in ("B1", "B2", "B3", "B4"):
@@ -202,6 +237,15 @@ class OrchestrationTests(unittest.TestCase):
         self.complete_prior_blocks(("B1",))
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+
+    def test_unreadable_artifact_during_start_persists_blocked_before_cycle(self):
+        self.complete_prior_blocks(("B1", "B2", "B3"))
+        with patch("pathlib.Path.read_text", side_effect=OSError("private artifact bytes")):
+            with self.assertRaises(WorkflowBlocked):
+                start_block_cycle(self.database, self.round_id, "B4", "content/drafts/x.md")
+        state = self.database.latest_block_state(self.round_id, "B4")
+        self.assertEqual(state["event"], "blocked")
+        self.assertNotIn("private artifact bytes", state["payload_json"])
 
     def test_repeated_review_result_is_blocked_across_cycles(self):
         self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
@@ -342,8 +386,7 @@ class OrchestrationTests(unittest.TestCase):
         self.assertEqual(resume_round(self.database, self.round_id), "human:B7")
 
     def test_resume_invalid_round_is_blocked(self):
-        with self.assertRaises(WorkflowBlocked):
-            resume_round(self.database, 999)
+        self.assertEqual(resume_round(self.database, 999), "blocked")
 
     def test_old_cycle_cannot_be_reviewed_or_completed_after_new_cycle_starts(self):
         start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")

@@ -70,6 +70,19 @@ def parse_review_result(raw: str) -> ReviewResult:
         raise InvalidReviewResult("Review artifact must be a relative path")
     if not isinstance(value["feedback"], list) or not isinstance(value["checks"], list) or not value["checks"]:
         raise InvalidReviewResult("Review feedback and checks must be lists, with at least one check")
+    if value["decision"] == "approved" and value["feedback"]:
+        raise InvalidReviewResult("Approved review results must have empty feedback")
+    if value["decision"] == "feedback" and not value["feedback"]:
+        raise InvalidReviewResult("Feedback review results require at least one feedback item")
+    if value["decision"] == "feedback":
+        for item in value["feedback"]:
+            if not isinstance(item, dict) or not all(
+                isinstance(item.get(field), str) and item[field].strip()
+                for field in ("contract", "problem", "required_change")
+            ):
+                raise InvalidReviewResult(
+                    "Every feedback item requires non-empty contract, problem, and required_change"
+                )
     checks: list[dict[str, object]] = []
     for check in value["checks"]:
         if not isinstance(check, dict) or not {"name", "status", "evidence"} <= set(check):
@@ -103,7 +116,7 @@ def resume_round(database: Database, round_id: int) -> str:
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None:
-            raise WorkflowBlocked("Round does not exist")
+            return "blocked"
         if round_row["status"] != "open":
             if round_row["status"] != "closed":
                 return "blocked"
@@ -198,8 +211,14 @@ def _validate_reference(database: Database, block: str, reference: str, *, requi
 def _persist_blocked(database: Database, round_id: int, block: str, cycle: int, reason: str) -> None:
     try:
         with database.transaction() as connection:
+            round_row = connection.execute(
+                "SELECT status FROM rounds WHERE id = ?", (round_id,)
+            ).fetchone()
+            if round_row is None or block not in BLOCK_ORDER:
+                return
             _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": reason})
-    except (ValueError, WorkflowBlocked):
+    except Exception:
+        # Preserve the gate error if the diagnostic write itself cannot commit.
         pass
 
 
@@ -213,11 +232,11 @@ def can_complete_block(database: Database, round_id: int, block: str, artifact_p
     """Check every durable and filesystem gate before a block completion event."""
     try:
         _validate_completion_request(database, block, artifact_path)
+        with database.transaction() as connection:
+            _validate_completion(connection, round_id, block, artifact_path, cycle)
     except WorkflowBlocked as error:
         _persist_blocked(database, round_id, block, cycle, str(error))
         raise
-    with database.transaction() as connection:
-        _validate_completion(connection, round_id, block, artifact_path, cycle)
 
 
 def _validate_completion(connection, round_id: int, block: str, artifact_path: str, cycle: int):
@@ -261,31 +280,35 @@ def _max_review_cycles() -> int:
 
 def start_block_cycle(database: Database, round_id: int, block: str, artifact_path: str) -> int:
     """Validate and atomically start the next bounded executor cycle."""
-    if block not in BLOCK_ORDER:
-        raise WorkflowBlocked(f"Unknown workflow block: {block}")
-    _validate_reference(database, block, artifact_path, require_exists=block not in {"B1", "B2", "B3"})
-    with database.transaction() as connection:
-        round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
-        if round_row is None or round_row["status"] != "open":
-            raise WorkflowBlocked("Round is not active")
-        row = connection.execute(
-            "SELECT COALESCE(MAX(cycle), 0) AS cycle FROM block_cycles WHERE round_id = ? AND block = ?",
-            (round_id, block),
-        ).fetchone()
-        cycle = row["cycle"] + 1
-        completed = {item["block"] for item in connection.execute(
-            "SELECT block FROM workflow_events WHERE round_id = ? "
-            "AND event IN ('block_completed', 'human_completed')", (round_id,)
-        )}
-        validate_block_order(completed, block)
-        if cycle > _max_review_cycles():
-            raise WorkflowBlocked(f"Review cycle limit reached for {block}")
-        connection.execute(
-            "INSERT INTO block_cycles (round_id, block, cycle, artifact_path) VALUES (?, ?, ?, ?)",
-            (round_id, block, cycle, artifact_path),
-        )
-        _event(connection, round_id, block, "cycle_started", {"cycle": cycle, "artifact": artifact_path})
-    return cycle
+    try:
+        if block not in BLOCK_ORDER:
+            raise WorkflowBlocked(f"Unknown workflow block: {block}")
+        _validate_reference(database, block, artifact_path, require_exists=block not in {"B1", "B2", "B3"})
+        with database.transaction() as connection:
+            round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+            if round_row is None or round_row["status"] != "open":
+                raise WorkflowBlocked("Round is not active")
+            row = connection.execute(
+                "SELECT COALESCE(MAX(cycle), 0) AS cycle FROM block_cycles WHERE round_id = ? AND block = ?",
+                (round_id, block),
+            ).fetchone()
+            cycle = row["cycle"] + 1
+            completed = {item["block"] for item in connection.execute(
+                "SELECT block FROM workflow_events WHERE round_id = ? "
+                "AND event IN ('block_completed', 'human_completed')", (round_id,)
+            )}
+            validate_block_order(completed, block)
+            if cycle > _max_review_cycles():
+                raise WorkflowBlocked(f"Review cycle limit reached for {block}")
+            connection.execute(
+                "INSERT INTO block_cycles (round_id, block, cycle, artifact_path) VALUES (?, ?, ?, ?)",
+                (round_id, block, cycle, artifact_path),
+            )
+            _event(connection, round_id, block, "cycle_started", {"cycle": cycle, "artifact": artifact_path})
+        return cycle
+    except WorkflowBlocked as error:
+        _persist_blocked(database, round_id, block, 0, str(error))
+        raise
 
 
 def record_review(database: Database, round_id: int, block: str, artifact_path: str, cycle: int, reviewer: str, raw: str) -> ReviewResult:
@@ -311,6 +334,7 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
             _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": str(error)})
         raise
     if block == "B7" and result.decision == "approved":
+        _persist_blocked(database, round_id, block, cycle, "B7 cannot be approved automatically")
         raise WorkflowBlocked("B7 cannot be approved automatically")
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
@@ -403,13 +427,13 @@ def complete_block(database: Database, round_id: int, block: str, artifact_path:
     """Check gates and record exactly one completion event in one transaction."""
     try:
         _validate_completion_request(database, block, artifact_path)
+        with database.transaction() as connection:
+            return _complete_block_in_transaction(
+                connection, round_id, block, artifact_path, cycle
+            )
     except WorkflowBlocked as error:
         _persist_blocked(database, round_id, block, cycle, str(error))
         raise
-    with database.transaction() as connection:
-        return _complete_block_in_transaction(
-            connection, round_id, block, artifact_path, cycle
-        )
 
 
 def complete_block_with_compatibility(
@@ -418,18 +442,18 @@ def complete_block_with_compatibility(
     """Complete a block and write the legacy validation row atomically."""
     try:
         _validate_completion_request(database, block, artifact_path)
+        with database.transaction() as connection:
+            event_id = _complete_block_in_transaction(
+                connection, round_id, block, artifact_path, cycle
+            )
+            connection.execute(
+                "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",
+                (block, artifact_path),
+            )
+            return event_id
     except WorkflowBlocked as error:
         _persist_blocked(database, round_id, block, cycle, str(error))
         raise
-    with database.transaction() as connection:
-        event_id = _complete_block_in_transaction(
-            connection, round_id, block, artifact_path, cycle
-        )
-        connection.execute(
-            "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",
-            (block, artifact_path),
-        )
-        return event_id
 
 
 def _complete_block_in_transaction(
