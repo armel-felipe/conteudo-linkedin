@@ -11,9 +11,10 @@ from content_ops.db import Database
 
 
 BLOCK_ORDER = ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B10", "B9", "B11")
-_SECRET_KEY = re.compile(r"(?:^|_)(?:API_KEY|TOKEN|PASSWORD)$|^CT0$", re.IGNORECASE)
+_SECRET_KEY = re.compile(r"(?:^|_)(?:API[_-]?KEY|TOKEN|PASSWORD)$|^CT0$", re.IGNORECASE)
 _SECRET_VALUE = re.compile(
-    r"(?P<name>token|api[_-]?key|password)\s*=\s*[^\s,;&]+", re.IGNORECASE
+    r"(?P<name>(?:[A-Za-z0-9_]*(?:API[_-]?KEY|TOKEN|PASSWORD)|AUTH_TOKEN|CT0))\s*=\s*[^\s,;&]+",
+    re.IGNORECASE,
 )
 _REDACTED = "[REDACTED]"
 
@@ -175,18 +176,42 @@ def _artifact_path(database: Database, artifact_path: str, *, require_exists: bo
     path = (root / artifact_path).resolve()
     if not path.is_relative_to(root) or (require_exists and not path.is_file()):
         raise WorkflowBlocked("Artifact does not exist within the repository")
+    if require_exists and path.is_file() and _SECRET_VALUE.search(path.read_text(encoding="utf-8")):
+        raise WorkflowBlocked("Artifact contains prohibited credential-shaped content")
     return path
+
+
+def _validate_reference(database: Database, block: str, reference: str, *, require_exists: bool = True) -> None:
+    if block == "B2" and reference and "/" not in reference and "\\" not in reference:
+        root = database.path.parent.parent.resolve()
+        if not (root / reference).is_file():
+            if not database.pillar_is_approved(reference):
+                raise WorkflowBlocked("B2 selection must name an approved pillar")
+            return
+    _artifact_path(database, reference, require_exists=require_exists)
+
+
+def _persist_blocked(database: Database, round_id: int, block: str, cycle: int, reason: str) -> None:
+    try:
+        with database.transaction() as connection:
+            _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": reason})
+    except (ValueError, WorkflowBlocked):
+        pass
 
 
 def _validate_completion_request(database: Database, block: str, artifact_path: str) -> None:
     if block == "B7":
         raise WorkflowBlocked("B7 requires mandatory human completion")
-    _artifact_path(database, artifact_path)
+    _validate_reference(database, block, artifact_path)
 
 
 def can_complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> None:
     """Check every durable and filesystem gate before a block completion event."""
-    _validate_completion_request(database, block, artifact_path)
+    try:
+        _validate_completion_request(database, block, artifact_path)
+    except WorkflowBlocked as error:
+        _persist_blocked(database, round_id, block, cycle, str(error))
+        raise
     with database.transaction() as connection:
         _validate_completion(connection, round_id, block, artifact_path, cycle)
 
@@ -202,9 +227,8 @@ def _validate_completion(connection, round_id: int, block: str, artifact_path: s
     if cycle_row is None:
         raise WorkflowBlocked("No matching block cycle")
     latest_cycle = connection.execute(
-        "SELECT MAX(cycle) AS cycle FROM block_cycles "
-        "WHERE round_id = ? AND block = ? AND artifact_path = ?",
-        (round_id, block, artifact_path),
+        "SELECT MAX(cycle) AS cycle FROM block_cycles WHERE round_id = ? AND block = ?",
+        (round_id, block),
     ).fetchone()["cycle"]
     if cycle != latest_cycle:
         raise WorkflowBlocked("Completion cycle is no longer active")
@@ -235,7 +259,7 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
     """Validate and atomically start the next bounded executor cycle."""
     if block not in BLOCK_ORDER:
         raise WorkflowBlocked(f"Unknown workflow block: {block}")
-    _artifact_path(database, artifact_path, require_exists=block not in {"B1", "B2", "B3"})
+    _validate_reference(database, block, artifact_path, require_exists=block not in {"B1", "B2", "B3"})
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None or round_row["status"] != "open":
@@ -273,8 +297,15 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
             pass
         raise
     if result.artifact != artifact_path:
+        with database.transaction() as connection:
+            _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": "review artifact mismatch"})
         raise WorkflowBlocked("Review artifact does not match the requested artifact")
-    _artifact_path(database, artifact_path)
+    try:
+        _validate_reference(database, block, artifact_path)
+    except WorkflowBlocked as error:
+        with database.transaction() as connection:
+            _event(connection, round_id, block, "blocked", {"cycle": cycle, "reason": str(error)})
+        raise
     if block == "B7" and result.decision == "approved":
         raise WorkflowBlocked("B7 cannot be approved automatically")
     with database.transaction() as connection:
@@ -288,11 +319,13 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
         if cycle_row is None:
             raise WorkflowBlocked("No matching block cycle")
         latest_cycle = connection.execute(
-            "SELECT MAX(cycle) AS cycle FROM block_cycles "
-            "WHERE round_id = ? AND block = ? AND artifact_path = ?",
-            (round_id, block, artifact_path),
+            "SELECT MAX(cycle) AS cycle FROM block_cycles WHERE round_id = ? AND block = ?",
+            (round_id, block),
         ).fetchone()["cycle"]
         if cycle != latest_cycle:
+            _event(connection, round_id, block, "blocked", {
+                "cycle": cycle, "reason": "review cycle is no longer active"
+            })
             raise WorkflowBlocked("Review cycle is no longer active")
         completed = {row["block"] for row in connection.execute(
             "SELECT block FROM workflow_events WHERE round_id = ? "
@@ -359,7 +392,11 @@ def record_human_completion(database: Database, round_id: int, block: str, artif
 
 def complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> int:
     """Check gates and record exactly one completion event in one transaction."""
-    _validate_completion_request(database, block, artifact_path)
+    try:
+        _validate_completion_request(database, block, artifact_path)
+    except WorkflowBlocked as error:
+        _persist_blocked(database, round_id, block, cycle, str(error))
+        raise
     with database.transaction() as connection:
         return _complete_block_in_transaction(
             connection, round_id, block, artifact_path, cycle
@@ -370,7 +407,11 @@ def complete_block_with_compatibility(
     database: Database, round_id: int, block: str, artifact_path: str, cycle: int
 ) -> int:
     """Complete a block and write the legacy validation row atomically."""
-    _validate_completion_request(database, block, artifact_path)
+    try:
+        _validate_completion_request(database, block, artifact_path)
+    except WorkflowBlocked as error:
+        _persist_blocked(database, round_id, block, cycle, str(error))
+        raise
     with database.transaction() as connection:
         event_id = _complete_block_in_transaction(
             connection, round_id, block, artifact_path, cycle

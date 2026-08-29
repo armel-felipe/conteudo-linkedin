@@ -363,6 +363,81 @@ class OrchestrationTests(unittest.TestCase):
         for secret in ("abc", "xyz", "last-secret", "inner", "another"):
             self.assertNotIn(secret, serialized)
 
+    def test_secret_artifact_is_blocked_before_review_and_completion(self):
+        self.artifact.write_text("API_KEY=leak\nconteudo", encoding="utf-8")
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+
+        with self.assertRaises(WorkflowBlocked):
+            record_review(
+                self.database, self.round_id, "B1", "content/drafts/x.md", 1,
+                "revisor", self.result(),
+            )
+        with self.assertRaises(WorkflowBlocked):
+            complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
+
+    def test_b2_selection_completes_without_a_file(self):
+        self.database.replace_pillars([("IA aplicada", 1, ("post:1",))])
+        self.database.approve_pillar("IA aplicada")
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "r", self.result())
+        complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+
+        start_block_cycle(self.database, self.round_id, "B2", "IA aplicada")
+        result = self.result(artifact="IA aplicada")
+        record_review(self.database, self.round_id, "B2", "IA aplicada", 1, "r", result)
+        complete_block(self.database, self.round_id, "B2", "IA aplicada", 1)
+        self.assertEqual(resume_round(self.database, self.round_id), "start:B3")
+
+    def test_old_cycle_is_stale_even_when_new_cycle_has_a_different_artifact(self):
+        other = self.root / "content" / "drafts" / "y.md"
+        other.write_text("draft 2", encoding="utf-8")
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "r", self.result("feedback"))
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/y.md")
+
+        with self.assertRaises(WorkflowBlocked):
+            record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "r", self.result())
+
+    def test_divergent_review_persists_blocked_state_and_resume_does_not_retry(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_review(
+                self.database, self.round_id, "B1", "content/drafts/x.md", 1,
+                "r", self.result(artifact="content/drafts/other.md"),
+            )
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
+        self.assertEqual(resume_round(self.database, self.round_id), "blocked")
+
+    def test_missing_artifact_persists_blocked_state(self):
+        start_block_cycle(self.database, self.round_id, "B1", "future/missing.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_review(
+                self.database, self.round_id, "B1", "future/missing.md", 1,
+                "r", self.result(artifact="future/missing.md"),
+            )
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
+        self.assertEqual(resume_round(self.database, self.round_id), "blocked")
+
+    def test_workflow_event_api_allows_only_valid_cycle_or_review_events(self):
+        start_block_cycle(self.database, self.round_id, "B1", "future/B1.md")
+        event_id = self.database.record_workflow_event(
+            self.round_id, "B1", "cycle_started",
+            '{"cycle":1,"artifact":"future/B1.md"}',
+        )
+        self.assertIsInstance(event_id, int)
+        with self.assertRaisesRegex(ValueError, "workflow-block-complete"):
+            self.database.record_workflow_event(self.round_id, "B1", "block_completed")
+
+    def test_failure_logs_redact_all_secret_patterns(self):
+        event_id = self.database.record_workflow_failure(
+            self.round_id, "B1", "executor log API_KEY=one TOKEN=two CT0=three AUTH_TOKEN=four PASSWORD=five",
+        )
+        self.assertIsInstance(event_id, int)
+        payload = self.database.latest_block_state(self.round_id, "B1")["payload_json"]
+        for secret in ("one", "two", "three", "four", "five"):
+            self.assertNotIn(secret, payload)
+
 
 if __name__ == "__main__":
     unittest.main()

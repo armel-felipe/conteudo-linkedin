@@ -549,10 +549,62 @@ class Database:
     def record_workflow_event(
         self, round_id: int, block: str, event: str, payload_json: str = "{}"
     ) -> int:
-        """Reject generic writes; workflow domain APIs own event persistence."""
-        raise ValueError(
-            "Workflow events must be persisted through a domain-specific API"
+        """Persist only scoped lifecycle events; completion has dedicated APIs."""
+        from content_ops.orchestration import (
+            BLOCK_ORDER,
+            _validate_reference,
+            redact_event_payload,
+            validate_block_order,
         )
+
+        if event in {"block_completed", "human_completed"}:
+            raise ValueError(
+                "Use workflow-block-complete or workflow-human-complete APIs for this event"
+            )
+        if event not in {"cycle_started", "review_approved", "review_feedback", "failed", "blocked"}:
+            raise ValueError("Unsupported workflow event")
+        try:
+            payload = json.loads(payload_json)
+        except (TypeError, json.JSONDecodeError):
+            raise ValueError("Workflow event payload must be valid JSON") from None
+        if not isinstance(payload, dict):
+            raise ValueError("Workflow event payload must be an object")
+        if block not in BLOCK_ORDER:
+            raise ValueError(f"Unknown workflow block: {block}")
+        if event in {"cycle_started", "review_approved", "review_feedback"}:
+            if not isinstance(payload.get("cycle"), int) or not isinstance(payload.get("artifact"), str):
+                raise ValueError("Cycle and review events require cycle and artifact")
+            _validate_reference(self, block, payload["artifact"], require_exists=event != "cycle_started")
+        if event in {"failed", "blocked"}:
+            if not isinstance(payload.get("reason"), str) or not payload["reason"]:
+                raise ValueError("Failure events require a non-empty reason")
+        with self.transaction() as connection:
+            round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+            if round_row is None or round_row["status"] != "open":
+                raise ValueError("Round is not open")
+            completed = {row["block"] for row in connection.execute(
+                "SELECT block FROM workflow_events WHERE round_id = ? AND event IN ('block_completed', 'human_completed')",
+                (round_id,),
+            )}
+            validate_block_order(completed, block)
+            if event in {"cycle_started", "review_approved", "review_feedback"}:
+                cycle_row = connection.execute(
+                    "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
+                    (round_id, block, payload["cycle"], payload["artifact"]),
+                ).fetchone()
+                if cycle_row is None:
+                    raise ValueError("No matching block cycle")
+                if event in {"review_approved", "review_feedback"}:
+                    receipt = connection.execute(
+                        "SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = ? LIMIT 1",
+                        (cycle_row["id"], "approved" if event == "review_approved" else "feedback"),
+                    ).fetchone()
+                    if receipt is None:
+                        raise ValueError("Review events require a matching review receipt")
+            return connection.execute(
+                "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, ?, ?)",
+                (round_id, block, event, json.dumps(redact_event_payload(payload), ensure_ascii=False, sort_keys=True)),
+            ).lastrowid
 
     def record_workflow_failure(
         self, round_id: int, block: str, reason: str, details: dict | None = None
