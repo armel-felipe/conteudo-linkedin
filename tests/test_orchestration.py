@@ -48,9 +48,16 @@ class OrchestrationTests(unittest.TestCase):
 
     def complete_prior_blocks(self, blocks):
         for block in blocks:
-            start_block_cycle(self.database, self.round_id, block, "content/drafts/x.md")
-            record_review(self.database, self.round_id, block, "content/drafts/x.md", 1, "revisor", self.result())
-            complete_block(self.database, self.round_id, block, "content/drafts/x.md", 1)
+            reference = "Pilar escolhido" if block == "B2" else "content/drafts/x.md"
+            if block == "B2":
+                self.database.replace_pillars([("Pilar escolhido", 1, ("post:1",))])
+                self.database.approve_pillar("Pilar escolhido")
+            start_block_cycle(self.database, self.round_id, block, reference)
+            record_review(
+                self.database, self.round_id, block, reference, 1, "revisor",
+                self.result(artifact=reference),
+            )
+            complete_block(self.database, self.round_id, block, reference, 1)
 
     def test_approved_and_feedback_results_are_structured(self):
         approved = parse_review_result(self.result())
@@ -120,9 +127,13 @@ class OrchestrationTests(unittest.TestCase):
 
     def test_completion_api_checks_and_records_once(self):
         for block in ("B1", "B2", "B3", "B4"):
-            start_block_cycle(self.database, self.round_id, block, "content/drafts/x.md")
-            record_review(self.database, self.round_id, block, "content/drafts/x.md", 1, "revisor", self.result())
-            complete_block(self.database, self.round_id, block, "content/drafts/x.md", 1)
+            reference = "Pilar escolhido" if block == "B2" else "content/drafts/x.md"
+            if block == "B2":
+                self.database.replace_pillars([("Pilar escolhido", 1, ("post:1",))])
+                self.database.approve_pillar("Pilar escolhido")
+            start_block_cycle(self.database, self.round_id, block, reference)
+            record_review(self.database, self.round_id, block, reference, 1, "revisor", self.result(artifact=reference))
+            complete_block(self.database, self.round_id, block, reference, 1)
         start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
         record_review(self.database, self.round_id, "B5", "content/drafts/x.md", 1, "revisor", self.result())
         complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
@@ -143,15 +154,18 @@ class OrchestrationTests(unittest.TestCase):
 
     def test_cycle_start_allows_future_artifact_only_for_early_blocks(self):
         for block in ("B1", "B2", "B3"):
-            artifact = f"future/{block}.md"
+            artifact = "Pilar escolhido" if block == "B2" else f"future/{block}.md"
+            if block == "B2":
+                self.database.replace_pillars([("Pilar escolhido", 1, ("post:1",))])
+                self.database.approve_pillar("Pilar escolhido")
             cycle = start_block_cycle(self.database, self.round_id, block, artifact)
             self.assertEqual(cycle, 1)
-            path = self.root / artifact
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("artifact", encoding="utf-8")
-            result = self.result()
+            if block != "B2":
+                path = self.root / artifact
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("artifact", encoding="utf-8")
+            result = self.result(artifact=artifact)
             result = json.loads(result)
-            result["artifact"] = artifact
             record_review(self.database, self.round_id, block, artifact, cycle, "revisor", json.dumps(result))
             complete_block(self.database, self.round_id, block, artifact, cycle)
         with self.assertRaises(WorkflowBlocked):
@@ -211,9 +225,13 @@ class OrchestrationTests(unittest.TestCase):
         round_id = other.create_round("Pilar", "round.md")
         (self.root / "other.md").write_text("draft", encoding="utf-8")
         for block in ("B1", "B2"):
-            start_block_cycle(other, round_id, block, "other.md")
-            record_review(other, round_id, block, "other.md", 1, "revisor", self.result(artifact="other.md"))
-            complete_block(other, round_id, block, "other.md", 1)
+            reference = "Outro pilar" if block == "B2" else "other.md"
+            if block == "B2":
+                other.replace_pillars([("Outro pilar", 1, ("post:1",))])
+                other.approve_pillar("Outro pilar")
+            start_block_cycle(other, round_id, block, reference)
+            record_review(other, round_id, block, reference, 1, "revisor", self.result(artifact=reference))
+            complete_block(other, round_id, block, reference, 1)
         other.start_block_cycle(round_id, "B3", "other.md")
         with self.assertRaises(WorkflowBlocked):
             record_review(other, round_id, "B3", "other.md", 1, "revisor", self.result())
@@ -295,6 +313,18 @@ class OrchestrationTests(unittest.TestCase):
         self.assertEqual(resume_round(self.database, self.round_id), "start:B2")
         with self.assertRaises(WorkflowBlocked):
             complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+
+    def test_approved_cycle_rejects_any_later_review_and_stays_complete(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result())
+
+        with self.assertRaises(WorkflowBlocked):
+            record_review(
+                self.database, self.round_id, "B1", "content/drafts/x.md", 1,
+                "revisor-2", self.result("feedback"),
+            )
+
+        self.assertEqual(resume_round(self.database, self.round_id), "complete:B1")
 
     def test_resume_records_timeout_as_failed_and_never_advances(self):
         start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
@@ -388,6 +418,25 @@ class OrchestrationTests(unittest.TestCase):
         record_review(self.database, self.round_id, "B2", "IA aplicada", 1, "r", result)
         complete_block(self.database, self.round_id, "B2", "IA aplicada", 1)
         self.assertEqual(resume_round(self.database, self.round_id), "start:B3")
+
+    def test_b2_approved_pillar_names_may_contain_path_separators(self):
+        self.database.replace_pillars([
+            ("Dados/Python", 1, ("post:1",)),
+            (r"IA\aplicada", 1, ("post:2",)),
+        ])
+        self.database.approve_pillar("Dados/Python")
+        self.database.approve_pillar(r"IA\aplicada")
+        for pillar in ("Dados/Python", r"IA\aplicada"):
+            round_id = self.database.create_round(pillar, "round.md")
+            start_block_cycle(self.database, round_id, "B1", "content/drafts/x.md")
+            record_review(self.database, round_id, "B1", "content/drafts/x.md", 1, "r", self.result())
+            complete_block(self.database, round_id, "B1", "content/drafts/x.md", 1)
+            start_block_cycle(self.database, round_id, "B2", pillar)
+            record_review(
+                self.database, round_id, "B2", pillar, 1, "r",
+                self.result(artifact=pillar),
+            )
+            complete_block(self.database, round_id, "B2", pillar, 1)
 
     def test_old_cycle_is_stale_even_when_new_cycle_has_a_different_artifact(self):
         other = self.root / "content" / "drafts" / "y.md"

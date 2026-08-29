@@ -182,12 +182,10 @@ def _artifact_path(database: Database, artifact_path: str, *, require_exists: bo
 
 
 def _validate_reference(database: Database, block: str, reference: str, *, require_exists: bool = True) -> None:
-    if block == "B2" and reference and "/" not in reference and "\\" not in reference:
-        root = database.path.parent.parent.resolve()
-        if not (root / reference).is_file():
-            if not database.pillar_is_approved(reference):
-                raise WorkflowBlocked("B2 selection must name an approved pillar")
-            return
+    if block == "B2":
+        if not database.pillar_is_approved(reference):
+            raise WorkflowBlocked("B2 selection must name an approved pillar")
+        return
     _artifact_path(database, reference, require_exists=require_exists)
 
 
@@ -327,6 +325,11 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
                 "cycle": cycle, "reason": "review cycle is no longer active"
             })
             raise WorkflowBlocked("Review cycle is no longer active")
+        if connection.execute(
+            "SELECT 1 FROM review_receipts WHERE cycle_id = ? AND decision = 'approved' LIMIT 1",
+            (cycle_row["id"],),
+        ).fetchone():
+            raise WorkflowBlocked("Cannot record a review after approval")
         completed = {row["block"] for row in connection.execute(
             "SELECT block FROM workflow_events WHERE round_id = ? "
             "AND event IN ('block_completed', 'human_completed')", (round_id,)

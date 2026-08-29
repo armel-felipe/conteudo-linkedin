@@ -28,9 +28,17 @@ class DatabaseTests(unittest.TestCase):
             "checks": [{"name": "quality", "status": "pass", "evidence": "ok"}],
         })
         for block in blocks:
-            start_block_cycle(self.db, round_id, block, "content/drafts/x.md")
-            record_review(self.db, round_id, block, "content/drafts/x.md", 1, "revisor", result)
-            complete_block(self.db, round_id, block, "content/drafts/x.md", 1)
+            reference = "Pilar escolhido" if block == "B2" else "content/drafts/x.md"
+            if block == "B2":
+                self.db.replace_pillars([("Pilar escolhido", 1, ("post:1",))])
+                self.db.approve_pillar("Pilar escolhido")
+            block_result = json.loads(result)
+            block_result["artifact"] = reference
+            start_block_cycle(self.db, round_id, block, reference)
+            record_review(
+                self.db, round_id, block, reference, 1, "revisor", json.dumps(block_result)
+            )
+            complete_block(self.db, round_id, block, reference, 1)
 
     def tearDown(self):
         self.temporary_directory.cleanup()
@@ -110,6 +118,21 @@ class DatabaseTests(unittest.TestCase):
                 '{"cycle":1,"artifact":"content/drafts/x.md"}',
             )
         self.assertEqual(resume_round(self.db, round_id), "complete:B5")
+
+    def test_generic_cycle_start_rejects_a_cycle_with_feedback_receipt(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":["fix"],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "feedback", result)
+
+        with self.assertRaisesRegex(ValueError, "Cannot restart a cycle with review"):
+            self.db.record_workflow_event(
+                round_id,
+                "B5",
+                "cycle_started",
+                '{"cycle":1,"artifact":"content/drafts/x.md"}',
+            )
 
     def test_orchestration_constraints_reject_invalid_decision_and_json(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")

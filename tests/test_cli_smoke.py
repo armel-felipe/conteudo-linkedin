@@ -14,16 +14,20 @@ class CliSmokeTests(unittest.TestCase):
     def _complete_prior_blocks(database, round_id, blocks, artifact):
         from content_ops.orchestration import complete_block, record_review, start_block_cycle
 
-        result = json.dumps({
-            "decision": "approved",
-            "artifact": artifact,
-            "feedback": [],
-            "checks": [{"name": "quality", "status": "pass", "evidence": "ok"}],
-        })
         for block in blocks:
-            start_block_cycle(database, round_id, block, artifact)
-            record_review(database, round_id, block, artifact, 1, "revisor", result)
-            complete_block(database, round_id, block, artifact, 1)
+            reference = "Pilar escolhido" if block == "B2" else artifact
+            if block == "B2":
+                database.replace_pillars([("Pilar escolhido", 1, ("post:1",))])
+                database.approve_pillar("Pilar escolhido")
+            result = json.dumps({
+                "decision": "approved",
+                "artifact": reference,
+                "feedback": [],
+                "checks": [{"name": "quality", "status": "pass", "evidence": "ok"}],
+            })
+            start_block_cycle(database, round_id, block, reference)
+            record_review(database, round_id, block, reference, 1, "revisor", result)
+            complete_block(database, round_id, block, reference, 1)
 
     def test_required_operational_directories_have_gitkeep_files(self):
         repository_root = Path(__file__).resolve().parents[1]
