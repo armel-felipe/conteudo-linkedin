@@ -61,7 +61,7 @@ class DatabaseTests(unittest.TestCase):
                 ).fetchone()
             )
 
-    def test_review_approval_is_scoped_to_round_block_artifact_and_cycle(self):
+    def test_orchestration_review_approval_is_scoped_to_round_block_artifact_and_cycle(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
         cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
         self.db.record_review_result(
@@ -74,6 +74,43 @@ class DatabaseTests(unittest.TestCase):
         self.assertFalse(self.db.review_is_approved(round_id, "B6", "content/drafts/x.md", 1))
         self.assertFalse(self.db.review_is_approved(round_id, "B5", "other.md", 1))
         self.assertFalse(self.db.review_is_approved(round_id, "B5", "content/drafts/x.md", 2))
+
+    def test_orchestration_constraints_reject_invalid_decision_and_json(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+
+        with self.assertRaises(ValueError):
+            self.db.record_review_result(cycle_id, "revisor", "unknown", "{}")
+        with self.assertRaises(ValueError):
+            self.db.record_review_result(cycle_id, "revisor", "approved", "not-json")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(round_id, "B5", "bad_payload", "not-json")
+
+    def test_orchestration_constraints_enforce_uniqueness_and_foreign_keys(self):
+        round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+
+        with self.db._connect() as connection:
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO block_cycles "
+                    "(round_id, block, cycle, artifact_path) VALUES (?, ?, ?, ?)",
+                    (round_id, "B5", 1, "content/drafts/x.md"),
+                )
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO review_receipts "
+                    "(cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
+                    (999, "revisor", "approved", "{}"),
+                )
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "INSERT INTO workflow_events "
+                    "(round_id, block, event, payload_json) VALUES (?, ?, ?, ?)",
+                    (999, "B5", "event", "{}"),
+                )
+
+        self.assertIsInstance(cycle_id, int)
 
     def test_latest_block_state_returns_latest_event(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
