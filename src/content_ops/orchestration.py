@@ -12,6 +12,9 @@ from content_ops.db import Database
 
 BLOCK_ORDER = ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B10", "B9", "B11")
 _SECRET_KEY = re.compile(r"(?:^|_)(?:API_KEY|TOKEN|PASSWORD)$|^CT0$", re.IGNORECASE)
+_SECRET_VALUE = re.compile(
+    r"(?P<name>token|api[_-]?key|password)\s*=\s*[^\s,;&]+", re.IGNORECASE
+)
 _REDACTED = "[REDACTED]"
 
 
@@ -44,6 +47,10 @@ def redact_event_payload(payload: dict) -> dict:
             return [redact(item) for item in value]
         if isinstance(value, tuple):
             return [redact(item) for item in value]
+        if isinstance(value, str):
+            return _SECRET_VALUE.sub(
+                lambda match: f"{match.group('name')}=[REDACTED]", value
+            )
         return value
 
     return redact(payload)
@@ -91,13 +98,24 @@ def _event(connection, round_id: int, block: str, event: str, payload: dict) -> 
 
 
 def resume_round(database: Database, round_id: int) -> str:
-    """Return the next fail-closed action derived only from committed events."""
+    """Return the next safe action from events; persist only terminal blocks."""
     with database.transaction() as connection:
         round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
         if round_row is None:
             raise WorkflowBlocked("Round does not exist")
         if round_row["status"] != "open":
-            return "complete" if round_row["status"] == "closed" else "blocked"
+            if round_row["status"] != "closed":
+                return "blocked"
+            complete = True
+            for block in BLOCK_ORDER:
+                state = connection.execute(
+                    "SELECT event FROM workflow_events WHERE round_id = ? AND block = ? "
+                    "ORDER BY id DESC LIMIT 1", (round_id, block)
+                ).fetchone()
+                if state is None or state["event"] not in {"block_completed", "human_completed"}:
+                    complete = False
+                    break
+            return "complete" if complete else "blocked"
         for block in BLOCK_ORDER:
             state = connection.execute(
                 "SELECT event, payload_json FROM workflow_events WHERE round_id = ? AND block = ? "
@@ -183,6 +201,13 @@ def _validate_completion(connection, round_id: int, block: str, artifact_path: s
     ).fetchone()
     if cycle_row is None:
         raise WorkflowBlocked("No matching block cycle")
+    latest_cycle = connection.execute(
+        "SELECT MAX(cycle) AS cycle FROM block_cycles "
+        "WHERE round_id = ? AND block = ? AND artifact_path = ?",
+        (round_id, block, artifact_path),
+    ).fetchone()["cycle"]
+    if cycle != latest_cycle:
+        raise WorkflowBlocked("Completion cycle is no longer active")
     completed = {row["block"] for row in connection.execute(
         "SELECT block FROM workflow_events WHERE round_id = ? "
         "AND event IN ('block_completed', 'human_completed')", (round_id,)
@@ -237,7 +262,16 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
 
 def record_review(database: Database, round_id: int, block: str, artifact_path: str, cycle: int, reviewer: str, raw: str) -> ReviewResult:
     """Validate and persist one review receipt without private DB access at the CLI."""
-    result = parse_review_result(raw)
+    try:
+        result = parse_review_result(raw)
+    except InvalidReviewResult:
+        try:
+            database.record_workflow_failure(
+                round_id, block, "invalid reviewer response", {"kind": "invalid-response"}
+            )
+        except (ValueError, WorkflowBlocked):
+            pass
+        raise
     if result.artifact != artifact_path:
         raise WorkflowBlocked("Review artifact does not match the requested artifact")
     _artifact_path(database, artifact_path)
@@ -253,6 +287,13 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
         ).fetchone()
         if cycle_row is None:
             raise WorkflowBlocked("No matching block cycle")
+        latest_cycle = connection.execute(
+            "SELECT MAX(cycle) AS cycle FROM block_cycles "
+            "WHERE round_id = ? AND block = ? AND artifact_path = ?",
+            (round_id, block, artifact_path),
+        ).fetchone()["cycle"]
+        if cycle != latest_cycle:
+            raise WorkflowBlocked("Review cycle is no longer active")
         completed = {row["block"] for row in connection.execute(
             "SELECT block FROM workflow_events WHERE round_id = ? "
             "AND event IN ('block_completed', 'human_completed')", (round_id,)
@@ -279,7 +320,8 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
         })
         # Keep the original cycle marker as the compatibility-facing latest state.
         _event(connection, round_id, block, "cycle_started", {
-            "cycle": cycle, "artifact": artifact_path, "review_decision": result.decision,
+            "cycle": cycle, "artifact": artifact_path, "state": "reviewed",
+            "review_decision": result.decision,
         })
     return result
 

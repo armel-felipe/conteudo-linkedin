@@ -173,6 +173,27 @@ class DatabaseTests(unittest.TestCase):
         self.assertNotIn("secret", state["payload_json"])
         self.assertIn("[REDACTED]", state["payload_json"])
 
+    def test_workflow_failure_requires_open_known_canonical_round_state(self):
+        round_id = self.db.create_round("Pilar", "round.md")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_failure(round_id, "NOPE", "failure")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_failure(round_id, "B2", "failure")
+
+        with sqlite3.connect(self.path) as connection:
+            connection.execute("UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,))
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_failure(round_id, "B1", "failure")
+
+    def test_resume_closed_incomplete_round_is_blocked(self):
+        from content_ops.orchestration import WorkflowBlocked, resume_round
+
+        round_id = self.db.create_round("Pilar", "round.md")
+        with sqlite3.connect(self.path) as connection:
+            connection.execute("UPDATE rounds SET status = 'closed' WHERE id = ?", (round_id,))
+
+        self.assertEqual(resume_round(self.db, round_id), "blocked")
+
     def test_upsert_is_idempotent_by_external_id(self):
         self.db.upsert_post("linkedin:1", "A", "published")
         self.db.upsert_post("linkedin:1", "A revisado", "published")

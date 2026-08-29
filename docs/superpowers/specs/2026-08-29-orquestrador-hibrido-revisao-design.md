@@ -82,7 +82,7 @@ Cada aprovação terá rodada, bloco, artefato, ciclo, agente revisor, resultado
 
 Após interrupção, a retomada parte do último evento persistido, sem repetir blocos concluídos ou pular revisões.
 
-O comando `workflow-resume` deriva a próxima ação exclusivamente do último evento persistido por bloco. Falhas e estados desconhecidos permanecem bloqueados, e payloads de eventos são redigidos recursivamente antes da persistência.
+O comando `workflow-resume` deriva a próxima ação exclusivamente do último evento persistido por bloco. Ele é somente leitura nos estados normais; ao atingir o limite de ciclos ou encontrar um evento desconhecido, grava explicitamente um evento `blocked`. Falhas e estados desconhecidos permanecem bloqueados, e payloads de eventos são redigidos recursivamente antes da persistência. O marcador compatível `cycle_started` continua identificando o ciclo, mas traz `state: reviewed` e `review_decision` quando representa uma review já persistida, sem substituir o evento semântico `review_feedback` ou `review_approved`.
 
 ## Falhas e segurança
 

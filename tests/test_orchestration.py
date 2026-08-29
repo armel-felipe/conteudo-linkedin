@@ -315,6 +315,54 @@ class OrchestrationTests(unittest.TestCase):
         with self.assertRaises(WorkflowBlocked):
             resume_round(self.database, 999)
 
+    def test_old_cycle_cannot_be_reviewed_or_completed_after_new_cycle_starts(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result())
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+
+        with self.assertRaises(WorkflowBlocked):
+            record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result())
+        with self.assertRaises(WorkflowBlocked):
+            complete_block(self.database, self.round_id, "B1", "content/drafts/x.md", 1)
+
+    def test_invalid_review_persists_sanitized_failure_before_raising(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+
+        with self.assertRaises(InvalidReviewResult):
+            record_review(
+                self.database, self.round_id, "B1", "content/drafts/x.md", 1,
+                "revisor", '{"PASSWORD":"do-not-store"',
+            )
+
+        state = self.database.latest_block_state(self.round_id, "B1")
+        self.assertEqual(state["event"], "failed")
+        self.assertNotIn("do-not-store", state["payload_json"])
+
+    def test_feedback_can_be_followed_by_changed_approval(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result("feedback"))
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 2, "revisor", self.result())
+
+        self.assertEqual(resume_round(self.database, self.round_id), "complete:B1")
+
+    def test_resume_blocks_after_review_cycle_limit(self):
+        with patch.dict(os.environ, {"ORCHESTRATOR_MAX_REVIEW_CYCLES": "1"}):
+            start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+            record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result("feedback"))
+            self.assertEqual(resume_round(self.database, self.round_id), "blocked")
+        self.assertEqual(self.database.latest_block_state(self.round_id, "B1")["event"], "blocked")
+
+    def test_redaction_removes_secret_patterns_inside_strings(self):
+        redacted = redact_event_payload({
+            "message": "token=abc api_key = xyz password=last-secret",
+            "nested": ["TOKEN=inner", {"safe": "api-key=another"}],
+        })
+
+        serialized = json.dumps(redacted)
+        for secret in ("abc", "xyz", "last-secret", "inner", "another"):
+            self.assertNotIn(secret, serialized)
+
 
 if __name__ == "__main__":
     unittest.main()

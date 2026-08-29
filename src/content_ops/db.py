@@ -558,12 +558,24 @@ class Database:
         self, round_id: int, block: str, reason: str, details: dict | None = None
     ) -> int:
         """Persist a sanitized failure marker so restart cannot infer progress."""
-        from content_ops.orchestration import redact_event_payload
+        from content_ops.orchestration import redact_event_payload, validate_block_order
 
         payload = redact_event_payload({"reason": reason, "details": details or {}})
         with self.transaction() as connection:
-            if connection.execute("SELECT id FROM rounds WHERE id = ?", (round_id,)).fetchone() is None:
+            round_row = connection.execute(
+                "SELECT status FROM rounds WHERE id = ?", (round_id,)
+            ).fetchone()
+            if round_row is None:
                 raise ValueError(f"Round {round_id} does not exist")
+            if round_row["status"] != "open":
+                raise ValueError("Round is not open")
+            completed = {
+                row["block"] for row in connection.execute(
+                    "SELECT block FROM workflow_events WHERE round_id = ? "
+                    "AND event IN ('block_completed', 'human_completed')", (round_id,)
+                )
+            }
+            validate_block_order(completed, block)
             return connection.execute(
                 "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'failed', ?)",
                 (round_id, block, json.dumps(payload, ensure_ascii=False, sort_keys=True)),
