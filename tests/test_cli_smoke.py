@@ -96,3 +96,18 @@ class CliSmokeTests(unittest.TestCase):
             result = json.dumps({"decision": "approved", "artifact": "artifact.md", "feedback": [], "checks": [{"name": "x", "status": "pass", "evidence": "ok"}]})
             with self.assertRaises(SystemExit):
                 main(["workflow-review", str(round_id), "B7", "artifact.md", "1", "revisor", result], repository_root=root)
+
+    def test_workflow_cli_persists_human_b7_completion(self):
+        from content_ops.cli import main
+        from content_ops.db import Database
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact = root / "artifact.md"
+            artifact.write_text("draft", encoding="utf-8")
+            database = Database(root / "data" / "content.db")
+            database.initialize()
+            round_id = database.create_round("Pilar", "round.md")
+            for block in ("B1", "B2", "B3", "B4", "B5", "B6"):
+                database.record_workflow_event(round_id, block, "block_completed")
+            main(["workflow-human-complete", str(round_id), "B7", "artifact.md", "idea-1"], repository_root=root)
+            self.assertEqual(database.latest_block_state(round_id, "B7")["event"], "human_completed")

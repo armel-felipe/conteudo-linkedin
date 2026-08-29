@@ -1,6 +1,7 @@
 """Fail-closed orchestration protocol for executor/reviewer block cycles."""
 
 from dataclasses import dataclass
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -71,11 +72,15 @@ def _artifact_path(database: Database, artifact_path: str) -> Path:
     return path
 
 
-def can_complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> None:
-    """Check every durable and filesystem gate before a block completion event."""
+def _validate_completion_request(database: Database, block: str, artifact_path: str) -> None:
     if block == "B7":
         raise WorkflowBlocked("B7 requires mandatory human completion")
     _artifact_path(database, artifact_path)
+
+
+def can_complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> None:
+    """Check every durable and filesystem gate before a block completion event."""
+    _validate_completion_request(database, block, artifact_path)
     with database.transaction() as connection:
         _validate_completion(connection, round_id, block, artifact_path, cycle)
 
@@ -151,13 +156,33 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
     _artifact_path(database, artifact_path)
     if block == "B7" and result.decision == "approved":
         raise WorkflowBlocked("B7 cannot be approved automatically")
+    result_hash = hashlib.sha256(
+        json.dumps(json.loads(raw), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
     with database.transaction() as connection:
+        round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+        if round_row is None or round_row["status"] != "open":
+            raise WorkflowBlocked("Round is not active")
         cycle_row = connection.execute(
             "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ? AND artifact_path = ?",
             (round_id, block, cycle, artifact_path),
         ).fetchone()
         if cycle_row is None:
             raise WorkflowBlocked("No matching block cycle")
+        completed = {row["block"] for row in connection.execute(
+            "SELECT block FROM workflow_events WHERE round_id = ? AND event = 'block_completed'", (round_id,)
+        )}
+        validate_block_order(completed, block)
+        for row in connection.execute(
+            "SELECT result_json FROM review_receipts JOIN block_cycles ON block_cycles.id = review_receipts.cycle_id "
+            "WHERE block_cycles.round_id = ? AND block_cycles.block = ? AND block_cycles.artifact_path = ?",
+            (round_id, block, artifact_path),
+        ):
+            prior_hash = hashlib.sha256(
+                json.dumps(json.loads(row["result_json"]), sort_keys=True, separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+            if prior_hash == result_hash:
+                raise WorkflowBlocked("Repeated review result indicates an unproductive loop")
         connection.execute(
             "INSERT INTO review_receipts (cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
             (cycle_row["id"], reviewer, result.decision, raw),
@@ -165,11 +190,31 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
     return result
 
 
+def record_human_completion(database: Database, round_id: int, block: str, artifact_path: str, selection: str) -> int:
+    """Persist the mandatory human B7 selection without a reviewer receipt."""
+    if block != "B7":
+        raise WorkflowBlocked("Human completion is only available for B7")
+    if not selection:
+        raise WorkflowBlocked("B7 human selection is required")
+    _artifact_path(database, artifact_path)
+    with database.transaction() as connection:
+        round_row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+        if round_row is None or round_row["status"] != "open":
+            raise WorkflowBlocked("Round is not active")
+        completed = {row["block"] for row in connection.execute(
+            "SELECT block FROM workflow_events WHERE round_id = ? AND event IN ('block_completed', 'human_completed')", (round_id,)
+        )}
+        validate_block_order(completed, block)
+        event = connection.execute(
+            "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'human_completed', ?)",
+            (round_id, block, json.dumps({"selection": selection})),
+        )
+        return event.lastrowid
+
+
 def complete_block(database: Database, round_id: int, block: str, artifact_path: str, cycle: int) -> int:
     """Check gates and record exactly one completion event in one transaction."""
-    if block == "B7":
-        raise WorkflowBlocked("B7 requires mandatory human completion")
-    _artifact_path(database, artifact_path)
+    _validate_completion_request(database, block, artifact_path)
     with database.transaction() as connection:
         _validate_completion(connection, round_id, block, artifact_path, cycle)
         event = connection.execute(

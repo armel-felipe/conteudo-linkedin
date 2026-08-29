@@ -52,6 +52,11 @@ def build_parser() -> argparse.ArgumentParser:
     block_complete.add_argument("block")
     block_complete.add_argument("artifact")
     block_complete.add_argument("cycle", type=int)
+    human_complete = commands.add_parser("workflow-human-complete", help="Persist mandatory human B7 selection")
+    human_complete.add_argument("round_id", type=int)
+    human_complete.add_argument("block")
+    human_complete.add_argument("artifact")
+    human_complete.add_argument("selection")
     pillars = commands.add_parser("pillars", help="Propose and approve editorial pillars")
     pillar_commands = pillars.add_subparsers(dest="pillars_command")
     pillar_commands.add_parser("propose", help="Propose pillars from published history")
@@ -146,12 +151,13 @@ def main(
     parser = build_parser()
     arguments = parser.parse_args(argv)
 
-    if arguments.command in {"workflow-cycle-start", "workflow-review", "workflow-block-complete"}:
+    if arguments.command in {"workflow-cycle-start", "workflow-review", "workflow-block-complete", "workflow-human-complete"}:
         from content_ops.db import Database
         from content_ops.orchestration import (
             InvalidReviewResult,
             WorkflowBlocked,
             complete_block,
+            record_human_completion,
             record_review,
             start_block_cycle,
         )
@@ -166,6 +172,10 @@ def main(
                 record_review(database, arguments.round_id, arguments.block, arguments.artifact,
                               arguments.cycle, arguments.reviewer, arguments.result)
                 print(f"Recorded review for {arguments.block} cycle {arguments.cycle}.")
+                return
+            if arguments.command == "workflow-human-complete":
+                record_human_completion(database, arguments.round_id, arguments.block, arguments.artifact, arguments.selection)
+                print(f"Completed human selection for {arguments.block}.")
                 return
             complete_block(database, arguments.round_id, arguments.block, arguments.artifact, arguments.cycle)
             print(f"Completed {arguments.block}.")

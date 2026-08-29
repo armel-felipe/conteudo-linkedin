@@ -14,6 +14,7 @@ from content_ops.orchestration import (
     complete_block,
     parse_review_result,
     record_review,
+    record_human_completion,
     start_block_cycle,
     validate_block_order,
 )
@@ -145,6 +146,37 @@ class OrchestrationTests(unittest.TestCase):
         self.database.record_workflow_event(self.round_id, "B1", "block_completed")
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+
+    def test_repeated_review_result_is_blocked_across_cycles(self):
+        for block in ("B1", "B2", "B3", "B4"):
+            self.database.record_workflow_event(self.round_id, block, "block_completed")
+        start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
+        record_review(self.database, self.round_id, "B5", "content/drafts/x.md", 1, "revisor", self.result("feedback"))
+        start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_review(self.database, self.round_id, "B5", "content/drafts/x.md", 2, "revisor", self.result("feedback"))
+
+    def test_review_rejects_closed_round_and_invalid_order(self):
+        start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
+        self.database.close_round(self.round_id)
+        with self.assertRaises(WorkflowBlocked):
+            record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "revisor", self.result())
+
+        other = Database(self.root / "data" / "other.db")
+        other.initialize()
+        round_id = other.create_round("Pilar", "round.md")
+        (self.root / "other.md").write_text("draft", encoding="utf-8")
+        other.start_block_cycle(round_id, "B3", "other.md")
+        with self.assertRaises(WorkflowBlocked):
+            record_review(other, round_id, "B3", "other.md", 1, "revisor", self.result(artifact="other.md"))
+
+    def test_b7_human_completion_is_persisted_without_reviewer_approval(self):
+        for block in ("B1", "B2", "B3", "B4", "B5", "B6"):
+            self.database.record_workflow_event(self.round_id, block, "block_completed")
+        event_id = record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
+        self.assertIsInstance(event_id, int)
+        state = self.database.latest_block_state(self.round_id, "B7")
+        self.assertEqual(state["event"], "human_completed")
 
 
 if __name__ == "__main__":
