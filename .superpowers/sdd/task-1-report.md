@@ -1,16 +1,18 @@
 # Task 1 Report
 
-Status: DONE_WITH_CONCERNS
+Status: DONE
 
 ## Commits
 
 - `11ecee1 feat: persist orchestration review cycles`
-- Report commit follows this implementation commit.
+- `1e019d7 fix: make task tests use worktree source`
+- `97fc694 docs: record task 1 implementation report`
 
 ## Files
 
 - `src/content_ops/db.py`
 - `tests/test_db.py`
+- `pyproject.toml`
 
 ## Cause and Decisions
 
@@ -22,15 +24,12 @@ Status: DONE_WITH_CONCERNS
 ## Tests
 
 - `python3.12 -m pytest tests/test_db.py -k orchestration -v`
-  - Result: FAIL, 2 failed, 21 deselected.
-  - Cause: without `PYTHONPATH=src`, the environment imported the installed root package (`content_ops.db`, schema version 6), not this worktree.
-- `PYTHONPATH=src python3.12 -m pytest tests/test_db.py -k orchestration -v`
-  - Result: PASS, 2 passed, 21 deselected.
-- `PYTHONPATH=src python3.12 -m pytest tests/test_db.py -v`
-  - Result: PASS, 23 passed, 29 subtests passed.
+  - Result: PASS, 5 passed, 20 deselected.
+- `python3.12 -m pytest tests/test_db.py -v`
+  - Result: PASS, 25 passed, 29 subtests passed.
 - `git diff --check`
   - Result: PASS, no whitespace errors.
 
 ## Concerns
 
-- The brief's focused command requires `PYTHONPATH=src` in this checkout to test the worktree source; the literal command uses an installed package instead.
+- No concerns. Pytest now resolves `src` through `[tool.pytest.ini_options] pythonpath = ["src"]`.
