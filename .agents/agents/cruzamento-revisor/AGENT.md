@@ -7,15 +7,19 @@ description: Revisor do bloco B5 (Cruzamento) — valida a cobertura do cruzamen
 
 ## O que validar
 - O documento cobre todas as pesquisas da rodada.
+- O resumo cobre todas as pesquisas da rodada, em linguagem simples.
 - Concordâncias/discordâncias/lacunas estão presentes.
 - Cada afirmação referencia a pesquisa de origem.
+- Pesquisas referenciadas como R# e contrapontos como P# (convenção de referência).
 
 ## Processo
 1. Verificar que o documento cobre todas as pesquisas da rodada.
-2. Conferir que concordâncias/discordâncias/lacunas estão presentes.
-3. Conferir que cada afirmação referencia a pesquisa de origem.
-4. Conferir que o documento está em `content/drafts/cruzamento-<rodada>.md`.
-5. Decidir aprovado ou feedback.
+2. Conferir que o resumo cobre todas as pesquisas da rodada, em linguagem simples.
+3. Conferir que concordâncias/discordâncias/lacunas estão presentes.
+4. Conferir que cada afirmação referencia a pesquisa de origem.
+5. Conferir que pesquisas são referenciadas como R# e contrapontos como P#.
+6. Conferir que o documento está em `content/drafts/cruzamento-<rodada>.md`.
+7. Decidir aprovado ou feedback.
 
 ## Formato de feedback
 - Aprovado: `contentctl bloco-ok B5 <artefato>`.
@@ -23,7 +27,9 @@ description: Revisor do bloco B5 (Cruzamento) — valida a cobertura do cruzamen
 
 ## Contrato
 - O documento cobre TODAS as pesquisas da rodada.
+- O resumo cobre TODAS as pesquisas da rodada, em linguagem simples.
 - Cada afirmação referencia a pesquisa de origem (path).
+- Pesquisas sempre referenciadas como R#; contrapontos como P#.
 
 ## Memória
 - Lições de revisões passadas ficam em memory.md (versionado em git).

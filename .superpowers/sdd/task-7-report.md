@@ -1,26 +1,80 @@
-# Task 7 report
+# Task 7 report — Agentes do bloco B6 (Ideação)
 
-## Follow-up fixes
+## Implemented
 
-- The LinkedIn target now receives the configured `accountId` from
-  `ZERNIO_ACCOUNT_ID`.
-- Image URLs require both an `http`/`https` scheme and a host; `https:` is
-  rejected before the client is called.
-- SQLite has a migrated `posts.zernio_post_id` column. A successful scheduling
-  result records that ID in SQLite and Markdown.
-- Result persistence is independent per store. After a network attempt, a
-  failed write creates a non-sensitive sidecar recovery marker. The next call
-  reconciles the known result and exits without issuing a second POST, so a
-  record cannot be silently retried while still shown as approved.
-- HTTP failures always surface as the sanitized `SchedulingError`; persistence
-  errors and remote error details are not exposed.
+- `tests/test_orquestrador_runtime.py`: added `"B6": "ideacao"` to the `BLOCKS`
+  dict (verbatim from the brief).
+- `.agents/agents/ideacao-executor/AGENT.md`: executor B6, verbatim from the
+  brief (already had `## Processo` and `## Contrato`).
+- `.agents/agents/ideacao-revisor/AGENT.md`: revisor B6, verbatim from the
+  brief, plus the two required sections per the established deviation:
+  - `## Processo`: 5 numbered steps restating the `## O que validar` bullets
+    (ancoramento, fontes, status `idea`, registro em `content/ideas/`, decisão).
+  - `## Contrato`: executor's contract bullets reused verbatim.
+- `.agents/agents/ideacao-revisor/memory.md`: verbatim from the brief.
 
-## Tests and verification
+## Tests
 
-- Red run after adding the regressions: missing `account_id` argument and
-  `Database.record_schedule_result` caused the focused scheduling tests to
-  fail before implementation.
-- Focused: `PYTHONPATH=src python3 -m unittest tests.test_scheduling -v` — 12 passed.
-- Full: `PYTHONPATH=src python3 -m unittest discover -s tests -v` — 61 passed.
-- `git diff --check` — passed.
-- All POST behavior is exercised by `FakeClient`; no real Zernio POST was made.
+- Step 1 — failing test: added `"B6": "ideacao"` to `BLOCKS`.
+- Step 2 — focused red run: 3 failed (B6 executor missing, B6 revisor memory
+  missing, required sections missing).
+- Step 4 — focused green run: 5 passed.
+- Full suite: 115 passed, 40 subtests passed in 1.08s.
+
+## TDD Evidence
+
+RED:
+
+```
+PYTHONPATH="$PWD/src" /Users/mac/.pyenv/shims/python3.12 -m pytest tests/test_orquestrador_runtime.py -q
+FAILED tests/test_orquestrador_runtime.py::OrquestradorRuntimeStructureTests::test_agent_files_have_required_sections
+FAILED tests/test_orquestrador_runtime.py::OrquestradorRuntimeStructureTests::test_each_block_has_executor_and_revisor
+FAILED tests/test_orquestrador_runtime.py::OrquestradorRuntimeStructureTests::test_reviewers_have_memory
+3 failed, 2 passed in 0.03s
+```
+
+GREEN:
+
+```
+PYTHONPATH="$PWD/src" /Users/mac/.pyenv/shims/python3.12 -m pytest tests/test_orquestrador_runtime.py -q
+.....                                                                    [100%]
+5 passed in 0.01s
+```
+
+Full suite:
+
+```
+PYTHONPATH="$PWD/src" /Users/mac/.pyenv/shims/python3.12 -m pytest tests/ -q
+................................... [ 30%]
+..................................................................... [ 90%]
+...........                                                              [100%]
+115 passed, 40 subtests passed in 1.08s
+```
+
+## Commit
+
+- `508b3b2 feat: agentes do bloco B6 (Ideação) — executor e revisor`
+
+## Files changed
+
+- `tests/test_orquestrador_runtime.py` (modified)
+- `.agents/agents/ideacao-executor/AGENT.md` (created)
+- `.agents/agents/ideacao-revisor/AGENT.md` (created)
+- `.agents/agents/ideacao-revisor/memory.md` (created)
+
+## Self-review
+
+- Completeness: all brief steps 1-5 done; revisor got the two required sections
+  per the established deviation from Tasks 2-6.
+- Quality: content matches the brief verbatim; revisor `## Processo` mirrors the
+  `## O que validar` bullets and the `## Contrato` reuses the executor's contract
+  verbatim, consistent with the B5 revisor pattern.
+- Discipline: no overbuilding — only the files the brief specifies.
+- Testing: harness verifies real structure (files exist, required sections
+  present); output pristine.
+
+## Concerns
+
+- The pre-existing `.superpowers/sdd/task-7-report.md` was stale content from a
+  previous plan iteration (a `contentctl publish-complete` report); it was
+  overwritten with this report. No source code was affected.

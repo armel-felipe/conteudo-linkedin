@@ -8,4 +8,10 @@ else
     export PYTHONPATH="$repo_dir/src"
 fi
 
-exec python3 -m content_ops.cli "$@"
+if command -v python3.12 >/dev/null 2>&1; then
+    python_bin=$(command -v python3.12)
+else
+    python_bin=python3
+fi
+
+exec "$python_bin" -m content_ops.cli "$@"

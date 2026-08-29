@@ -77,8 +77,8 @@ B1 Convoca → B2 Pilar → B3 Pesquisa MECE → B4 Executa pesquisa → [repeti
 | B5 Cruzamento | ≥2 pesquisas da rodada | cruzamento-executor | `content/drafts/cruzamento-<rodada>.md` (concordâncias/discordâncias/lacunas) | cobre todas as pesquisas da rodada | `APPROVAL_CRUZAMENTO` |
 | B6 Ideação | Cruzamento validado | ideacao-executor | Ideias em `content/ideas/` + banco (status `idea`) | cada ideia ancorada em pesquisa | `APPROVAL_IDEACAO` |
 | B7 Escolha | Ideias `idea` | **humano** (sempre) | Ideias selecionadas (status `selected`) | (não há revisor; gate é humano) | sempre human |
-| B8 Escrita | Ideias selecionadas | escrita-executor | Texto 1000–2000 chars + fontes (≤5, peso) em `content/drafts/` | texto no limite + fontes corretas | `APPROVAL_ESCRITA` |
-| B10 Escrita-humana | Texto base revisado | escrita-humana-executor | Texto refinado ≤15% delta + fontes reanexadas | delta respeitado + fontes intactas | `APPROVAL_REFINAMENTO` |
+| B8 Escrita | Ideias selecionadas | escrita-executor | Texto 1500–2500 chars (sem fontes) + fontes (≤5, peso) em `content/drafts/` | texto no limite + fontes corretas | `APPROVAL_ESCRITA` |
+| B10 Escrita-humana | Texto base revisado | escrita-humana-executor | Texto refinado + fontes reanexadas | texto + fontes < 3000 chars + fontes intactas | `APPROVAL_REFINAMENTO` |
 | B9 Valida | Texto refinado | **humano** | Texto validado (status `approved`) | (gate humano; revisor já passou) | `APPROVAL_VALIDACAO` |
 | B11 Publica | Texto aprovado | publicar-linkedin-executor | Post publicado + **move `approved/`→`published/`** + status `published` | publicado + estado atualizado | `APPROVAL_PUBLICACAO` |
 

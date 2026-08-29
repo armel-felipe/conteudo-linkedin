@@ -11,14 +11,13 @@ description: Executor do bloco B10 (Escrita-humana) — refina o texto base com 
 
 ## Processo
 1. Refinar o texto para ficar mais claro, direto e humano, preservando a voz.
-2. Respeitar delta ≤15% em relação ao texto base.
-3. Reanexar as fontes ao final.
+2. Reanexar as fontes ao final.
 
 ## Formato de saída
 - Texto refinado em `content/drafts/`.
 - Fontes reanexadas (≤5, com peso).
 
 ## Contrato
-- Delta ≤15% em relação ao texto base.
+- Texto + fontes (com espaços e quebras de linha) abaixo de 3000 caracteres.
 - Fontes intactas (mesmas do texto base).
 - Sem credenciais em chat, arquivos, banco ou commits.

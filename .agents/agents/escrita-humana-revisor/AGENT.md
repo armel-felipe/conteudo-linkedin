@@ -6,12 +6,12 @@ description: Revisor do bloco B10 (Escrita-humana) — valida delta e fontes.
 # Revisor B10 — Escrita-humana
 
 ## O que validar
-- Delta ≤15% em relação ao texto base.
+- Texto + fontes (com espaços e quebras de linha) abaixo de 3000 caracteres.
 - Fontes intactas (mesmas do texto base).
 - O texto ficou mais humano sem perder a voz.
 
 ## Processo
-1. Verificar que o delta é ≤15% em relação ao texto base.
+1. Verificar que texto + fontes (com espaços e quebras de linha) ficam abaixo de 3000 caracteres.
 2. Conferir que as fontes estão intactas (mesmas do texto base).
 3. Avaliar se o texto ficou mais humano sem perder a voz.
 4. Conferir que o texto refinado está em `content/drafts/`.
@@ -22,7 +22,7 @@ description: Revisor do bloco B10 (Escrita-humana) — valida delta e fontes.
 - Feedback: itens com o que corrigir.
 
 ## Contrato
-- Delta ≤15% em relação ao texto base.
+- Texto + fontes (com espaços e quebras de linha) abaixo de 3000 caracteres.
 - Fontes intactas (mesmas do texto base).
 - Sem credenciais em chat, arquivos, banco ou commits.
 
