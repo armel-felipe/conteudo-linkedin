@@ -1,48 +1,28 @@
 # Task 2 Report
 
-Status: DONE
+## Status
+
+Complete. Task 3 was not started.
 
 ## Commits
 
-- `ec38f6f feat: enforce fail-closed workflow gates`
-- `8dde5c1 docs: record task 2 implementation report`
-- `6a1a8cd fix: close orchestration workflow bypasses`
-- `ed3a28f fix: validate workflow cycle ordering`
-- `9288c15 fix: prevent repeated workflow reviews`
+- `3fb8ee2 fix: close orchestration database bypasses`
+- A separate report-only commit contains this file.
 
-## Files
+## Changes
 
-- `src/content_ops/orchestration.py`
-- `src/content_ops/cli.py`
-- `tests/test_orchestration.py`
-- `tests/test_cli_smoke.py`
-- `tests/test_cli_end_to_end.py`
+- Routed public database cycle, review, completion, and validation writes through the fail-closed orchestration guards.
+- Rejected unscoped or arbitrary `block_completed` persistence, including closed rounds and out-of-order blocks.
+- Counted `human_completed` as a completed workflow block so B7 releases B8 without automatic reviewer approval.
+- Persisted the artifact in completion event payloads.
+- Updated fixtures and direct API coverage for contextual artifacts, cycles, reviews, and legacy `bloco-ok` rejection.
 
-## Tests
+## Commands and Results
 
-- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -v`
-  - Result: PASS, 46 tests passed, 37 subtests passed.
-- `python3.12 -m pytest tests/test_cli_end_to_end.py -v`
-  - Result: PASS, 8 tests passed.
-- `python3.12 -m compileall -q src tests`
-  - Result: PASS.
-- `git diff --check`
-  - Result: PASS, no whitespace errors.
-
-## Summary
-
-- Added strict reviewer JSON parsing with approved/feedback decisions and required checks.
-- Added deterministic block ordering and fail-closed artifact, active-round, cycle, receipt, duplicate, and B7 gates.
-- Added `workflow-cycle-start`, `workflow-review`, and `workflow-block-complete` CLI commands.
-- Added guarded `bloco-ok` support when round and cycle are supplied.
-- Removed the unscoped `bloco-ok` bypass; it now requires round and cycle context.
-- Made cycle start and block completion domain operations transactional, with a configurable three-cycle default limit.
-- Removed private database access from the CLI and added CLI flow regressions.
-- Added cycle-start rejection tests for malformed JSON, invalid rounds, invalid order, and completed blocks.
-- Centralized completion validation for both the guard and the atomic completion API.
-- Blocked repeated semantic review results using stable hashes and added explicit persisted human B7 completion.
-- Rejected reviews for closed rounds or invalid block order before receipt persistence.
+- `python3.12 -m pytest -q` -> `142 passed, 40 subtests passed`
+- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -q` -> `48 passed, 37 subtests passed`
+- Required final verification is run after this report is committed.
 
 ## Concerns
 
-- No known concerns.
+- `record_block_validation` remains a compatibility API and writes the legacy `block_validations` row after the central completion gate; new workflow callers should use `workflow-block-complete` or the contextual orchestration API.
