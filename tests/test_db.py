@@ -10,9 +10,27 @@ class DatabaseTests(unittest.TestCase):
         from content_ops.db import Database
 
         self.temporary_directory = tempfile.TemporaryDirectory()
-        self.path = Path(self.temporary_directory.name) / "content.db"
+        self.path = Path(self.temporary_directory.name) / "data" / "content.db"
         self.db = Database(self.path)
         self.db.initialize()
+        self.artifact = self.path.parent.parent / "content" / "drafts" / "x.md"
+        self.artifact.parent.mkdir(parents=True)
+        self.artifact.write_text("draft", encoding="utf-8")
+
+    def complete_prior_blocks(self, round_id, blocks):
+        import json
+        from content_ops.orchestration import complete_block, record_review, start_block_cycle
+
+        result = json.dumps({
+            "decision": "approved",
+            "artifact": "content/drafts/x.md",
+            "feedback": [],
+            "checks": [{"name": "quality", "status": "pass", "evidence": "ok"}],
+        })
+        for block in blocks:
+            start_block_cycle(self.db, round_id, block, "content/drafts/x.md")
+            record_review(self.db, round_id, block, "content/drafts/x.md", 1, "revisor", result)
+            complete_block(self.db, round_id, block, "content/drafts/x.md", 1)
 
     def tearDown(self):
         self.temporary_directory.cleanup()
@@ -41,9 +59,11 @@ class DatabaseTests(unittest.TestCase):
 
     def test_orchestration_writes_are_durable(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
         cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"feedback","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
         self.db.record_review_result(
-            cycle_id, "cruzamento-revisor", "feedback", '{"decision":"feedback"}'
+            cycle_id, "cruzamento-revisor", "feedback", result
         )
         event_id = self.db.record_workflow_event(
             round_id, "B5", "review_recorded", '{"cycle":1}'
@@ -63,9 +83,11 @@ class DatabaseTests(unittest.TestCase):
 
     def test_orchestration_review_approval_is_scoped_to_round_block_artifact_and_cycle(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
         cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
         self.db.record_review_result(
-            cycle_id, "cruzamento-revisor", "approved", '{"decision":"approved"}'
+            cycle_id, "cruzamento-revisor", "approved", result
         )
 
         self.assertTrue(
@@ -77,6 +99,7 @@ class DatabaseTests(unittest.TestCase):
 
     def test_orchestration_constraints_reject_invalid_decision_and_json(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
         cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
 
         with self.assertRaises(ValueError):
@@ -88,6 +111,7 @@ class DatabaseTests(unittest.TestCase):
 
     def test_orchestration_constraints_enforce_uniqueness_and_foreign_keys(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3", "B4"))
         cycle_id = self.db.start_block_cycle(round_id, "B5", "content/drafts/x.md")
 
         with self.db._connect() as connection:
@@ -111,6 +135,26 @@ class DatabaseTests(unittest.TestCase):
                 )
 
         self.assertIsInstance(cycle_id, int)
+
+    def test_public_workflow_apis_reject_unscoped_completion_and_closed_round(self):
+        from content_ops.orchestration import WorkflowBlocked, start_block_cycle
+
+        artifact = self.path.parent.parent / "artifact.md"
+        artifact.write_text("draft", encoding="utf-8")
+        round_id = self.db.create_round("Pilar", "round.md")
+        with self.assertRaises(ValueError):
+            self.db.record_workflow_event(round_id, "B1", "block_completed")
+        with self.assertRaises(ValueError):
+            self.db.record_block_validation("B1", "artifact.md")
+        start_block_cycle(self.db, round_id, "B1", "artifact.md")
+        self.db.close_round(round_id)
+        with self.assertRaises(WorkflowBlocked):
+            self.db.record_review_result(
+                1,
+                "revisor",
+                "feedback",
+                '{"decision":"feedback","artifact":"artifact.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}',
+            )
 
     def test_latest_block_state_returns_latest_event(self):
         round_id = self.db.create_round("Pilar", "runtime/rodadas/1.md")
@@ -382,7 +426,12 @@ class DatabaseTests(unittest.TestCase):
         self.assertIsNone(pillar)
 
     def test_block_validation_records_reviewer_approval(self):
-        self.db.record_block_validation("B4", "research/lideranca-times.md")
+        round_id = self.db.create_round("Pilar", "round.md")
+        self.complete_prior_blocks(round_id, ("B1", "B2", "B3"))
+        cycle_id = self.db.start_block_cycle(round_id, "B4", "content/drafts/x.md")
+        result = '{"decision":"approved","artifact":"content/drafts/x.md","feedback":[],"checks":[{"name":"quality","status":"pass","evidence":"ok"}]}'
+        self.db.record_review_result(cycle_id, "revisor", "approved", result)
+        self.db.record_block_validation("B4", "content/drafts/x.md", round_id, 1)
 
         with sqlite3.connect(self.path) as connection:
             row = connection.execute(
@@ -390,7 +439,7 @@ class DatabaseTests(unittest.TestCase):
                 ("B4",),
             ).fetchone()
         self.assertEqual(row[0], "B4")
-        self.assertEqual(row[1], "research/lideranca-times.md")
+        self.assertEqual(row[1], "content/drafts/x.md")
         self.assertEqual(row[2], 1)
 
     def test_create_idea_stores_multi_research_sources(self):

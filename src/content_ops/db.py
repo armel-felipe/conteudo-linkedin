@@ -481,38 +481,32 @@ class Database:
 
     def start_block_cycle(self, round_id: int, block: str, artifact_path: str) -> int:
         """Start the next review cycle for a block artifact."""
-        with self.transaction() as connection:
-            if connection.execute("SELECT 1 FROM rounds WHERE id = ?", (round_id,)).fetchone() is None:
-                raise ValueError(f"Round {round_id} does not exist")
-            cycle = connection.execute(
-                "SELECT COALESCE(MAX(cycle), 0) + 1 FROM block_cycles "
-                "WHERE round_id = ? AND block = ?",
-                (round_id, block),
+        from content_ops.orchestration import start_block_cycle
+
+        cycle = start_block_cycle(self, round_id, block, artifact_path)
+        with self._connect() as connection:
+            return connection.execute(
+                "SELECT id FROM block_cycles WHERE round_id = ? AND block = ? AND cycle = ?",
+                (round_id, block, cycle),
             ).fetchone()[0]
-            cursor = connection.execute(
-                "INSERT INTO block_cycles (round_id, block, cycle, artifact_path) "
-                "VALUES (?, ?, ?, ?)",
-                (round_id, block, cycle, artifact_path),
-            )
-            return cursor.lastrowid
 
     def record_review_result(
         self, cycle_id: int, reviewer_agent: str, decision: str, result_json: str
     ) -> None:
         """Persist one review receipt for a previously started block cycle."""
-        if decision not in {"approved", "feedback"}:
-            raise ValueError("Review decision must be 'approved' or 'feedback'")
-        self._validate_json(result_json, "Review result")
-        with self.transaction() as connection:
-            if connection.execute(
-                "SELECT 1 FROM block_cycles WHERE id = ?", (cycle_id,)
-            ).fetchone() is None:
-                raise ValueError(f"Block cycle {cycle_id} does not exist")
-            connection.execute(
-                "INSERT INTO review_receipts "
-                "(cycle_id, reviewer_agent, decision, result_json) VALUES (?, ?, ?, ?)",
-                (cycle_id, reviewer_agent, decision, result_json),
-            )
+        from content_ops.orchestration import record_review, parse_review_result
+
+        result = parse_review_result(result_json)
+        if result.decision != decision:
+            raise ValueError("Review decision does not match result JSON")
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT round_id, block, artifact_path, cycle FROM block_cycles WHERE id = ?",
+                (cycle_id,),
+            ).fetchone()
+        if row is None:
+            raise ValueError(f"Block cycle {cycle_id} does not exist")
+        record_review(self, row["round_id"], row["block"], row["artifact_path"], row["cycle"], reviewer_agent, result_json)
 
     def review_is_approved(
         self, round_id: int, block: str, artifact_path: str, cycle: int
@@ -539,9 +533,22 @@ class Database:
     ) -> int:
         """Append a durable event to a block's workflow history."""
         self._validate_json(payload_json, "Workflow event payload")
+        if event == "block_completed":
+            from content_ops.orchestration import complete_block
+
+            payload = json.loads(payload_json)
+            if not isinstance(payload, dict) or not isinstance(payload.get("cycle"), int):
+                raise ValueError("block_completed requires a cycle and artifact")
+            artifact_path = payload.get("artifact")
+            if not isinstance(artifact_path, str):
+                raise ValueError("block_completed requires a cycle and artifact")
+            return complete_block(self, round_id, block, artifact_path, payload["cycle"])
         with self.transaction() as connection:
-            if connection.execute("SELECT 1 FROM rounds WHERE id = ?", (round_id,)).fetchone() is None:
+            row = connection.execute("SELECT status FROM rounds WHERE id = ?", (round_id,)).fetchone()
+            if row is None:
                 raise ValueError(f"Round {round_id} does not exist")
+            if row["status"] != "open":
+                raise ValueError("Round is not active")
             cursor = connection.execute(
                 "INSERT INTO workflow_events (round_id, block, event, payload_json) "
                 "VALUES (?, ?, ?, ?)",
@@ -681,8 +688,15 @@ class Database:
             "created": created,
         }
 
-    def record_block_validation(self, block: str, artifact_path: str) -> None:
-        """Record a reviewer's approval for one block's artifact."""
+    def record_block_validation(
+        self, block: str, artifact_path: str, round_id: int | None = None, cycle: int | None = None
+    ) -> None:
+        """Record a validated block only through the central completion gate."""
+        if round_id is None or cycle is None:
+            raise ValueError("Block validation requires round_id and cycle")
+        from content_ops.orchestration import complete_block
+
+        complete_block(self, round_id, block, artifact_path, cycle)
         with self._connect() as connection:
             connection.execute(
                 "INSERT INTO block_validations (block, artifact_path) VALUES (?, ?)",

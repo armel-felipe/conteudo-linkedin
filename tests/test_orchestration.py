@@ -44,6 +44,12 @@ class OrchestrationTests(unittest.TestCase):
         value.update(overrides)
         return json.dumps(value)
 
+    def complete_prior_blocks(self, blocks):
+        for block in blocks:
+            start_block_cycle(self.database, self.round_id, block, "content/drafts/x.md")
+            record_review(self.database, self.round_id, block, "content/drafts/x.md", 1, "revisor", self.result())
+            complete_block(self.database, self.round_id, block, "content/drafts/x.md", 1)
+
     def test_approved_and_feedback_results_are_structured(self):
         approved = parse_review_result(self.result())
         feedback = parse_review_result(self.result("feedback"))
@@ -73,6 +79,7 @@ class OrchestrationTests(unittest.TestCase):
         validate_block_order({"B1", "B2"}, "B3")
 
     def test_completion_requires_existing_artifact_and_approved_receipt(self):
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B5", "missing.md", 1)
         self.database.start_block_cycle(self.round_id, "B5", "content/drafts/x.md")
@@ -80,6 +87,7 @@ class OrchestrationTests(unittest.TestCase):
             can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
     def test_completion_requires_matching_review_receipt(self):
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
         cycle_id = self.database.start_block_cycle(
             self.round_id, "B5", "content/drafts/x.md"
         )
@@ -90,22 +98,24 @@ class OrchestrationTests(unittest.TestCase):
             can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
     def test_completion_rejects_out_of_order_duplicate_and_b7(self):
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
         cycle_id = self.database.start_block_cycle(
             self.round_id, "B5", "content/drafts/x.md"
         )
         self.database.record_review_result(cycle_id, "revisor", "approved", self.result())
-        with self.assertRaises(WorkflowBlocked):
-            can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
-
-        for block in ("B1", "B2", "B3", "B4"):
-            self.database.record_workflow_event(self.round_id, block, "block_completed")
         can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
-        self.database.record_workflow_event(self.round_id, "B5", "block_completed")
+
+        self.database.record_workflow_event(
+            self.round_id, "B5", "block_completed",
+            '{"cycle": 1, "artifact": "content/drafts/x.md"}',
+        )
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
+        self.complete_prior_blocks(("B6",))
         b7_id = self.database.start_block_cycle(self.round_id, "B7", "content/drafts/x.md")
-        self.database.record_review_result(b7_id, "revisor", "approved", self.result())
+        with self.assertRaises(WorkflowBlocked):
+            self.database.record_review_result(b7_id, "revisor", "approved", self.result())
         with self.assertRaises(WorkflowBlocked):
             can_complete_block(self.database, self.round_id, "B7", "content/drafts/x.md", 1)
 
@@ -121,8 +131,7 @@ class OrchestrationTests(unittest.TestCase):
             complete_block(self.database, self.round_id, "B5", "content/drafts/x.md", 1)
 
     def test_cycle_start_validates_and_limits_three_cycles(self):
-        for block in ("B1", "B2", "B3", "B4"):
-            self.database.record_workflow_event(self.round_id, block, "block_completed")
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
         with patch.dict(os.environ, {"ORCHESTRATOR_MAX_REVIEW_CYCLES": "3"}):
             for cycle in range(1, 4):
                 start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
@@ -143,13 +152,12 @@ class OrchestrationTests(unittest.TestCase):
             start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
 
     def test_cycle_start_rejects_block_already_completed(self):
-        self.database.record_workflow_event(self.round_id, "B1", "block_completed")
+        self.complete_prior_blocks(("B1",))
         with self.assertRaises(WorkflowBlocked):
             start_block_cycle(self.database, self.round_id, "B1", "content/drafts/x.md")
 
     def test_repeated_review_result_is_blocked_across_cycles(self):
-        for block in ("B1", "B2", "B3", "B4"):
-            self.database.record_workflow_event(self.round_id, block, "block_completed")
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4"))
         start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
         record_review(self.database, self.round_id, "B5", "content/drafts/x.md", 1, "revisor", self.result("feedback"))
         start_block_cycle(self.database, self.round_id, "B5", "content/drafts/x.md")
@@ -166,17 +174,32 @@ class OrchestrationTests(unittest.TestCase):
         other.initialize()
         round_id = other.create_round("Pilar", "round.md")
         (self.root / "other.md").write_text("draft", encoding="utf-8")
+        for block in ("B1", "B2"):
+            start_block_cycle(other, round_id, block, "other.md")
+            record_review(other, round_id, block, "other.md", 1, "revisor", self.result(artifact="other.md"))
+            complete_block(other, round_id, block, "other.md", 1)
         other.start_block_cycle(round_id, "B3", "other.md")
         with self.assertRaises(WorkflowBlocked):
-            record_review(other, round_id, "B3", "other.md", 1, "revisor", self.result(artifact="other.md"))
+            record_review(other, round_id, "B3", "other.md", 1, "revisor", self.result())
 
     def test_b7_human_completion_is_persisted_without_reviewer_approval(self):
-        for block in ("B1", "B2", "B3", "B4", "B5", "B6"):
-            self.database.record_workflow_event(self.round_id, block, "block_completed")
+        self.complete_prior_blocks(("B1", "B2", "B3", "B4", "B5", "B6"))
         event_id = record_human_completion(self.database, self.round_id, "B7", "content/drafts/x.md", "idea-1")
         self.assertIsInstance(event_id, int)
         state = self.database.latest_block_state(self.round_id, "B7")
         self.assertEqual(state["event"], "human_completed")
+
+        start_block_cycle(self.database, self.round_id, "B8", "content/drafts/x.md")
+
+    def test_public_review_and_event_apis_reject_invalid_workflow_state(self):
+        with self.assertRaises(InvalidReviewResult):
+            record_review(self.database, self.round_id, "B1", "content/drafts/x.md", 1, "r", "not-json")
+        with self.assertRaises(ValueError):
+            self.database.record_workflow_event(
+                self.round_id, "B1", "block_completed", '{"cycle": 1}'
+            )
+        with self.assertRaises(ValueError):
+            self.database.record_block_validation("B1", "content/drafts/x.md")
 
 
 if __name__ == "__main__":

@@ -10,6 +10,21 @@ from unittest.mock import patch
 
 
 class CliSmokeTests(unittest.TestCase):
+    @staticmethod
+    def _complete_prior_blocks(database, round_id, blocks, artifact):
+        from content_ops.orchestration import complete_block, record_review, start_block_cycle
+
+        result = json.dumps({
+            "decision": "approved",
+            "artifact": artifact,
+            "feedback": [],
+            "checks": [{"name": "quality", "status": "pass", "evidence": "ok"}],
+        })
+        for block in blocks:
+            start_block_cycle(database, round_id, block, artifact)
+            record_review(database, round_id, block, artifact, 1, "revisor", result)
+            complete_block(database, round_id, block, artifact, 1)
+
     def test_required_operational_directories_have_gitkeep_files(self):
         repository_root = Path(__file__).resolve().parents[1]
         required_directories = (
@@ -67,8 +82,7 @@ class CliSmokeTests(unittest.TestCase):
             database = Database(root / "data" / "content.db")
             database.initialize()
             round_id = database.create_round("Pilar", "round.md")
-            for block in ("B1", "B2", "B3", "B4"):
-                database.record_workflow_event(round_id, block, "block_completed")
+            self._complete_prior_blocks(database, round_id, ("B1", "B2", "B3", "B4"), "content/drafts/x.md")
             main(["workflow-cycle-start", str(round_id), "B5", "content/drafts/x.md"], repository_root=root)
             result = json.dumps({"decision": "approved", "artifact": "content/drafts/x.md", "feedback": [], "checks": [{"name": "x", "status": "pass", "evidence": "ok"}]})
             main(["workflow-review", str(round_id), "B5", "content/drafts/x.md", "1", "revisor", result], repository_root=root)
@@ -88,10 +102,9 @@ class CliSmokeTests(unittest.TestCase):
             database = __import__("content_ops.db", fromlist=["Database"]).Database(root / "data" / "content.db")
             database.initialize()
             round_id = database.create_round("Pilar", "round.md")
-            for block in ("B1", "B2", "B3", "B4", "B5", "B6"):
-                database.record_workflow_event(round_id, block, "block_completed")
             artifact = root / "artifact.md"
             artifact.write_text("draft", encoding="utf-8")
+            self._complete_prior_blocks(database, round_id, ("B1", "B2", "B3", "B4", "B5", "B6"), "artifact.md")
             main(["workflow-cycle-start", str(round_id), "B7", "artifact.md"], repository_root=root)
             result = json.dumps({"decision": "approved", "artifact": "artifact.md", "feedback": [], "checks": [{"name": "x", "status": "pass", "evidence": "ok"}]})
             with self.assertRaises(SystemExit):
@@ -107,7 +120,6 @@ class CliSmokeTests(unittest.TestCase):
             database = Database(root / "data" / "content.db")
             database.initialize()
             round_id = database.create_round("Pilar", "round.md")
-            for block in ("B1", "B2", "B3", "B4", "B5", "B6"):
-                database.record_workflow_event(round_id, block, "block_completed")
+            self._complete_prior_blocks(database, round_id, ("B1", "B2", "B3", "B4", "B5", "B6"), "artifact.md")
             main(["workflow-human-complete", str(round_id), "B7", "artifact.md", "idea-1"], repository_root=root)
             self.assertEqual(database.latest_block_state(round_id, "B7")["event"], "human_completed")

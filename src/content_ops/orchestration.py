@@ -96,7 +96,8 @@ def _validate_completion(connection, round_id: int, block: str, artifact_path: s
     if cycle_row is None:
         raise WorkflowBlocked("No matching block cycle")
     completed = {row["block"] for row in connection.execute(
-        "SELECT block FROM workflow_events WHERE round_id = ? AND event = 'block_completed'", (round_id,)
+        "SELECT block FROM workflow_events WHERE round_id = ? "
+        "AND event IN ('block_completed', 'human_completed')", (round_id,)
     )}
     validate_block_order(completed, block)
     if not connection.execute(
@@ -132,7 +133,8 @@ def start_block_cycle(database: Database, round_id: int, block: str, artifact_pa
         ).fetchone()
         cycle = row["cycle"] + 1
         completed = {item["block"] for item in connection.execute(
-            "SELECT block FROM workflow_events WHERE round_id = ? AND event = 'block_completed'", (round_id,)
+            "SELECT block FROM workflow_events WHERE round_id = ? "
+            "AND event IN ('block_completed', 'human_completed')", (round_id,)
         )}
         validate_block_order(completed, block)
         if cycle > _max_review_cycles():
@@ -170,7 +172,8 @@ def record_review(database: Database, round_id: int, block: str, artifact_path: 
         if cycle_row is None:
             raise WorkflowBlocked("No matching block cycle")
         completed = {row["block"] for row in connection.execute(
-            "SELECT block FROM workflow_events WHERE round_id = ? AND event = 'block_completed'", (round_id,)
+            "SELECT block FROM workflow_events WHERE round_id = ? "
+            "AND event IN ('block_completed', 'human_completed')", (round_id,)
         )}
         validate_block_order(completed, block)
         for row in connection.execute(
@@ -219,6 +222,6 @@ def complete_block(database: Database, round_id: int, block: str, artifact_path:
         _validate_completion(connection, round_id, block, artifact_path, cycle)
         event = connection.execute(
             "INSERT INTO workflow_events (round_id, block, event, payload_json) VALUES (?, ?, 'block_completed', ?)",
-            (round_id, block, json.dumps({"cycle": cycle})),
+            (round_id, block, json.dumps({"cycle": cycle, "artifact": artifact_path})),
         )
         return event.lastrowid
