@@ -9,7 +9,7 @@ As regras de domínio dos blocos foram preservadas.
 ## Commits
 
 - `c1b2342 feat: define OpenCode reviewer dispatch protocol`
-- `PENDING: relatório da Task 3`
+- `d3a937e docs: add Task 3 implementation report`
 
 ## Arquivos
 
