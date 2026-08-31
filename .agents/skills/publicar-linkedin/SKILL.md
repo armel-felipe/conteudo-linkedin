@@ -28,7 +28,9 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 4. Colar o conteúdo no campo de texto.
 5. Aplicar agendamento:
    - Envio "agora": colar conteúdo, PAUSAR antes do clique final, informar que a pessoa pode anexar imagem manualmente, e aguardar o comando para concluir.
-   - Agendado (dia/horário): preencher data/hora e agendar diretamente; concluir sem nova validação de texto (o texto em approved/ já está aprovado).
+   - Agendado: abrir o seletor de agendamento e preencher data/hora conforme o caso (ver "Agendamento — detalhes").
+6. Registrar o agendamento no arquivo (ver "Registro do agendamento").
+7. Verificar o agendamento (ver "Verificação pós-agendamento").
 
 ## Conversão Markdown → texto LinkedIn (OBRIGATÓRIA, antes da colagem)
 
@@ -62,6 +64,35 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 - Envio "agora": PAUSA obrigatória para anexo manual de imagem; concluir só ao receber comando.
 - Agendado: sem pausa na skill e sem nova validação; o agente agenda direto (o texto já foi aprovado no pipeline). A pessoa pode conferir/cancelar/edit a em "Ver publicações agendadas" no LinkedIn antes da hora.
 
+## Agendamento — detalhes
+
+O seletor de agendamento do LinkedIn é um popover com campos de data e hora. Erros comuns: clicar em "amanhã" mas deixar a hora no padrão, ou preencher a data mas não confirmar o valor antes de clicar em "Agendar".
+
+- **Hoje mais tarde** (ex.: "hoje às 18h"): no seletor, escolher a data de HOJE e preencher a hora desejada.
+- **Outro dia** (ex.: "amanhã às 9h"): escolher o dia correto (amanhã, ou data específica) e preencher a hora.
+- **ANTES de clicar em "Agendar"**: confirmar visualmente que o valor exibido no seletor corresponde EXATAMENTE ao dia/mês/ano e hora pedidos. Se o valor exibido não bater, corrigir antes de agendar.
+- Se o seletor não abrir ou os campos não aparecerem, parar e informar — não tentar agendar "às cegas".
+
+## Registro do agendamento
+
+Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arquivo>.md`) um bloco no final:
+
+```markdown
+<!-- agendado: 2026-09-01T09:00 America/Sao_Paulo -->
+```
+
+- Usar o dia/horário EXATO que foi preenchido no LinkedIn.
+- Se o arquivo já tiver um bloco `<!-- agendado: ... -->` anterior, substituir pelo novo.
+- Isso garante rastreabilidade de "o que está agendado para quando" sem depender de memória de conversa.
+
+## Verificação pós-agendamento
+
+Após clicar em "Agendar", o LinkedIn mostra uma confirmação. Verificar:
+
+1. A confirmação apareceu (se não apareceu, o agendamento pode não ter sido criado — parar e informar).
+2. Navegar até "Ver publicações agendadas" (menu de publicações) e confirmar que o post está na lista, com a data/hora corretas.
+3. Se o post NÃO estiver na lista ou a data/hora estiverem erradas, informar a pessoa e NÃO concluir como sucesso — o agendamento falhou silenciosamente.
+
 ## Visão (política nativa primeiro)
 
 - Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo central de roteamento visual.
@@ -81,6 +112,9 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 - Pular a pausa no envio "agora" — a pausa é obrigatória (anexo manual de imagem).
 - Tentar autenticar — usar a sessão já logada.
 - Não validar que o arquivo está em approved/ — bloquear se não estiver.
+- Agendar sem confirmar o valor exibido no seletor — o LinkedIn pode manter data/hora padrão; confirmar antes de clicar em "Agendar".
+- Concluir como sucesso sem verificar "Ver publicações agendadas" — o agendamento pode ter falhado silenciosamente.
+- Não registrar o agendamento no arquivo do post — sem o bloco `<!-- agendado: ... -->` não há rastreabilidade.
 
 ## Roadmap (fora de escopo)
 
