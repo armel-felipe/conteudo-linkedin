@@ -43,3 +43,27 @@ fail-closed. As regras de domínio dos blocos foram preservadas.
 
 - O runtime continua sendo uma skill documental; a execução efetiva do dispatch depende do agente seguir o procedimento descrito.
 - A mudança em `src/content_ops/orchestration.py` é a validação necessária para o ciclo futuro B1-B3, sem avançar a Task 4.
+
+## Task 3: Visão Nativa Primeiro
+
+### Status
+
+Concluída. A política central explicita o comportamento voltado à pessoa para sucesso
+nativo, delegação sem visão, falha nativa, falha do fallback e imagem ilegível ou
+corrompida. Os metadados de rota ficam limitados a rota, motivo, modo de delegação e
+limitação de legibilidade, sem conteúdo de imagem ou segredos.
+
+### Commits
+
+- `c50c857` — `test: cover native vision fallback routes`
+
+### Testes
+
+- `python3.12 -m pytest tests/test_visual_vision_policy.py -v` — 9 passed.
+- `python3.12 -m pytest -q` — 208 passed, 53 subtests passed.
+- `git diff --check` — passou.
+
+### Concerns
+
+- Nenhum concern conhecido. Não houve alteração de comportamento não visual, credenciais,
+  tokens ou chaves.
