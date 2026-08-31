@@ -49,7 +49,13 @@ agendamento
 - A skill usa o browser do OpenWork **já logado**; **nunca** guarda/login ou senha.
 - Respeita o `AGENTS.md` (sem credenciais em chat, arquivos versionados, banco ou commits).
 
-### 4. Ponto de espera — **só no envio "agora" (para anexar imagem)**
+### 4. Visão — **política nativa primeiro**
+- A skill segue `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo central.
+- Quando houver visão nativa, analisa a tela nativamente primeiro.
+- Sem visão nativa, ou após falha nativa com motivo `native_failed`, delega ao `image-analyzer`.
+- Se o fallback falhar ou a imagem estiver ilegível, relata limitação de leitura e não produz inferências.
+
+### 5. Ponto de espera — **só no envio "agora" (para anexar imagem)**
 - O texto em `content/approved/` **já está aprovado** (filtros do pipeline + revisão pessoal).
 - A skill **não** pede nova confirmação textual.
 - **Agendamento (dia/horário):** a skill agenda direto; a pessoa valida no próprio LinkedIn

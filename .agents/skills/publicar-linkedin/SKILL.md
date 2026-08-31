@@ -62,9 +62,13 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 - Envio "agora": PAUSA obrigatória para anexo manual de imagem; concluir só ao receber comando.
 - Agendado: sem pausa na skill e sem nova validação; o agente agenda direto (o texto já foi aprovado no pipeline). A pessoa pode conferir/cancelar/edit a em "Ver publicações agendadas" no LinkedIn antes da hora.
 
-## Visão (delegar ao image-analyzer)
+## Visão (política nativa primeiro)
 
-- Se o modelo hospedeiro não ler imagens, delegar leitura de tela ao subagente image-analyzer (task com subagent_type "image-analyzer", passando o caminho do screenshot). Usar para confirmar estado da tela (campo de texto, botão publicar, seletor de agendamento).
+- Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo central de roteamento visual.
+- Quando houver visão nativa, analise a tela nativamente primeiro. Use essa análise para confirmar o estado da tela (campo de texto, botão publicar, seletor de agendamento).
+- Se o modelo não tiver visão nativa, delegue a leitura de tela ao subagente `image-analyzer` (task com `subagent_type "image-analyzer"`, passando o caminho do screenshot).
+- Se a visão nativa falhar, delegue ao `image-analyzer` com motivo `native_failed`.
+- Se nenhuma rota funcionar, ou se a imagem estiver ilegível, relate a limitação de leitura e não produza inferências sobre o estado da tela.
 
 ## Credenciais
 

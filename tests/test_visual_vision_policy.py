@@ -3,10 +3,45 @@ import re
 
 
 SKILL_PATH = Path(".agents/skills/visao-nativa-primeiro/SKILL.md")
+LINKEDIN_SKILL_PATH = Path(".agents/skills/publicar-linkedin/SKILL.md")
+
+
+def visual_instruction_files() -> list[Path]:
+    paths = list(Path(".agents/skills").glob("**/SKILL.md"))
+    paths.extend(Path("docs/superpowers").glob("**/*.md"))
+    markers = re.compile(
+        r"image-analyzer|screenshot|vis[aã]o nativa|anexo.{0,30}imagem",
+        flags=re.IGNORECASE,
+    )
+    return [
+        path
+        for path in paths
+        if path != SKILL_PATH
+        and markers.search(path.read_text(encoding="utf-8"))
+    ]
 
 
 def read_policy() -> str:
     return SKILL_PATH.read_text(encoding="utf-8")
+
+
+def test_every_visual_instruction_references_central_policy():
+    files = visual_instruction_files()
+
+    assert files, "expected project visual instruction files"
+    missing = [str(path) for path in files if "visao-nativa-primeiro" not in path.read_text(encoding="utf-8")]
+
+    assert not missing, f"visual instructions missing central policy reference: {missing}"
+
+
+def test_linkedin_skill_does_not_delegate_before_native_analysis():
+    text = LINKEDIN_SKILL_PATH.read_text(encoding="utf-8")
+    start = text.index("## Visão")
+    end = text.index("## Credenciais", start)
+    vision = text[start:end]
+
+    assert "visao-nativa-primeiro" in vision
+    assert "Se o modelo hospedeiro não ler imagens, delegar" not in vision
 
 
 def section(text: str, heading: str) -> str:

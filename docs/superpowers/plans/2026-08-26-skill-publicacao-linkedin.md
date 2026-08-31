@@ -8,7 +8,7 @@
 
 **Architecture:** `SKILL.md` é a fonte das instruções de navegação. A skill: localiza o arquivo em `content/approved/`, converte Markdown → texto LinkedIn, navega até nova publicação, cola o conteúdo, e aplica agendamento (agora com pausa, ou dia/horário direto). Sem credenciais, sem rich-text, sem automação de imagem.
 
-**Tech Stack:** Instruções de agente (Markdown) + ferramentas de navegação do OpenWork (openwork_execute `browser.open_url`, browser_snapshot/click/fill/eval, image-analyzer como auxílio de visão).
+**Tech Stack:** Instruções de agente (Markdown) + ferramentas de navegação do OpenWork (openwork_execute `browser.open_url`, browser_snapshot/click/fill/eval, seguindo a política visual central em `.agents/skills/visao-nativa-primeiro/SKILL.md`).
 
 **Local da skill:** `.agents/skills/publicar-linkedin/SKILL.md` (junto da `last30days`).
 
@@ -23,7 +23,7 @@
 - Sem credenciais, tokens ou chaves em chat, arquivos versionados, Markdown editorial, banco de dados ou commits (`AGENTS.md`).
 - Formatação **opção B**: converte Markdown → texto pronto para colagem limpa (remove `#` de título, converte/remove `**` para não vazar literal, mantém quebras de linha, emojis e hashtags).
 - Invocação **opção A**: a pessoa informa o arquivo e o agendamento na chamada.
-- Uso de `image-analyzer` como auxílio de visão (o modelo hospedeiro pode não ler imagens; a skill deve delegar leitura de tela ao subagente `image-analyzer`).
+- Política visual central: seguir `.agents/skills/visao-nativa-primeiro/SKILL.md`; analisar nativamente primeiro quando suportado, delegar ao `image-analyzer` somente sem visão nativa ou após falha nativa (`native_failed`), e relatar limitação sem inferência quando ambas as rotas falharem ou a imagem for ilegível.
 
 ---
 
@@ -125,8 +125,8 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 - Envio "agora": PAUSA obrigatória para anexo manual de imagem; concluir só ao receber comando.
 - Agendado: sem pausa na skill; pessoa valida no LinkedIn.
 
-## Visão (delegar ao image-analyzer)
-- Se o modelo hospedeiro não ler imagens, delegar leitura de tela ao subagente image-analyzer (task com subagent_type "image-analyzer", passando o caminho do screenshot). Usar para confirmar estado da tela (campo de texto, botão publicar, seletor de agendamento).
+## Visão (política nativa primeiro)
+- Seguir `.agents/skills/visao-nativa-primeiro/SKILL.md`: analisar nativamente primeiro quando suportado; delegar ao `image-analyzer` sem visão nativa ou após falha nativa (`native_failed`); e relatar limitação sem inferência se ambas as rotas falharem ou a imagem estiver ilegível.
 
 ## Credenciais
 - NUNCA guardar/ler e-mail, senha, token ou cookie. Usar apenas a sessão já logada do browser.
