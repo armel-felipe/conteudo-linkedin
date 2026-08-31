@@ -9,6 +9,7 @@ mantém a pausa obrigatória no envio "agora" e o anexo manual de imagem.
 ## Commits
 
 - `614514b` — `docs: apply native vision policy to visual skills`
+- `4db8e56` — `docs: record task 2 report`
 
 ## Testes
 
