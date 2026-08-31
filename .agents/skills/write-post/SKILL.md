@@ -34,6 +34,7 @@ Escrever o post a partir do brief e da memória do autor. O writer NÃO pesquisa
 - Uma ideia por post.
 - Todo fato do post deve ter origem no brief (nunca inventar).
 - Usar a voz e opiniões de memory/opinions.md e o estilo de memory/writing_style.md.
+- Terminar o post com uma seção `## Fontes` listando as fontes usadas (título, URL, data), extraídas das evidências do brief.
 
 ## O que evitar
 
@@ -47,4 +48,5 @@ Escrever o post a partir do brief e da memória do autor. O writer NÃO pesquisa
 2. Escolher o ângulo (dos "Possíveis ângulos" do brief) com melhor conexão com a experiência do autor.
 3. Escrever o post seguindo o esqueleto e as regras.
 4. Verificar tamanho (900-1500 caracteres).
-5. Salvar em `content/drafts/<topic_id>.md` e atualizar status do topic para `drafted`.
+5. Adicionar a seção `## Fontes` ao final do post, com as fontes usadas (título, URL, data) extraídas das evidências do brief.
+6. Salvar em `content/drafts/<topic_id>.md` e atualizar status do topic para `drafted`.

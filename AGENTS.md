@@ -13,6 +13,7 @@ Pipeline agentico manual de conteúdo para LinkedIn. Fluxo: frentes → sinais �
 5. **Posts**: 900–1500 caracteres / 150–250 palavras; esqueleto ABERTURA→SITUAÇÃO→APLICAÇÃO→PROBLEMA→DECISÃO→APRENDIZADO→PERGUNTA.
 6. **Todo post passa por `escrita-humana`** antes da aprovação.
 7. **Nunca inventar dados** — todo fato do post tem origem no brief, com fonte/URL/data.
+8. **Todo post termina com `## Fontes`** — arquivos em `content/drafts/` e `content/approved/` devem terminar com uma seção `## Fontes` listando as fontes usadas (título, URL, data), herdadas do brief.
 
 ## Skills
 
