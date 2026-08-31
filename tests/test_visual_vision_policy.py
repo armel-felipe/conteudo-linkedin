@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 SKILL_PATH = Path(".agents/skills/visao-nativa-primeiro/SKILL.md")
@@ -8,30 +9,67 @@ def read_policy() -> str:
     return SKILL_PATH.read_text(encoding="utf-8")
 
 
-def test_native_vision_is_before_image_analyzer_fallback():
+def section(text: str, heading: str) -> str:
+    match = re.search(
+        rf"^### {re.escape(heading)}\n(?P<body>.*?)(?=^### |^## |\Z)",
+        text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    assert match, f"missing section: {heading}"
+    return match.group("body")
+
+
+def test_native_model_has_exclusive_native_route():
+    native = section(read_policy(), "Modelo com visão nativa")
+
+    assert "Rota obrigatória: `native`." in native
+    assert "image-analyzer" not in native
+
+
+def test_protocol_orders_native_before_conditional_fallbacks():
     text = read_policy()
 
-    assert text.index("visão nativa") < text.index("image-analyzer")
-    assert "falhar" in text.lower()
-    assert "não invent" in text.lower()
+    assert text.index("### Modelo com visão nativa") < text.index("### Modelo sem visão nativa")
+    assert text.index("### Modelo sem visão nativa") < text.index("### Falha da visão nativa")
 
 
-def test_policy_defines_ordered_routes_and_unreadable_image_handling():
-    text = read_policy().lower()
+def test_no_vision_model_has_image_analyzer_route():
+    no_vision = section(read_policy(), "Modelo sem visão nativa")
 
-    assert text.index("visão nativa") < text.index("sem visão")
-    assert text.index("sem visão") < text.index("falha da visão nativa")
-    assert "native" in text
-    assert "image-analyzer" in text
-    assert "ilegível" in text or "corrompida" in text
-    assert "limitação" in text
-    assert "conteúdo inferido" in text or "conteúdo não" in text
+    assert "Rota obrigatória: `image-analyzer`." in no_vision
+    assert "não tente visão nativa" in no_vision
 
 
-def test_policy_requires_secret_free_internal_route_logging():
-    text = read_policy().lower()
+def test_native_failure_falls_back_and_fallback_failure_reports_limitation():
+    native_failure = section(read_policy(), "Falha da visão nativa")
+    fallback_failure = section(read_policy(), "Falha do image-analyzer").lower()
 
-    assert "rota" in text
-    assert "não armazen" in text or "não registrar" in text
-    assert "imagem" in text
-    assert "segredo" in text or "credencial" in text or "token" in text
+    assert "Rota obrigatória: `image-analyzer`." in native_failure
+    assert "Motivo: `native_failed`." in native_failure
+    assert "rota obrigatória: nenhuma." in fallback_failure
+    assert "responda com uma limitação de leitura" in fallback_failure
+    assert "não produza inferência" in fallback_failure
+
+
+def test_unreadable_or_corrupt_image_never_produces_inference():
+    unreadable = section(read_policy(), "Imagem ilegível ou corrompida").lower()
+
+    assert "rota obrigatória: nenhuma." in unreadable
+    assert "responda com uma limitação de leitura" in unreadable
+    assert "não produza inferência" in unreadable
+
+
+def test_metadata_allowlist_excludes_image_content_and_secrets():
+    text = read_policy()
+    allowed = section(text, "Campos permitidos nos metadados")
+    forbidden = section(text, "Campos proibidos nos metadados")
+
+    assert "`route`" in allowed
+    assert "`reason`" in allowed
+    assert "estado resumido" in allowed
+    assert "conteúdo da imagem" not in allowed.lower()
+    assert "credenciais" not in allowed.lower()
+    assert "tokens" not in allowed.lower()
+    assert "conteúdo da imagem" in forbidden.lower()
+    assert "credenciais" in forbidden.lower()
+    assert "tokens" in forbidden.lower()

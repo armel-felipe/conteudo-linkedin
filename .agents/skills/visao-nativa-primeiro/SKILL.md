@@ -7,31 +7,61 @@ description: Use when uma tarefa envolve interpretar, descrever ou extrair infor
 
 ## Protocolo
 
-Siga esta ordem para qualquer imagem:
+As condições abaixo são exclusivas: cada uma define uma rota obrigatória e não pode
+ser substituída por uma inferência implícita. A ordem das seções é parte do contrato.
 
-1. **Tente a visão nativa primeiro.** Se o modelo atual consegue ver imagens, use a
-   visão nativa e registre a rota `native`.
-2. **Modelo sem visão.** Se o modelo não tem visão, delegue a análise para
-   `image-analyzer` e registre a rota `image-analyzer`.
-3. **Falha da visão nativa.** Se a visão nativa falhar, estiver indisponível ou
-   retornar erro, use `image-analyzer` como fallback e registre o motivo
-   `native_failed`.
+### Modelo com visão nativa
 
-Não trate uma imagem ilegível, corrompida ou inacessível como evidência. Informe a
-limitação de leitura ao solicitante e não produza conteúdo inferido, preenchido por
-suposição ou inventado. Não invente texto, objetos, valores ou contexto que não
-estejam visíveis.
+Quando o modelo atual consegue ver imagens, tente a visão nativa.
+
+**Rota obrigatória: `native`.**
+
+### Modelo sem visão nativa
+
+Quando o modelo atual não consegue ver imagens, não tente visão nativa.
+
+**Rota obrigatória: `image-analyzer`.**
+
+### Falha da visão nativa
+
+Quando a tentativa nativa falhar, estiver indisponível ou retornar erro, delegue a
+análise ao fallback visual.
+
+**Rota obrigatória: `image-analyzer`.**
+**Motivo: `native_failed`.**
+
+### Falha do image-analyzer
+
+Quando o fallback visual também falhar, não há rota adicional.
+
+**Rota obrigatória: nenhuma.**
+
+Responda com uma limitação de leitura e não produza inferência, texto, objetos,
+valores ou contexto não observados.
+
+### Imagem ilegível ou corrompida
+
+Quando a imagem estiver ilegível, corrompida ou inacessível, não trate seus dados como
+evidência.
+
+**Rota obrigatória: nenhuma.**
+
+Responda com uma limitação de leitura e não produza inferência, preenchimento por
+suposição ou conteúdo inventado.
+
+Este documento define o protocolo de roteamento; não implementa detecção automática
+de capacidade do modelo nem validação automática de arquivos.
 
 ## Metadados internos
 
-Os metadados internos de rota podem conter apenas:
+### Campos permitidos nos metadados
 
 - `route`: `native` ou `image-analyzer`;
 - `reason`: `no_native_vision`, `native_failed` ou `unreadable_image`;
-- estado resumido da operação, sem dados sensíveis.
+- estado resumido da operação.
 
-O logging deve ser secret-free: não registre o conteúdo da imagem e não armazene
-esse conteúdo,
-URLs privadas, credenciais, tokens, chaves de API ou qualquer outro segredo. Esses
-metadados servem apenas para rastrear a decisão de roteamento e não substituem a
-resposta baseada no que foi realmente observado.
+### Campos proibidos nos metadados
+
+Não registre nem armazene conteúdo da imagem, URLs privadas, credenciais, tokens,
+chaves de API ou qualquer outro segredo. Os metadados servem apenas para rastrear a
+decisão de roteamento.
