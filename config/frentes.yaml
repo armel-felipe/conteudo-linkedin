@@ -1,0 +1,64 @@
+frentes:
+
+  ia_aplicada:
+    name: IA Aplicada
+    priority: 10
+    keywords:
+      - AI in supply chain use cases
+      - AI logistics forecasting routing
+      - AI operations productivity
+      - AI customer service operations
+      - generative AI supply chain examples
+      - AI decision making operations
+      - human in the loop AI operations
+      - AI data quality supply chain
+      - AI automation failure operations
+      - AI adoption barriers enterprise
+    research_questions:
+      - "Quem está usando IA em produção, e para quê?"
+      - "Que ganhos estão sendo relatados: tempo, custo, qualidade ou receita?"
+      - "Quais aplicações falharam?"
+      - "Onde a decisão humana continua indispensável?"
+      - "Quais competências os líderes precisam desenvolver?"
+      - "O debate está falando de automação ou de aumento da capacidade das equipes?"
+      - "Quais casos são reais e quais são apenas marketing?"
+
+  logistica_last_mile_cx:
+    name: Logística, last mile e experiência do cliente
+    priority: 9
+    keywords:
+      - last mile delivery customer experience
+      - delivery speed cost tradeoff
+      - logistics operational efficiency
+      - food delivery operations
+      - delivery reliability customer complaints
+
+  lideranca_operacoes:
+    name: Liderança em operações
+    priority: 8
+    keywords:
+      - operations leadership challenges
+      - delegation and accountability leadership
+      - building trust in operational teams
+      - frontline workforce productivity
+      - decision making under pressure leadership
+
+  riscos_compliance_resiliencia:
+    name: Riscos, compliance e resiliência
+    priority: 8
+    keywords:
+      - supply chain risk management
+      - operational resilience
+      - AI governance compliance business
+      - food safety supply chain
+      - supplier risk technology
+
+  alimentos_consumo_sustentabilidade:
+    name: Alimentos, consumo e sustentabilidade
+    priority: 4
+    keywords:
+      - food industry trends
+      - functional foods market
+      - food supply chain innovation
+      - circular economy operations
+      - sustainable logistics cost

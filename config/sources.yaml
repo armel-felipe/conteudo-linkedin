@@ -1,0 +1,29 @@
+sources:
+
+  reddit:
+    enabled: true
+    weight: 8
+
+  hacker_news:
+    enabled: true
+    weight: 6
+
+  news:
+    enabled: true
+    weight: 9
+
+  reports:
+    enabled: true
+    weight: 10
+
+  company_blogs:
+    enabled: true
+    weight: 7
+
+  linkedin_public:
+    enabled: true
+    weight: 7
+
+  google_search:
+    enabled: true
+    weight: 8

@@ -1,0 +1,10 @@
+weights:
+  freshness: 0.15
+  relevance: 0.20
+  debate: 0.15
+  evidence: 0.10
+  author_fit: 0.20
+  originality: 0.10
+  linkedin_fit: 0.10
+
+scale: 0-100
