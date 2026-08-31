@@ -1,9 +1,9 @@
 ---
 name: critique-post
-description: Use quando um draft de post estiver pronto e precisar de crítica antes da aprovação (clareza, originalidade, credibilidade, tom humano, risco de alucinação).
+description: Use quando um draft de post estiver pronto e precisar de crítica antes da aprovação.
 ---
 
-# Critique Post
+# Crítica do Post
 
 ## Overview
 

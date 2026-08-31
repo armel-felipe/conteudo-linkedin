@@ -3,7 +3,7 @@ name: cluster-signals
 description: Use quando houver signals coletados que precisem ser agrupados em temas (etapa 2x/semana do pipeline de conteúdo LinkedIn).
 ---
 
-# Cluster Signals
+# Clusterização de Sinais
 
 ## Overview
 
@@ -43,11 +43,13 @@ topics:
 2. Agrupar por fenômeno comum (mesmo assunto, mesmo debate, mesma mudança).
 3. Para cada grupo, formular: título, pergunta central, tese possível.
 4. Avaliar a conexão com o autor (strong/medium/weak) usando memory/.
-5. Salvar em `research/topics/topics_YYYY-MM-DD.yaml` com status `candidate`.
+5. Atualizar o status dos signals agrupados para `clustered` no arquivo de signals (`research/signals/signals_*.yaml`).
+6. Salvar em `research/topics/topics_YYYY-MM-DD.yaml` com status `candidate`.
 
 ## Regras
 
 - Um signal pode aparecer em no máximo 1 topic.
 - Sinais que não formam grupo com ninguém ficam de fora (não forçar).
+- Signals agrupados passam a `status: clustered`; topics nascem com `status: candidate`.
 - A tese possível deve ser opinativa, não neutra.
 - Não pontuar aqui — scoring é do score-opportunities.

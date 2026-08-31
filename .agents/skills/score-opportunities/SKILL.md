@@ -3,7 +3,7 @@ name: score-opportunities
 description: Use quando houver topics candidatos que precisem ser pontuados e ranqueados no backlog (etapa 2x/semana do pipeline de conteúdo LinkedIn).
 ---
 
-# Score Opportunities
+# Pontuação de Oportunidades
 
 ## Overview
 
@@ -46,7 +46,7 @@ Evidências disponíveis: N
 
 Experiência pessoal relacionada: Alta | Média | Baixa
 
-Status: Ready for research
+Status: ready_for_research
 ```
 
 ## Fluxo
@@ -56,7 +56,7 @@ Status: Ready for research
 3. Calcular o score final (fórmula acima).
 4. Ordenar por score decrescente.
 5. Escrever o backlog com os top 5-10.
-6. Atualizar o status do topic para `ready_for_research` quando entrar no backlog.
+6. Atualizar o status do topic para `ready_for_research` no arquivo `research/topics/topics_*.yaml` quando entrar no backlog.
 
 ## Regras
 

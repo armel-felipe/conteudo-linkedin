@@ -3,7 +3,7 @@ name: analyze-discussions
 description: Use quando um signal do pipeline de conteúdo LinkedIn merecer aprofundamento do debate antes de virar tema (etapa opcional entre discover-signals e cluster-signals).
 ---
 
-# Analyze Discussions
+# Análise de Discussões
 
 ## Overview
 

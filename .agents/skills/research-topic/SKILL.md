@@ -3,7 +3,7 @@ name: research-topic
 description: Use quando um topic do backlog for escolhido para virar post e precisar de pesquisa aprofundada (gera o research brief).
 ---
 
-# Research Topic
+# Pesquisa de Tema
 
 ## Overview
 
@@ -53,11 +53,11 @@ Resumo:
 2. Re-rodar `last30days` no tema (aprofundado).
 3. Abrir as URLs dos signals (webfetch) e extrair fatos/números.
 4. Buscar imprensa/relatórios/estudos complementares (webfetch).
-5. Para IA Aplicada, aplicar as 7 perguntas de pesquisa.
+5. Para IA Aplicada, aplicar as research_questions da frente (em `config/frentes.yaml`).
 6. Preencher o brief com TODAS as evidências rastreáveis (fonte, URL, data).
 7. Listar argumentos favoráveis e contrários, pontos incertos e riscos.
 8. Conectar com memory/professional_experience.md.
-9. Salvar em `research/briefs/<topic_id>.md` e atualizar status do topic para `researched`.
+9. Salvar em `research/briefs/<topic_id>.md` e atualizar o status do topic para `researched` no arquivo `research/topics/topics_*.yaml` correspondente.
 
 ## Regras
 

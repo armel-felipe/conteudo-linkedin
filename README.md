@@ -19,3 +19,7 @@ Fluxo: frentes → sinais → debates → temas → oportunidades → tese → e
 3. `research-topic` → `write-post` → `critique-post` → `escrita-humana` → aprovação → `publicar-linkedin`
 
 Ver `mapa.md` para o guia de skills e `AGENTS.md` para o contrato de operação.
+
+## Dependências
+
+- PyYAML (para validar os YAML de config/ e research/): `pip install pyyaml`
