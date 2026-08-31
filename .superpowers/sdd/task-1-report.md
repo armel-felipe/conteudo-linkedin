@@ -1,30 +1,35 @@
 # Task 1 Report
 
-## Status
-
-Correção do reviewer concluída; Minor de cobertura atendido.
+Status: DONE
 
 ## Commits
 
-- `9e3e029 feat: define native vision fallback policy`
-- `c3dfc5d test: enforce explicit native vision routing policy`
-- `011a859 test: cover all prohibited vision metadata`
+- `11ecee1 feat: persist orchestration review cycles`
+- `1e019d7 fix: make task tests use worktree source`
+- `97fc694 docs: record task 1 implementation report`
 
-## Arquivos
+## Files
 
-- `.agents/skills/visao-nativa-primeiro/SKILL.md`
-- `tests/test_visual_vision_policy.py`
-- `.superpowers/sdd/task-1-report.md`
+- `src/content_ops/db.py`
+- `tests/test_db.py`
+- `pyproject.toml`
 
-## Comandos e resultados
+## Cause and Decisions
 
-- `python3.12 -m pytest tests/test_visual_vision_policy.py -v`: 6 passed; a allowlist
-  também cobre URLs privadas, chaves de API e qualquer outro segredo.
-- `python3.12 -m pytest -q`: 205 passed, 53 subtests passed.
-- `git diff --check`: passou sem saída.
+- Increased the schema version from 6 to 7 and added the v7 migration.
+- Added `block_cycles`, `review_receipts`, and `workflow_events` with foreign keys, JSON checks, decision checks, and the required composite uniqueness constraint.
+- Added transactional APIs for starting cycles, recording reviews/events, checking exact approvals, and reading the latest block event.
+- Added focused durability, migration, scoping, and latest-state tests using real SQLite storage.
+
+## Tests
+
+- `python3.12 -m pytest tests/test_db.py -k orchestration -v`
+  - Result: PASS, 5 passed, 20 deselected.
+- `python3.12 -m pytest tests/test_db.py -v`
+  - Result: PASS, 25 passed, 29 subtests passed.
+- `git diff --check`
+  - Result: PASS, no whitespace errors.
 
 ## Concerns
 
-Nenhum concern conhecido. Os testes agora validam seções exclusivas, associações
-condicionais, falhas encadeadas e allowlist de metadados. A detecção continua
-documental, sem inventar implementação automática.
+- No concerns. Pytest now resolves `src` through `[tool.pytest.ini_options] pythonpath = ["src"]`.

@@ -23,7 +23,7 @@
 - Sem credenciais, tokens ou chaves em chat, arquivos versionados, Markdown editorial, banco de dados ou commits (`AGENTS.md`).
 - Formatação **opção B**: converte Markdown → texto pronto para colagem limpa (remove `#` de título, converte/remove `**` para não vazar literal, mantém quebras de linha, emojis e hashtags).
 - Invocação **opção A**: a pessoa informa o arquivo e o agendamento na chamada.
-- Política visual central: seguir `.agents/skills/visao-nativa-primeiro/SKILL.md`; analisar nativamente primeiro quando suportado, delegar ao `image-analyzer` somente sem visão nativa ou após falha nativa (`native_failed`), e relatar limitação sem inferência quando ambas as rotas falharem ou a imagem for ilegível.
+- Política visual central: seguir `.agents/skills/visao-nativa-primeiro/SKILL.md`; Quando houver visão nativa, analise a tela nativamente primeiro. Somente quando o modelo não tiver visão nativa ou quando a visão nativa falhar, delegue ao `image-analyzer`. Na falha nativa, registre o motivo `native_failed`; relate limitação sem inferência quando ambas as rotas falharem ou a imagem for ilegível.
 
 ---
 
@@ -173,7 +173,7 @@ Dispatch subagente `general` com o `SKILL.md` carregado, o mesmo cenário da Tas
 - **Converte o Markdown** antes de colar (sem `**`/`#` literais).
 - **Não pede nova confirmação textual** (arquivo em approved/ já é aprovado).
 - **Não tenta autenticar/guardar credencial**.
-- **Usa o image-analyzer** para confirmar o estado da tela quando necessário.
+- **Usa a visão nativa primeiro** para confirmar o estado da tela; somente se o modelo não tiver visão nativa ou se a visão nativa falhar, delega ao `image-analyzer` como fallback.
 
 - [ ] **Step 2: Registrar se passou ou as novas racionalizações**
 
@@ -220,7 +220,7 @@ git commit -m "refactor: fechar brechas na skill de publicação no LinkedIn"
 - Ponto de espera só no envio "agora" → Task 2 (fluxo 5 + seção Ponto de espera) e Task 3 (verificação). ✅
 - Agendado: valida no LinkedIn → Task 2 (fluxo 5). ✅
 - Anexo imagem = roadmap → Task 2 (seção Roadmap). ✅
-- Uso de image-analyzer para visão → Task 2 (seção Visão). ✅
+- Política visual native-first e fallback condicional → Task 2 (seção Visão). ✅
 - Verificação da spec (sem credenciais, only approved/, pausa no agora) → coberto. ✅
 
 **2. Placeholder scan:** nenhum "TBD"/"TODO"; cada passo tem instrução concreta.

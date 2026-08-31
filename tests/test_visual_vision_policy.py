@@ -4,6 +4,9 @@ import re
 
 SKILL_PATH = Path(".agents/skills/visao-nativa-primeiro/SKILL.md")
 LINKEDIN_SKILL_PATH = Path(".agents/skills/publicar-linkedin/SKILL.md")
+LINKEDIN_PLAN_PATH = Path(
+    "docs/superpowers/plans/2026-08-26-skill-publicacao-linkedin.md"
+)
 
 
 def visual_instruction_files() -> list[Path]:
@@ -42,6 +45,31 @@ def test_linkedin_skill_does_not_delegate_before_native_analysis():
 
     assert "visao-nativa-primeiro" in vision
     assert "Se o modelo hospedeiro não ler imagens, delegar" not in vision
+
+
+def test_linkedin_plan_requires_native_first_conditional_fallback():
+    text = LINKEDIN_PLAN_PATH.read_text(encoding="utf-8")
+
+    assert "visao-nativa-primeiro" in text
+    assert "Quando houver visão nativa, analise a tela nativamente primeiro." in text
+    assert (
+        "Somente quando o modelo não tiver visão nativa ou quando a visão nativa"
+        " falhar, delegue ao `image-analyzer`."
+    ) in text
+    assert not re.search(
+        r"Usa o [`']?image-analyzer[`']?.{0,40}quando necessário",
+        text,
+        flags=re.IGNORECASE,
+    )
+
+
+def test_linkedin_plan_preserves_now_pause_for_manual_attachment():
+    text = LINKEDIN_PLAN_PATH.read_text(encoding="utf-8")
+
+    assert "Único ponto de espera" in text
+    assert "Envio \"agora\": colar conteúdo, PAUSAR antes do clique final" in text
+    assert "informar que a pessoa pode anexar imagem manualmente" in text
+    assert "aguardar o comando para concluir" in text
 
 
 def section(text: str, heading: str) -> str:
