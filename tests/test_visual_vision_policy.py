@@ -61,6 +61,19 @@ def test_native_model_has_exclusive_native_route():
     assert "image-analyzer" not in native
 
 
+def test_acceptance_matrix_documents_user_facing_result_for_each_route():
+    expected = {
+        "Modelo com visão nativa": "Se a leitura nativa for bem-sucedida, responda",
+        "Modelo sem visão nativa": "informe que a análise foi delegada",
+        "Falha da visão nativa": "informe que a visão nativa falhou",
+        "Falha do image-analyzer": "informe que o fallback visual falhou",
+        "Imagem ilegível ou corrompida": "informe que a imagem não pôde ser lida",
+    }
+
+    for heading, wording in expected.items():
+        assert wording.lower() in section(read_policy(), heading).lower()
+
+
 def test_protocol_orders_native_before_conditional_fallbacks():
     text = read_policy()
 
@@ -109,7 +122,8 @@ def test_metadata_allowlist_excludes_image_content_and_secrets():
 
     assert "`route`" in allowed
     assert "`reason`" in allowed
-    assert "estado resumido" in allowed
+    assert "modo de delegação" in allowed
+    assert "limitação de legibilidade" in allowed
     for value in prohibited_values:
         assert value not in allowed.lower()
         assert value in forbidden.lower()

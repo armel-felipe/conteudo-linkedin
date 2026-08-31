@@ -16,11 +16,17 @@ Quando o modelo atual consegue ver imagens, tente a visão nativa.
 
 **Rota obrigatória: `native`.**
 
+Se a leitura nativa for bem-sucedida, responda usando somente o que foi observado na
+imagem e entregue o resultado pedido pela pessoa.
+
 ### Modelo sem visão nativa
 
 Quando o modelo atual não consegue ver imagens, não tente visão nativa.
 
 **Rota obrigatória: `image-analyzer`.**
+
+Informe que a análise foi delegada ao `image-analyzer` e use somente o resultado que
+ele devolver, sem tentar completar a leitura por conta própria.
 
 ### Falha da visão nativa
 
@@ -30,6 +36,9 @@ análise ao fallback visual.
 **Rota obrigatória: `image-analyzer`.**
 **Motivo: `native_failed`.**
 
+Informe que a visão nativa falhou e que a análise foi encaminhada ao fallback visual.
+Use somente o resultado do `image-analyzer` se ele estiver disponível.
+
 ### Falha do image-analyzer
 
 Quando o fallback visual também falhar, não há rota adicional.
@@ -38,6 +47,8 @@ Quando o fallback visual também falhar, não há rota adicional.
 
 Responda com uma limitação de leitura e não produza inferência, texto, objetos,
 valores ou contexto não observados.
+
+Informe que o fallback visual falhou e que não foi possível ler a imagem.
 
 ### Imagem ilegível ou corrompida
 
@@ -49,6 +60,9 @@ evidência.
 Responda com uma limitação de leitura e não produza inferência, preenchimento por
 suposição ou conteúdo inventado.
 
+Informe que a imagem não pôde ser lida e que nenhum resultado confiável pode ser
+produzido.
+
 Este documento define o protocolo de roteamento; não implementa detecção automática
 de capacidade do modelo nem validação automática de arquivos.
 
@@ -58,7 +72,8 @@ de capacidade do modelo nem validação automática de arquivos.
 
 - `route`: `native` ou `image-analyzer`;
 - `reason`: `no_native_vision`, `native_failed` ou `unreadable_image`;
-- estado resumido da operação.
+- modo de delegação;
+- limitação de legibilidade.
 
 ### Campos proibidos nos metadados
 
