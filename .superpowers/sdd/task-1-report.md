@@ -1,35 +1,26 @@
 # Task 1 Report
 
-Status: DONE
+## Status
+
+Concluída.
 
 ## Commits
 
-- `11ecee1 feat: persist orchestration review cycles`
-- `1e019d7 fix: make task tests use worktree source`
-- `97fc694 docs: record task 1 implementation report`
+- `9e3e029 feat: define native vision fallback policy`
 
-## Files
+## Arquivos
 
-- `src/content_ops/db.py`
-- `tests/test_db.py`
-- `pyproject.toml`
+- `.agents/skills/visao-nativa-primeiro/SKILL.md`
+- `tests/test_visual_vision_policy.py`
+- `.superpowers/sdd/task-1-report.md`
 
-## Cause and Decisions
+## Comandos e resultados
 
-- Increased the schema version from 6 to 7 and added the v7 migration.
-- Added `block_cycles`, `review_receipts`, and `workflow_events` with foreign keys, JSON checks, decision checks, and the required composite uniqueness constraint.
-- Added transactional APIs for starting cycles, recording reviews/events, checking exact approvals, and reading the latest block event.
-- Added focused durability, migration, scoping, and latest-state tests using real SQLite storage.
-
-## Tests
-
-- `python3.12 -m pytest tests/test_db.py -k orchestration -v`
-  - Result: PASS, 5 passed, 20 deselected.
-- `python3.12 -m pytest tests/test_db.py -v`
-  - Result: PASS, 25 passed, 29 subtests passed.
-- `git diff --check`
-  - Result: PASS, no whitespace errors.
+- `python3.12 -m pytest tests/test_visual_vision_policy.py -v`: 3 passed.
+- `python3.12 -m pytest tests -v`: 202 passed, 53 subtests passed.
+- `git diff --check`: passou sem saída.
 
 ## Concerns
 
-- No concerns. Pytest now resolves `src` through `[tool.pytest.ini_options] pythonpath = ["src"]`.
+Nenhum concern conhecido. O protocolo é documental e os testes validam sua estrutura,
+ordem de roteamento e logging sem segredos.
