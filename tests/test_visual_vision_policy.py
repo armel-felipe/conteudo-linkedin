@@ -63,13 +63,18 @@ def test_metadata_allowlist_excludes_image_content_and_secrets():
     text = read_policy()
     allowed = section(text, "Campos permitidos nos metadados")
     forbidden = section(text, "Campos proibidos nos metadados")
+    prohibited_values = (
+        "conteúdo da imagem",
+        "urls privadas",
+        "credenciais",
+        "tokens",
+        "chaves de api",
+        "qualquer outro segredo",
+    )
 
     assert "`route`" in allowed
     assert "`reason`" in allowed
     assert "estado resumido" in allowed
-    assert "conteúdo da imagem" not in allowed.lower()
-    assert "credenciais" not in allowed.lower()
-    assert "tokens" not in allowed.lower()
-    assert "conteúdo da imagem" in forbidden.lower()
-    assert "credenciais" in forbidden.lower()
-    assert "tokens" in forbidden.lower()
+    for value in prohibited_values:
+        assert value not in allowed.lower()
+        assert value in forbidden.lower()
