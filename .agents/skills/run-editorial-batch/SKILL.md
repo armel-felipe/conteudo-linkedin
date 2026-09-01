@@ -98,6 +98,7 @@ checkpoint:
   input_fingerprint: sha256:4f8d7c2a91b0e6f3d1c5a8b7e2f9d4c6
   paths:
     - research/briefs/topic_c.md
+    - runs/run_20260901_001/topics/topic_c/results/brief_review_gauntlet-cycle-01.yaml
     - runs/run_20260901_001/topics/topic_c/reviews/cycle-01.yaml
   saved_at: "2026-09-01T10:30:00Z"
 ```
@@ -121,17 +122,29 @@ events:
     idempotency_key: [run_20260901_001, topic_c, brief_review_gauntlet, 1]
     stage: brief_review_gauntlet
     cycle: 1
-    result_path: runs/run_20260901_001/topics/topic_c/reviews/cycle-01.yaml
+    result_path: runs/run_20260901_001/topics/topic_c/results/brief_review_gauntlet-cycle-01.yaml
 ```
 
-Cada `reviews/cycle-<NN>.yaml` usa o contrato do revisor:
+Cada `reviews/cycle-<NN>.yaml` usa o contrato do revisor. O `result_path` aponta sempre para `results/<stage>-cycle-<NN>.yaml`; o `review_path` aponta para `reviews/cycle-<NN>.yaml`.
 
 ```yaml
 decision: approved
 coverage: 1.0
 criteria:
-  evidence: 9
-  author_connection: 10
+  clareza: 10
+  força da abertura: 10
+  originalidade: 10
+  credibilidade: 10
+  uso de evidências: 10
+  risco de alucinação: 10
+  tom humano: 10
+  densidade: 10
+  relevância: 10
+  consistência com a voz do autor: 10
+  estrutura obrigatória: 10
+  pergunta final: 10
+  tamanho editorial: 10
+  rastreabilidade das fontes: 10
 hard_failures: []
 feedback: []
 artifact: research/briefs/topic_c.md

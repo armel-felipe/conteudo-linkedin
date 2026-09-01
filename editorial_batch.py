@@ -90,7 +90,7 @@ def _valid_commit_event(event, root=None):
         "event_id", "phase", "idempotency_key", "stage", "cycle", "artifact_path",
         "result_path", "review_path", "committed_at", "result", "review",
     }
-    if (not isinstance(event, dict) or not required <= set(event) or event.get("phase") != "commit"
+    if (not isinstance(event, dict) or set(event) != required or event.get("phase") != "commit"
             or not isinstance(event.get("event_id"), str)
             or re.fullmatch(r"evt_[0-9]{4}", event["event_id"]) is None):
         return False
