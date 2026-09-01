@@ -51,3 +51,55 @@ PYTHONPATH=. pytest -q
 ```
 
 The existing documentation-integration behavior for syntactically corrupt JSON remains unchanged; semantic terminal-state malformation is now rejected fail-closed as requested.
+
+## Remediation Round 2
+
+### Scope
+
+Only terminal-state validation in `gauntlet_loop.py` was hardened, with the approved-state producer updated to persist the required empty `failed_criteria` list. Batch, integration, and scheduling code were not touched.
+
+### Root Cause
+
+`_validate_terminal_state()` checked required-key presence, artifact/review identity, and the SHA-256 value, but trusted the types and semantics of persisted `cycles`, `cycle_count`, `feedback`, and `failed_criteria`. It also reused an `approved` state without reapplying the approval gates.
+
+### RED
+
+Added a parameterized regression test covering string, negative, and boolean cycle values plus invalid feedback and failed-criteria entries. Each case persisted an otherwise valid state and asserted `blocked` without overwriting it.
+
+Focused RED output:
+
+```text
+8 failed, 37 deselected
+```
+
+The failures showed invalid persisted values being reused as `approved`.
+
+### GREEN
+
+`_validate_terminal_state()` now requires:
+
+- `approved` or `blocked` status;
+- integer, non-boolean `cycles` and `cycle_count`, each in `1..5` and equal;
+- relative `last_artifact` equal to the expected artifact;
+- contract-valid `last_review`;
+- valid state `feedback` matching the review;
+- string `failed_criteria` matching the review's failed criteria;
+- exact SHA-256 fingerprint;
+- approval gates on approved states: approved decision, coverage `>= 0.99`, no failed criteria, no hard failures, and no feedback.
+
+Focused GREEN output:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py -k 'terminal_state or persistence or 099'
+13 passed, 32 deselected
+```
+
+Full verification:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py
+45 passed in 0.07s
+
+PYTHONPATH=. pytest -q
+128 passed in 0.66s
+```

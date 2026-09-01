@@ -167,17 +167,76 @@ def _persist_terminal(directory, result):
 def _validate_terminal_state(state, artifact_path, root):
     required = {
         "status", "cycles", "cycle_count", "last_artifact", "last_review",
-        "feedback", "artifact_fingerprint",
+        "feedback", "failed_criteria", "artifact_fingerprint",
     }
-    if not isinstance(state, dict) or not required <= set(state) or state["status"] not in {"approved", "blocked"}:
+    if not isinstance(state, dict) or not required <= set(state):
         raise ValueError("state payload is invalid")
-    if state["last_artifact"] != artifact_path or not isinstance(state["last_review"], dict):
-        raise ValueError("state payload is divergent")
-    if state["last_review"].get("artifact") != artifact_path or not validate_review(state["last_review"])["valid"]:
+    if state["status"] not in {"approved", "blocked"}:
+        raise ValueError("state status is invalid")
+    cycles = state["cycles"]
+    cycle_count = state["cycle_count"]
+    if (
+        isinstance(cycles, bool)
+        or not isinstance(cycles, int)
+        or not 1 <= cycles <= 5
+        or isinstance(cycle_count, bool)
+        or not isinstance(cycle_count, int)
+        or not 1 <= cycle_count <= 5
+        or cycles != cycle_count
+    ):
+        raise ValueError("state cycle count is invalid")
+    if not _relative_artifact(state["last_artifact"]) or state["last_artifact"] != artifact_path:
+        raise ValueError("state artifact is divergent")
+    last_review = state["last_review"]
+    if (
+        not isinstance(last_review, dict)
+        or last_review.get("artifact") != artifact_path
+        or not validate_review(last_review)["valid"]
+    ):
         raise ValueError("state review is divergent")
+    feedback = state["feedback"]
+    if (
+        not isinstance(feedback, list)
+        or any(
+            not isinstance(item, dict)
+            or set(item) != {"criterion", "message"}
+            or not isinstance(item["criterion"], str)
+            or not item["criterion"]
+            or item["criterion"] not in last_review["criteria"]
+            or not isinstance(item["message"], str)
+            or not item["message"].strip()
+            for item in feedback
+        )
+        or feedback != last_review["feedback"]
+    ):
+        raise ValueError("state feedback is invalid")
+    failed_criteria = state["failed_criteria"]
+    expected_failed = [name for name, score in last_review["criteria"].items() if score < 9]
+    if (
+        not isinstance(failed_criteria, list)
+        or any(not isinstance(item, str) for item in failed_criteria)
+        or failed_criteria != expected_failed
+    ):
+        raise ValueError("state failed criteria are invalid")
+    if state["status"] == "approved" and (
+        last_review["decision"] != "approved"
+        or last_review["coverage"] < 0.99
+        or expected_failed
+        or last_review["hard_failures"]
+        or feedback
+    ):
+        raise ValueError("approved state does not pass acceptance gates")
     checks = _artifact_checks(root, artifact_path, artifact_path)
     expected = "sha256:" + sha256((root / artifact_path).read_bytes()).hexdigest() if not checks else ""
-    if checks or state["artifact_fingerprint"] != expected:
+    fingerprint = state["artifact_fingerprint"]
+    if (
+        checks
+        or not isinstance(fingerprint, str)
+        or len(fingerprint) != 71
+        or not fingerprint.startswith("sha256:")
+        or any(character not in "0123456789abcdef" for character in fingerprint[7:])
+        or fingerprint != expected
+    ):
         raise ValueError("state fingerprint is divergent")
 
 
@@ -321,7 +380,7 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
         return _terminal(directory, {
             "status": "approved", "cycle_count": cycle, "cycles": cycle,
             "last_artifact": last_artifact, "last_review": last_review,
-            "feedback": [],
+            "feedback": [], "failed_criteria": [],
             "artifact_fingerprint": "sha256:" + sha256((root / last_artifact).read_bytes()).hexdigest(),
         })
 

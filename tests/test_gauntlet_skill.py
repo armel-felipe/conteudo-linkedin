@@ -2,6 +2,7 @@ from pathlib import Path
 import math
 import json
 import inspect
+from hashlib import sha256
 
 import pytest
 
@@ -458,6 +459,49 @@ def test_malformed_terminal_state_is_rejected_fail_closed_without_raising(tmp_pa
     assert result["status"] == "blocked"
     assert "state" in result["failure_reasons"][0]
     assert json.loads(state_path.read_text()) == state
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("cycles", "1"),
+        ("cycles", -1),
+        ("cycles", True),
+        ("cycle_count", "1"),
+        ("cycle_count", -1),
+        ("cycle_count", False),
+        ("feedback", ["invalid"]),
+        ("failed_criteria", [1]),
+    ],
+)
+def test_terminal_state_rejects_invalid_types_values_and_feedback_without_overwriting(tmp_path, field, value):
+    artifact = tmp_path / "mapa.md"
+    artifact.write_text("artifact")
+    state = {
+        "status": "approved",
+        "cycles": 1,
+        "cycle_count": 1,
+        "last_artifact": "mapa.md",
+        "last_review": review(),
+        "feedback": [],
+        "failed_criteria": [],
+        "artifact_fingerprint": "sha256:" + sha256(artifact.read_bytes()).hexdigest(),
+    }
+    state[field] = value
+    state_path = tmp_path / "state.yaml"
+    state_path.write_text(json.dumps(state))
+    original = state_path.read_text()
+
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert state_path.read_text() == original
 
 
 def test_accepts_099_coverage_but_hard_failures_and_critical_questions_block(tmp_path):
