@@ -721,3 +721,94 @@ def test_run_gauntlet_signature_exposes_artifact_persistence_and_run_identity():
     assert parameters["persistence_dir"].default is None
     assert parameters["run_id"].default == "run"
     assert parameters["workspace_root"].default is None
+
+
+@pytest.mark.parametrize("artifact_operation", ["exists", "is_file", "stat"])
+def test_fresh_artifact_validation_metadata_errors_block_and_skip_reviewer(
+    tmp_path, monkeypatch, artifact_operation
+):
+    artifact = tmp_path / "mapa.md"
+    artifact.write_text("artifact")
+    calls = []
+    original_operation = getattr(Path, artifact_operation)
+
+    def failing_operation(path, *args, **kwargs):
+        if path == artifact:
+            raise PermissionError(f"artifact {artifact_operation} denied")
+        return original_operation(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, artifact_operation, failing_operation)
+
+    result = run_gauntlet(
+        lambda feedback: calls.append("executor") or "mapa.md",
+        lambda artifact, feedback: calls.append("reviewer") or review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path / "run",
+        workspace_root=tmp_path,
+    )
+
+    state_path = tmp_path / "run" / "state.yaml"
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"] == [f"artifact validation failed: artifact {artifact_operation} denied"]
+    assert calls == ["executor"]
+    assert json.loads(state_path.read_text())["status"] == "blocked"
+
+
+def test_final_artifact_fingerprint_error_blocks_without_corrupting_state_or_reexecuting_reviewer(
+    tmp_path, monkeypatch
+):
+    artifact = tmp_path / "mapa.md"
+    artifact.write_text("artifact")
+    run_dir = tmp_path / "run"
+    calls = []
+    original_read_bytes = Path.read_bytes
+
+    def failing_read_bytes(path, *args, **kwargs):
+        if path == artifact:
+            raise OSError("artifact fingerprint denied")
+        return original_read_bytes(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_bytes", failing_read_bytes)
+
+    result = run_gauntlet(
+        lambda feedback: calls.append("executor") or "mapa.md",
+        lambda artifact, feedback: calls.append("reviewer") or review(),
+        artifact_path="mapa.md",
+        persistence_dir=run_dir,
+        workspace_root=tmp_path,
+    )
+
+    state_path = run_dir / "state.yaml"
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"] == ["artifact fingerprint failed: artifact fingerprint denied"]
+    assert calls == ["executor", "reviewer"]
+    assert json.loads(state_path.read_text())["failure_reasons"] == result["failure_reasons"]
+
+
+def test_persistence_directory_exists_error_blocks_without_callbacks_or_state_overwrite(tmp_path, monkeypatch):
+    persistence_dir = tmp_path / "run"
+    persistence_dir.mkdir()
+    state_path = persistence_dir / "state.yaml"
+    original_state = '{"sentinel": true}\n'
+    state_path.write_text(original_state)
+    original_exists = Path.exists
+    calls = []
+
+    def failing_exists(path, *args, **kwargs):
+        if path == persistence_dir:
+            raise OSError("persistence metadata denied")
+        return original_exists(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "exists", failing_exists)
+
+    result = run_gauntlet(
+        lambda feedback: calls.append("executor") or "mapa.md",
+        lambda artifact, feedback: calls.append("reviewer") or review(),
+        artifact_path="mapa.md",
+        persistence_dir=persistence_dir,
+    )
+
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"] == ["persistence directory validation failed: persistence metadata denied"]
+    assert calls == []
+    assert state_path.read_text() == original_state

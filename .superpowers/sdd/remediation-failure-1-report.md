@@ -257,3 +257,63 @@ PYTHONPATH=. pytest -q
 python3 -m compileall -q gauntlet_loop.py
 git diff --check
 ```
+
+## Remediation Re-execution — Residual Filesystem Boundary
+
+### Scope
+
+This execution changed only `gauntlet_loop.py`, `tests/test_gauntlet_skill.py`, and this report. Batch editorial, document integration, scheduling, `content/approved`, and the scheduled post were not touched.
+
+### Root Cause
+
+Three filesystem paths still executed outside a fail-closed boundary: `_artifact_checks()` called `exists()`, `is_file()`, and `stat()` directly; the approved-result path computed the final SHA-256 with an unguarded `read_bytes()`; and persistence preflight called `persistence_dir.exists()` before its error handler. `PermissionError` is an `OSError` subclass, so either exception could escape instead of producing a structured `blocked` result. Terminal resume also needed to preserve valid blocked checkpoints for missing artifacts while rejecting metadata failures.
+
+### RED
+
+Added tests for each metadata operation, final fingerprint reads, and persistence-directory existence checks. They assert the structured reason, `blocked` status, checkpoint preservation/creation, and that reviewer or executor callbacks are not rerun when they should not be.
+
+Focused RED output:
+
+```text
+5 failed, 55 deselected in 0.18s
+```
+
+The failures reproduced uncaught `PermissionError`/`OSError` at `_artifact_checks()`, final `read_bytes()`, and `persistence_dir.exists()`.
+
+### GREEN
+
+- `_artifact_checks()` now converts filesystem metadata failures to `artifact validation failed: ...`.
+- Final fingerprint computation now converts read failures to `artifact fingerprint failed: ...` and persists a terminal blocked result.
+- Persistence-directory metadata validation now returns `persistence directory validation failed: ...` without callbacks or checkpoint overwrite.
+- Valid blocked checkpoints with missing artifacts remain idempotent on resume; metadata failures remain fail-closed.
+- The acceptance behavior remains `coverage >= 0.99`, every criterion `>=9/10`, with non-empty `hard_failures` and critical questions blocking approval.
+
+Focused GREEN output:
+
+```text
+PYTHONPATH=. python3 -m pytest -q tests/test_gauntlet_skill.py -k 'fresh_artifact_validation_metadata_errors or final_artifact_fingerprint_error or persistence_directory_exists_error'
+5 passed, 55 deselected in 0.03s
+```
+
+Final verification:
+
+```text
+PYTHONPATH=. python3 -m pytest -q tests/test_gauntlet_skill.py
+60 passed in 0.09s
+
+PYTHONPATH=. python3 -m pytest -q
+143 passed in 1.19s
+
+python3 -m compileall -q gauntlet_loop.py tests/test_gauntlet_skill.py
+git diff --check -- gauntlet_loop.py tests/test_gauntlet_skill.py .superpowers/sdd/remediation-failure-1-report.md
+```
+
+### Files
+
+- `gauntlet_loop.py`
+- `tests/test_gauntlet_skill.py`
+- `.superpowers/sdd/remediation-failure-1-report.md`
+
+### Concerns
+
+- No residual concern identified within the requested filesystem boundary. The repository contains unrelated pre-existing worktree changes; they remain unstaged.

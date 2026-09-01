@@ -263,14 +263,16 @@ def _validate_terminal_state(state, artifact_path, root):
         or feedback
     ):
         raise ValueError("approved state does not pass acceptance gates")
+    checks = _artifact_checks(root, artifact_path, artifact_path)
+    artifact_file = root / artifact_path
+    expected = None
     try:
-        checks = _artifact_checks(root, artifact_path, artifact_path)
-        artifact_file = root / artifact_path
-        expected = None
         if artifact_file.exists() and artifact_file.is_file():
             expected = "sha256:" + sha256(artifact_file.read_bytes()).hexdigest()
     except (UnicodeDecodeError, OSError) as error:
-        raise ValueError(f"artifact validation failed: {error}") from error
+        raise ValueError(f"artifact fingerprint failed: {error}") from error
+    if checks and (state["status"] == "approved" or checks[0].startswith("artifact validation failed:")):
+        raise ValueError(checks[0])
     fingerprint = state["artifact_fingerprint"]
     if (
         not isinstance(fingerprint, (str, type(None)))
@@ -313,12 +315,15 @@ def _artifact_checks(root, expected, actual):
     expected_file = (root / expected).resolve()
     if root not in expected_file.parents:
         return ["artifact path is outside root"]
-    if not expected_file.exists():
-        return ["artifact missing"]
-    if not expected_file.is_file():
-        return ["artifact not regular"]
-    if expected_file.stat().st_size == 0:
-        return ["artifact empty"]
+    try:
+        if not expected_file.exists():
+            return ["artifact missing"]
+        if not expected_file.is_file():
+            return ["artifact not regular"]
+        if expected_file.stat().st_size == 0:
+            return ["artifact empty"]
+    except (UnicodeDecodeError, OSError) as error:
+        return [f"artifact validation failed: {error}"]
     return []
 
 
@@ -353,8 +358,11 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
     blocked = lambda *args: _blocked(*args, workspace_root=root)
     directory = Path(persistence_dir) if persistence_dir is not None else None
     if directory is not None:
-        if directory.exists() and not directory.is_dir():
-            return blocked(0, ["persistence directory is not a directory"])
+        try:
+            if directory.exists() and not directory.is_dir():
+                return blocked(0, ["persistence directory is not a directory"])
+        except (UnicodeDecodeError, OSError) as error:
+            return blocked(0, [f"persistence directory validation failed: {error}"])
         state_path = directory / "state.yaml"
         try:
             existing = _load_json(state_path, None)
@@ -447,11 +455,25 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
             feedback = deepcopy(result["feedback"])
             continue
 
+        try:
+            artifact_fingerprint = "sha256:" + sha256((root / last_artifact).read_bytes()).hexdigest()
+        except (UnicodeDecodeError, OSError) as error:
+            return _terminal(
+                directory,
+                blocked(
+                    cycle,
+                    [f"artifact fingerprint failed: {error}"],
+                    last_artifact,
+                    last_review,
+                    [],
+                ),
+                root,
+            )
         return _terminal(directory, {
             "status": "approved", "cycle_count": cycle, "cycles": cycle,
             "last_artifact": last_artifact, "last_review": last_review,
             "feedback": [], "failed_criteria": [], "failure_reasons": ["approved"],
-            "artifact_fingerprint": "sha256:" + sha256((root / last_artifact).read_bytes()).hexdigest(),
+            "artifact_fingerprint": artifact_fingerprint,
         }, root)
 
     return _terminal(directory, blocked(max_cycles, ["maximum cycles exhausted"], last_artifact, last_review, feedback), root)
