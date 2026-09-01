@@ -82,6 +82,8 @@ Para uma divergência pós-agendamento, localizar a publicação existente na li
 
 ## Registro do agendamento
 
+Antes de registrar, preencher `docs/schemas/linkedin-scheduling-checklist.yaml`. É proibido definir `timestamp_registered: true` sem `scheduled_list_confirmed: true`; se a confirmação na lista falhar, não registrar o timestamp.
+
 Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arquivo>.md`) um bloco no final:
 
 ```markdown
