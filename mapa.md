@@ -14,6 +14,7 @@ Referenciado pelo `AGENTS.md`.
 | `research-topic` | Pesquisa aprofundada → brief | Etapa 4 (ao publicar) | "pesquisa o topic X" |
 | `write-post` | Escrever post a partir do brief + memória | Etapa 5 (ao publicar) | "escreve o post do topic X" |
 | `critique-post` | Criticar o draft antes da aprovação | Etapa 6 (ao publicar) | "critica o draft X" |
+| `run-editorial-batch` | Selecionar e executar uma fila congelada de topics, sequencialmente, com checkpoints e bloqueio individual | Novo ponto de entrada para pesquisa e redação em lote | "roda um lote editorial com --topics N" |
 
 ## Skills mantidas (existentes)
 

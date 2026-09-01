@@ -59,6 +59,19 @@ As memórias atuais são rascunhos e devem ser revisadas pelo autor antes de ser
 
 As frases abaixo são as invocações usadas no OpenWork. O agente deve ler a skill correspondente, executar somente aquela etapa e salvar o artefato indicado.
 
+### Ponto de entrada atual: lote editorial
+
+Para executar pesquisa e redação de vários topics, use `run-editorial-batch`. A skill seleciona somente topics `ready_for_research`, congela a fila em `runs/<run_id>/manifest.yaml`, processa um topic por vez e marca uma falha individual como `blocked` antes de continuar.
+
+```text
+Rode run-editorial-batch --topics 1
+Rode run-editorial-batch --topics 5
+Rode run-editorial-batch --topics all
+Rode run-editorial-batch --topics topic_20260831_01,topic_20260831_03
+```
+
+O lote retoma do último checkpoint válido e nunca publica automaticamente. `orquestrador-runtime` permanece disponível apenas como legado e não é o ponto de entrada do fluxo novo.
+
 ### 1. Descobrir sinais — diariamente
 
 **Pedido ao agente:**
