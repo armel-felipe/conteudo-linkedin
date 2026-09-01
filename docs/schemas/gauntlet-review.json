@@ -23,7 +23,26 @@
     },
     "criteria": {
       "type": "object",
-      "minProperties": 1,
+      "minProperties": 14,
+      "maxProperties": 14,
+      "propertyNames": {
+        "enum": [
+          "clareza",
+          "força da abertura",
+          "originalidade",
+          "credibilidade",
+          "uso de evidências",
+          "risco de alucinação",
+          "tom humano",
+          "densidade",
+          "relevância",
+          "consistência com a voz do autor",
+          "estrutura obrigatória",
+          "pergunta final",
+          "tamanho editorial",
+          "rastreabilidade das fontes"
+        ]
+      },
       "additionalProperties": {
         "type": "number",
         "minimum": 0,

@@ -5,7 +5,7 @@ import inspect
 
 import pytest
 
-from gauntlet_loop import run_gauntlet, validate_review
+from gauntlet_loop import NORMATIVE_CRITERIA, run_gauntlet, validate_review
 
 
 SKILL = Path(".agents/skills/gauntlet-loop/SKILL.md")
@@ -85,10 +85,25 @@ def test_retry_limit_and_terminal_categories_are_explicitly_distinguished():
 
 
 def review(*, coverage=1.0, criteria=None, decision="approved", hard_failures=None, feedback=None, artifact="mapa.md"):
+    if criteria is None:
+        criteria = {name: 10 for name in NORMATIVE_CRITERIA}
+    elif set(criteria) == {"clarity"}:
+        clarity_score = criteria["clarity"]
+        criteria = {name: 10 for name in NORMATIVE_CRITERIA}
+        criteria["clareza"] = clarity_score
+    if feedback:
+        feedback = [
+            (
+                {**item, "criterion": "clareza" if item.get("criterion") == "clarity" else item.get("criterion")}
+                if isinstance(item, dict)
+                else item
+            )
+            for item in feedback
+        ]
     return {
         "decision": decision,
         "coverage": coverage,
-        "criteria": {"clarity": 10} if criteria is None else criteria,
+        "criteria": criteria,
         "hard_failures": [] if hard_failures is None else hard_failures,
         "feedback": [] if feedback is None else feedback,
         "artifact": artifact,
@@ -141,7 +156,7 @@ def test_run_gauntlet_approves_after_quality_retry_and_passes_feedback():
 
     assert result["status"] == "approved"
     assert result["cycle_count"] == 2
-    assert seen_feedback[1] == [{"criterion": "clarity", "message": "Use one concrete example."}]
+    assert seen_feedback[1] == [{"criterion": "clareza", "message": "Use one concrete example."}]
 
 
 def test_run_gauntlet_stops_on_hard_failure_without_retry():
@@ -195,7 +210,7 @@ def test_validate_review_accepts_strict_review_and_quality_failure_is_not_termin
             feedback=[{"criterion": "clarity", "message": "Add a concrete example."}],
         )
     )
-    assert quality == {"valid": True, "terminal": False, "errors": [], "quality_feedback": ["clarity"]}
+    assert quality == {"valid": True, "terminal": False, "errors": [], "quality_feedback": ["clareza"]}
 
 
 def test_schema_is_strict_and_feedback_is_criterion_associated():
@@ -203,7 +218,7 @@ def test_schema_is_strict_and_feedback_is_criterion_associated():
     assert schema["additionalProperties"] is False
     assert schema["properties"]["coverage"]["minimum"] == 0
     assert schema["properties"]["coverage"]["maximum"] == 1
-    assert schema["properties"]["criteria"]["minProperties"] == 1
+    assert schema["properties"]["criteria"]["minProperties"] == 14
     assert schema["properties"]["criteria"]["additionalProperties"]["type"] == "number"
     assert schema["properties"]["feedback"]["items"]["required"] == ["criterion", "message"]
 
@@ -239,7 +254,7 @@ def test_blocked_after_five_cycles_contains_complete_terminal_payload():
     assert result["status"] == "blocked"
     assert result["cycles"] == 5
     assert result["cycle_count"] == 5
-    assert result["failed_criteria"] == ["clarity"]
+    assert result["failed_criteria"] == ["clareza"]
     assert result["last_artifact"] == "mapa.md"
     assert result["last_review"]["artifact"] == "mapa.md"
     assert result["feedback"] == result["last_review"]["feedback"]
@@ -321,7 +336,7 @@ def test_callbacks_receive_separate_contexts_and_checks_precede_reviewer():
     assert observations[0][1] != observations[1][1]
     assert observations[2][0] == "executor"
     assert observations[3][0] == "reviewer"
-    assert observations[3][2] == [{"criterion": "clarity", "message": "Be specific."}]
+    assert observations[3][2] == [{"criterion": "clareza", "message": "Be specific."}]
 
 
 def test_deterministic_checks_require_existing_regular_nonempty_artifact(tmp_path):

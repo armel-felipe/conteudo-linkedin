@@ -2,8 +2,26 @@ from pathlib import Path
 import json
 import re
 
+from gauntlet_loop import run_gauntlet, validate_review
+
 
 ROOT = Path(__file__).parents[1]
+NORMATIVE_CRITERIA = (
+    "clareza",
+    "força da abertura",
+    "originalidade",
+    "credibilidade",
+    "uso de evidências",
+    "risco de alucinação",
+    "tom humano",
+    "densidade",
+    "relevância",
+    "consistência com a voz do autor",
+    "estrutura obrigatória",
+    "pergunta final",
+    "tamanho editorial",
+    "rastreabilidade das fontes",
+)
 
 
 def read_contract(path):
@@ -30,22 +48,58 @@ def test_post_uses_exact_normative_criteria_in_order():
         match.group(2).strip().lower()
         for match in re.finditer(r"^([0-9]+)\. (.+)$", section.group(1), re.MULTILINE)
     ]
-    assert criteria == [
-        "clareza",
-        "força da abertura",
-        "originalidade",
-        "credibilidade",
-        "uso de evidências",
-        "risco de alucinação",
-        "tom humano",
-        "densidade",
-        "relevância",
-        "consistência com a voz do autor",
-        "estrutura obrigatória",
-        "pergunta final",
-        "tamanho editorial",
-        "rastreabilidade das fontes",
-    ]
+    assert tuple(criteria) == NORMATIVE_CRITERIA
+
+
+def review(criteria=None, **overrides):
+    payload = {
+        "decision": "approved",
+        "coverage": 1.0,
+        "criteria": {name: 10 for name in NORMATIVE_CRITERIA} if criteria is None else criteria,
+        "hard_failures": [],
+        "feedback": [],
+        "artifact": "content/drafts/topic.md",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_validate_review_accepts_the_complete_normative_criteria_set():
+    result = validate_review(review())
+    assert result["valid"] is True
+    assert result["quality_feedback"] == []
+
+
+def test_validate_review_rejects_omitted_normative_criterion():
+    criteria = {name: 10 for name in NORMATIVE_CRITERIA[:-1]}
+    result = validate_review(review(criteria))
+    assert result["valid"] is False
+    assert result["terminal"] is True
+
+
+def test_validate_review_rejects_extra_normative_criterion():
+    criteria = {name: 10 for name in NORMATIVE_CRITERIA} | {"clareza_extra": 10}
+    result = validate_review(review(criteria))
+    assert result["valid"] is False
+    assert result["terminal"] is True
+
+
+def test_hard_failure_blocks_a_high_coverage_complete_review(tmp_path):
+    artifact = "draft.md"
+    (tmp_path / artifact).write_text("draft")
+
+    result = run_gauntlet(
+        lambda feedback: artifact,
+        lambda artifact, feedback: review(
+            artifact=artifact,
+            hard_failures=["unsupported claim"],
+        ),
+        artifact_path=artifact,
+        workspace_root=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert result["cycle_count"] == 1
 
 
 def test_editorial_review_contract_is_structured_and_shared():

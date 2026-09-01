@@ -11,6 +11,23 @@ import tempfile
 
 REQUIRED_FIELDS = {"decision", "coverage", "criteria", "hard_failures", "feedback", "artifact"}
 DECISIONS = {"approved", "feedback"}
+NORMATIVE_CRITERIA = (
+    "clareza",
+    "força da abertura",
+    "originalidade",
+    "credibilidade",
+    "uso de evidências",
+    "risco de alucinação",
+    "tom humano",
+    "densidade",
+    "relevância",
+    "consistência com a voz do autor",
+    "estrutura obrigatória",
+    "pergunta final",
+    "tamanho editorial",
+    "rastreabilidade das fontes",
+)
+NORMATIVE_CRITERIA_SET = set(NORMATIVE_CRITERIA)
 
 
 def _number(value):
@@ -37,6 +54,8 @@ def validate_review(review):
     criteria = review.get("criteria")
     if not isinstance(criteria, dict) or not criteria:
         errors.append("criteria must be a non-empty object")
+    elif set(criteria) != NORMATIVE_CRITERIA_SET:
+        errors.append("criteria must match the normative allowlist exactly")
     elif any(not _number(value) or not 0 <= value <= 10 for value in criteria.values()):
         errors.append("criteria values must be finite numbers from 0 to 10")
 

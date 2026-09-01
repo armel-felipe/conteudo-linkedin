@@ -63,7 +63,7 @@ Antes de avaliar gates, valide sem coercoes:
 - os campos obrigatorios devem ter tipos corretos: `decision` string, `coverage` numero, `criteria` objeto, `hard_failures` lista, `feedback` lista e `artifact` string;
 - `decision` e um decision enum restrito a `approved` ou `feedback`;
 - `coverage` deve ser coverage finito e estar entre 0 e 1, inclusive; rejeite `NaN`, `Infinity`, strings e booleanos;
-- `criteria` deve ser criteria objeto nao vazio, com valores numeros 0-10, finitos e sem booleanos;
+- `criteria` deve ser criteria objeto exatamente igual à allowlist normativa de 14 critérios (`clareza`, `força da abertura`, `originalidade`, `credibilidade`, `uso de evidências`, `risco de alucinação`, `tom humano`, `densidade`, `relevância`, `consistência com a voz do autor`, `estrutura obrigatória`, `pergunta final`, `tamanho editorial`, `rastreabilidade das fontes`), com valores numeros 0-10, finitos e sem booleanos; critérios omitidos, extras ou renomeados são falha estrutural;
 - `hard_failures` e `feedback` devem ser hard_failures/feedback listas JSON, mesmo quando vazias;
 - `artifact` deve ser artifact string nao vazia, relativa ao workspace e igual ao artefato verificado.
 
