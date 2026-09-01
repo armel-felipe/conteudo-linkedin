@@ -62,7 +62,7 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 
 - Texto em approved/ já está aprovado → NÃO pedir nova confirmação textual.
 - Envio "agora": PAUSA obrigatória para anexo manual de imagem; concluir só ao receber comando.
-- Agendado: sem pausa na skill e sem nova validação; o agente agenda direto (o texto já foi aprovado no pipeline). A pessoa pode conferir/cancelar/edit a em "Ver publicações agendadas" no LinkedIn antes da hora.
+- Agendado: não há nova aprovação textual; a validação visual do resumo, da prévia final e da publicação em "Publicações agendadas" é obrigatória antes de registrar sucesso.
 
 ## Agendamento — detalhes
 
@@ -78,7 +78,7 @@ O seletor de agendamento do LinkedIn é um popover com campos de data e hora. Er
 
 ### Reagendamento
 
-Para um post já agendado, abrir a lista de publicações agendadas e usar exatamente `... → Alterar agenda`. Não abrir um compositor novo para corrigir um post existente. Depois de alterar a agenda, repetir a seleção explícita da data e do horário, incluindo selecionar novamente o horário após mudar a data, o resumo visual antes de "Avançar", a prévia final antes de "Agendar" e a verificação na lista.
+Para uma divergência pós-agendamento, localizar a publicação existente na lista de publicações agendadas e usar exatamente `... → Alterar agenda`. Nunca criar duplicata nem abrir um compositor novo para corrigir uma publicação existente. Depois de alterar a agenda, repetir a seleção explícita da data e do horário, incluindo selecionar novamente o horário após mudar a data, o resumo visual antes de "Avançar", a prévia final antes de "Agendar" e a verificação na lista.
 
 ## Registro do agendamento
 
@@ -111,9 +111,10 @@ Playwright → screenshot + visão nativa → image-analyzer(native_failed) → 
 ```
 
 1. Tentar primeiro Playwright para localizar e interagir com os elementos acessíveis.
-2. Quando a interação exigir confirmação visual, capturar screenshot e usar visão nativa para produzir um resumo visual do estado: conteúdo, data, hora, botões e prévia.
-3. Se a visão nativa falhar, delegar ao `image-analyzer` com motivo `native_failed`, passando o screenshot. Isso é um fallback de leitura visual, não uma substituição por inferência.
-4. Se nenhuma rota funcionar ou a imagem estiver ilegível, parar, relatar a limitação e não inferir o estado da tela.
+2. Se o modelo tiver visão nativa e a interação exigir confirmação visual, capturar screenshot e usar visão nativa para produzir um resumo visual do estado: conteúdo, data, hora, botões e prévia.
+3. Se o modelo não tiver visão nativa, delegar diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa.
+4. Se a visão nativa falhar, delegar ao `image-analyzer` com `reason: native_failed`, passando o screenshot. Isso é um fallback de leitura visual, não uma substituição por inferência.
+5. Se nenhuma rota funcionar ou a imagem estiver ilegível, parar, relatar a limitação e não inferir o estado da tela.
 
 Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar para a visão nativa.
 
