@@ -158,7 +158,7 @@ A soma ponderada é multiplicada por 10, gerando score final de 0 a 100. Os melh
 
 ### 5. Execução editorial — somente pelo lote
 
-Não invoque as etapas editoriais abaixo isoladamente para uma rodada. Escolha os topics via `run-editorial-batch`, que congela a fila, executa a sequência completa e registra checkpoints.
+Para uma rodada, não invoque as etapas editoriais abaixo isoladamente: escolha os topics via `run-editorial-batch`, que congela a fila, executa a sequência completa e registra checkpoints. Pedidos isolados continuam permitidos fora de uma rodada batch, para trabalho sob demanda em um único topic.
 
 **Pedido ao agente:**
 
@@ -178,11 +178,7 @@ Depois dessa etapa, revise o brief. Se faltar evidência ou contexto, peça uma 
 
 Só execute depois que o brief estiver pronto e revisado.
 
-**Pedido ao agente:**
-
-```text
-Dentro do lote, as etapas são chamadas nesta ordem: `research-topic` → brief review Gauntlet → `write-post` → `critique-post` → correction Gauntlet → `escrita-humana` 1 → review → `escrita-humana` 2 → review → aprovação humana.
-```
+Dentro do lote, as etapas são chamadas nesta ordem: `research-topic` → `brief_review_gauntlet` → `write-post` → `critique-post` → `correction_gauntlet` → `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2` → `approval_humana`.
 
 **Entrada:** `research/briefs/topic_YYYYMMDD_01.md` e os três arquivos em `memory/`.
 
@@ -208,11 +204,7 @@ O writer não faz pesquisa nova. Todo fato precisa estar no brief. O arquivo dev
 
 O lote persiste `runs/<run_id>/manifest.yaml` e `runs/<run_id>/topics/<topic_id>/state.yaml`, além dos artefatos editoriais de cada etapa.
 
-**Pedido ao agente:**
-
-```text
-Critique o draft content/drafts/topic_YYYYMMDD_01.md usando critique-post.
-```
+Fora de uma rodada batch, também é permitido pedir `critique-post` isoladamente para um draft.
 
 A crítica verifica clareza, originalidade, credibilidade, tom humano, densidade, relevância, consistência, evidências, risco de alucinação e clichês de IA.
 
@@ -222,9 +214,7 @@ O agente deve apontar problemas específicos e sugerir correções, mas não sub
 
 Depois da crítica e dos ajustes necessários, o lote executa duas passagens independentes:
 
-```text
-Revise o draft content/drafts/topic_YYYYMMDD_01.md com escrita-humana.
-```
+Fora de uma rodada batch, também é permitido pedir `escrita-humana` isoladamente para um draft.
 
 Essa revisão preserva sua voz, remove padrões de texto genérico e verifica novamente clareza, naturalidade, fontes, tamanho e estrutura.
 

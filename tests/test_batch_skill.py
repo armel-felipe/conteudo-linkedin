@@ -1,65 +1,149 @@
-import re
 from pathlib import Path
 
+import pytest
 import yaml
 
+from editorial_batch import (
+    CANONICAL_STAGES,
+    PERSISTENCE_ORDER,
+    checkpoint_valid,
+    continue_after_failure,
+    event_path,
+    freeze_manifest,
+    idempotency_key,
+    load_and_select_topics,
+    review_path,
+    resume_stage,
+    state_path,
+)
 
-SKILL = Path(".agents/skills/run-editorial-batch/SKILL.md").read_text()
 
-
-def _yaml_example(name):
-    match = re.search(
-        rf"<!-- {name} -->\n```yaml\n(.*?)\n```",
-        SKILL,
-        flags=re.DOTALL,
+def write_fixture(root):
+    (root / "content").mkdir()
+    (root / "research" / "topics").mkdir(parents=True)
+    (root / "content" / "backlog.md").write_text(
+        "| topic_a | 81 | ready_for_research |\n"
+        "| topic_b | 99 | candidate |\n"
+        "| topic_c | 92 | ready_for_research |\n"
+        "| topic_d | 92 | ready_for_research |\n"
     )
-    assert match, f"missing YAML example: {name}"
-    return yaml.safe_load(match.group(1))
+    (root / "research" / "topics" / "topics_20260901.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "topics": [
+                    {"topic_id": "topic_a", "score": 81, "status": "ready_for_research"},
+                    {"topic_id": "topic_b", "score": 99, "status": "candidate"},
+                    {"topic_id": "topic_c", "score": 92, "status": "ready_for_research"},
+                    {"topic_id": "topic_d", "score": 92, "status": "ready_for_research"},
+                ]
+            }
+        )
+    )
 
 
-def test_batch_skill_documents_selection_and_failure_policy():
-    assert all(option in SKILL for option in ("--topics 1", "--topics N", "--topics all"))
-    assert "--topics topic_a,topic_b" in SKILL
+def test_selection_filters_ready_orders_and_supports_all_n_and_explicit_ids(tmp_path):
+    write_fixture(tmp_path)
+    source = (tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics")
+
+    assert [t["topic_id"] for t in load_and_select_topics(*source, "all")] == [
+        "topic_c",
+        "topic_d",
+        "topic_a",
+    ]
+    assert [t["topic_id"] for t in load_and_select_topics(*source, "2")] == ["topic_c", "topic_d"]
+    assert [t["topic_id"] for t in load_and_select_topics(*source, "topic_a,topic_c")] == [
+        "topic_a",
+        "topic_c",
+    ]
 
 
-def test_selection_filters_ready_topics_and_orders_by_score_with_topic_tiebreaker():
-    selection = _yaml_example("selection-example")
-    assert selection["eligible_topic_ids"] == ["topic_c", "topic_d", "topic_a"]
-    assert selection["ignored"]["topic_b"] == "candidate"
+def test_explicit_selection_rejects_missing_or_non_ready_ids(tmp_path):
+    write_fixture(tmp_path)
+    source = (tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics")
+    with pytest.raises(ValueError, match="topic_b"):
+        load_and_select_topics(*source, "topic_b")
+    with pytest.raises(ValueError, match="topic_missing"):
+        load_and_select_topics(*source, "topic_missing")
 
 
-def test_manifest_and_state_examples_freeze_queue_and_define_valid_checkpoint():
-    manifest = _yaml_example("manifest-example")
-    state = _yaml_example("state-example")
-    assert manifest["path"] == "runs/run_20260901_001/manifest.yaml"
-    assert manifest["queue_frozen"] is True
-    assert [item["topic_id"] for item in manifest["queue"]] == ["topic_c", "topic_d", "topic_a"]
-    assert state["path"] == "runs/run_20260901_001/topics/topic_c/state.yaml"
-    assert state["checkpoint"]["valid"] is True
-    assert state["checkpoint"]["completed_stages"] == ["research-topic", "brief-review-gauntlet"]
+def test_manifest_freezes_root_selection_and_queue_and_is_idempotent(tmp_path):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(
+        tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics", "2"
+    )
+    first = freeze_manifest(tmp_path / "runs", "run_001", "2", topics)
+    topics[0]["score"] = 1
+    second = freeze_manifest(tmp_path / "runs", "run_001", "2", topics)
+
+    assert first == second
+    assert first["selection"] == "2"
+    assert [item["topic_id"] for item in first["queue"]] == ["topic_c", "topic_d"]
+    assert first["queue_frozen"] is True
+    assert (tmp_path / "runs" / "run_001" / "manifest.yaml").exists()
 
 
-def test_stage_sequence_is_sequential_and_excludes_publication():
-    stages = _yaml_example("stage-sequence-example")["stages"]
-    assert stages == [
+def test_checkpoint_requires_result_artifact_fingerprint_paths_and_validates_resume(tmp_path):
+    artifact = tmp_path / "research" / "briefs" / "topic_c.md"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text("brief")
+    state = {
+        "contract_version": "1",
+        "run_id": "run_001",
+        "topic_id": "topic_c",
+        "status": "running",
+        "current_stage": "write-post",
+        "completed_stages": ["research-topic", "brief_review_gauntlet"],
+        "checkpoint": {
+            "stage": "brief_review_gauntlet",
+            "cycle": 1,
+            "result": {"decision": "approved"},
+            "last_artifact": "research/briefs/topic_c.md",
+            "input_fingerprint": "sha256:abc",
+            "paths": ["research/briefs/topic_c.md"],
+            "saved_at": "2026-09-01T10:00:00Z",
+        },
+    }
+    assert checkpoint_valid(state, tmp_path) is True
+    assert resume_stage(state) == "write-post"
+    state["checkpoint"]["result"] = None
+    assert checkpoint_valid(state, tmp_path) is False
+
+
+def test_idempotency_and_persistence_contract_are_explicit():
+    assert idempotency_key("run_001", "topic_c", "brief_review_gauntlet", 1) == (
+        "run_001",
+        "topic_c",
+        "brief_review_gauntlet",
+        1,
+    )
+    assert PERSISTENCE_ORDER == ["artifact", "result", "state.yaml", "event", "manifest"]
+    assert CANONICAL_STAGES == [
         "research-topic",
-        "brief review Gauntlet",
+        "brief_review_gauntlet",
         "write-post",
         "critique-post",
-        "correction Gauntlet",
-        "escrita-humana 1",
-        "review 1",
-        "escrita-humana 2",
-        "review 2",
-        "approval humana",
+        "correction_gauntlet",
+        "humanize_pass_1",
+        "humanize_review_1",
+        "humanize_pass_2",
+        "humanize_review_2",
+        "approval_humana",
     ]
-    assert "publicar-linkedin" not in stages
+    assert "publicar-linkedin" not in CANONICAL_STAGES
+    assert event_path("runs", "run_001") == Path("runs/run_001/events.yaml")
+    assert state_path("runs", "run_001", "topic_c") == Path(
+        "runs/run_001/topics/topic_c/state.yaml"
+    )
+    assert review_path("runs", "run_001", "topic_c", 2) == Path(
+        "runs/run_001/topics/topic_c/reviews/cycle-02.yaml"
+    )
 
 
-def test_failed_topic_is_blocked_and_next_topic_continues():
-    failure = _yaml_example("failure-example")
-    assert failure["queue"] == [
-        {"topic_id": "topic_a", "status": "blocked"},
-        {"topic_id": "topic_b", "status": "completed"},
+def test_failed_topic_is_blocked_before_continuing_to_next_queue_item():
+    queue = [
+        {"topic_id": "topic_a", "status": "running"},
+        {"topic_id": "topic_b", "status": "queued"},
     ]
-    assert failure["execution_order"] == ["topic_a", "topic_b"]
+    remaining = continue_after_failure(queue, "topic_a", "missing artifact")
+    assert queue[0] == {"topic_id": "topic_a", "status": "blocked", "error": "missing artifact"}
+    assert remaining == ["topic_b"]

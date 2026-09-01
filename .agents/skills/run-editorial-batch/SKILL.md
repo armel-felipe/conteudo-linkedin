@@ -49,22 +49,28 @@ O formato mínimo do manifesto é:
 <!-- manifest-example -->
 ```yaml
 path: runs/run_20260901_001/manifest.yaml
+contract_version: "1"
 run_id: run_20260901_001
 created_at: "2026-09-01T10:00:00Z"
-selection:
-  requested: "--topics 3"
-  eligible_status: ready_for_research
+selection: "--topics 3"
 queue_frozen: true
 queue:
   - topic_id: topic_c
+    position: 1
     score: 92
     status: queued
+    current_stage: research-topic
   - topic_id: topic_d
+    position: 2
     score: 92
     status: queued
+    current_stage: research-topic
   - topic_id: topic_a
+    position: 3
     score: 81
     status: queued
+    current_stage: research-topic
+topics: {}
 ```
 
 O estado por topic fica em `runs/<run_id>/topics/<topic_id>/state.yaml`:
@@ -72,41 +78,85 @@ O estado por topic fica em `runs/<run_id>/topics/<topic_id>/state.yaml`:
 <!-- state-example -->
 ```yaml
 path: runs/run_20260901_001/topics/topic_c/state.yaml
+contract_version: "1"
 run_id: run_20260901_001
 topic_id: topic_c
 status: running
 current_stage: write-post
+completed_stages:
+  - research-topic
+  - brief_review_gauntlet
 checkpoint:
-  valid: true
-  completed_stages:
-    - research-topic
-    - brief-review-gauntlet
+  stage: brief_review_gauntlet
+  cycle: 1
+  result:
+    decision: approved
+    artifact: research/briefs/topic_c.md
   last_artifact: research/briefs/topic_c.md
-  input_fingerprint: sha256:example
+  input_fingerprint: sha256:4f8d7c2a91b0e6f3d1c5a8b7e2f9d4c6
+  paths:
+    - research/briefs/topic_c.md
+    - runs/run_20260901_001/topics/topic_c/reviews/cycle-01.yaml
   saved_at: "2026-09-01T10:30:00Z"
+```
+
+Cada execução também cria:
+
+```text
+runs/<run_id>/manifest.yaml
+runs/<run_id>/events.yaml
+runs/<run_id>/topics/<topic_id>/state.yaml
+runs/<run_id>/topics/<topic_id>/reviews/cycle-01.yaml
+```
+
+`events.yaml` mantém eventos append-only com a versão do contrato e a chave idempotente:
+
+```yaml
+contract_version: "1"
+events:
+  - event_id: evt_0001
+    idempotency_key: [run_20260901_001, topic_c, brief_review_gauntlet, 1]
+    stage: brief_review_gauntlet
+    cycle: 1
+    result_path: runs/run_20260901_001/topics/topic_c/reviews/cycle-01.yaml
+```
+
+Cada `reviews/cycle-<NN>.yaml` usa o contrato do revisor:
+
+```yaml
+decision: approved
+coverage: 1.0
+criteria:
+  evidence: 9
+  author_connection: 10
+hard_failures: []
+feedback: []
+artifact: research/briefs/topic_c.md
 ```
 
 ## Execução sequencial
 
-Processe um topic por vez. Para cada item, chame as etapas nesta ordem:
+Processe um topic por vez. Para cada item, chame os stages normativos nesta ordem:
 
 ```text
-research-topic → brief review Gauntlet → write-post → critique-post
-→ correction Gauntlet → escrita-humana 1 → review
-→ escrita-humana 2 → review → approval humana
+research-topic → brief_review_gauntlet → write-post → critique-post
+→ correction_gauntlet → humanize_pass_1 → humanize_review_1
+→ humanize_pass_2 → humanize_review_2 → approval_humana
 ```
 
-Cada transição só ocorre após o artefato e o resultado da etapa anterior serem persistidos. `critique-post` produz feedback; a correção acontece no Gauntlet seguinte. As duas passagens de `escrita-humana` são obrigatórias e cada uma precisa de seu próprio review.
+Cada stage usa executor e revisor separados. Cada Gauntlet executa no máximo 5 ciclos, só aprova com `coverage >99%` e todos os critérios `>=9/10`; resposta inválida, artefato ausente ou falha de validação bloqueia o topic. `brief_review_gauntlet` exige duas fontes independentes quando disponíveis e conexão explícita com a experiência do autor. `critique-post` produz feedback; a correção acontece no `correction_gauntlet`. `humanize_pass_1` e `humanize_pass_2` são obrigatórios e cada um precisa de seu próprio review.
 
 Não publique nem agende posts nesta skill: nunca chame `publicar-linkedin`.
 
 ## Checkpoints, Retomada, Idempotência e Falhas
 
-Depois de cada etapa, atualize o item da fila e o `state.yaml` com status, `current_stage`, artefato, fingerprint das entradas e timestamp. Uma escrita é válida somente quando o YAML parseia, `run_id` e `topic_id` conferem com o caminho, o artefato existe, a etapa está em `completed_stages` e o resultado foi persistido com `saved_at`.
+Depois de cada stage, persista exatamente nesta ordem: `artefato` → `resultado` → `state.yaml` → `evento` em `runs/<run_id>/events.yaml` → `manifesto`. O resultado de cada revisor fica em `runs/<run_id>/topics/<topic_id>/reviews/cycle-<NN>.yaml`, com o schema de review (`decision`, `coverage`, `criteria`, `hard_failures`, `feedback`, `artifact`).
+
+Uma escrita de checkpoint é válida somente quando o YAML parseia, `contract_version` é `"1"`, `run_id` e `topic_id` conferem com o caminho, o `result` existe, `last_artifact` e todos os `paths` são relativos ao workspace e existem, `input_fingerprint` é um SHA-256, a etapa está em `completed_stages` e `saved_at` está presente.
 
 Escreva primeiro em arquivo temporário no mesmo diretório e renomeie atomicamente para `manifest.yaml` ou `state.yaml`. O `manifest.yaml` é imutável depois de `queue_frozen: true`: `requested`, ordem, ids e scores não podem mudar. Ao reiniciar uma rodada, leia o manifesto e retome do último checkpoint válido; se o checkpoint não passar todas as validações, repita somente a etapa incompleta após corrigir o estado, sem recriar a fila.
 
-Cada etapa usa a chave idempotente `(run_id, topic_id, stage)`. Se essa chave já tiver artefato e resultado válidos, não execute a etapa novamente; apenas avance a partir do checkpoint. Uma gravação repetida do mesmo resultado não cria arquivo duplicado nem altera a ordem da fila.
+Cada stage/ciclo usa a chave idempotente `(run_id, topic_id, stage, cycle)`. Se essa chave já tiver artefato, resultado e review válidos, não execute o stage novamente; apenas avance a partir do checkpoint. Uma gravação repetida do mesmo resultado não cria evento, review ou arquivo duplicado nem altera a ordem da fila.
 
 Se uma etapa falhar, registre o erro e o artefato mais recente, marque o topic como `blocked` e persista o checkpoint antes de continuar para o próximo item da fila. Uma falha individual não interrompe a rodada nem libera o topic para a etapa seguinte. Ao final, o manifest deve registrar o resultado de todos os itens, inclusive `blocked`, e a aprovação humana continua sendo necessária antes de qualquer publicação.
 
@@ -132,15 +182,15 @@ O lote registra e executa a sequência abaixo exatamente nesta ordem:
 ```yaml
 stages:
   - research-topic
-  - brief review Gauntlet
+  - brief_review_gauntlet
   - write-post
   - critique-post
-  - correction Gauntlet
-  - escrita-humana 1
-  - review 1
-  - escrita-humana 2
-  - review 2
-  - approval humana
+  - correction_gauntlet
+  - humanize_pass_1
+  - humanize_review_1
+  - humanize_pass_2
+  - humanize_review_2
+  - approval_humana
 ```
 
 `publicar-linkedin` não faz parte da sequência e nunca é chamada por esta skill.
