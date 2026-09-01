@@ -122,7 +122,34 @@ events:
     idempotency_key: [run_20260901_001, topic_c, brief_review_gauntlet, 1]
     stage: brief_review_gauntlet
     cycle: 1
+    artifact_path: research/briefs/topic_c.md
     result_path: runs/run_20260901_001/topics/topic_c/results/brief_review_gauntlet-cycle-01.yaml
+    review_path: runs/run_20260901_001/topics/topic_c/reviews/cycle-01.yaml
+    committed_at: "2026-09-01T10:30:00+00:00"
+    result:
+      decision: approved
+      artifact: research/briefs/topic_c.md
+    review:
+      decision: approved
+      coverage: 1.0
+      criteria:
+        clareza: 10
+        força da abertura: 10
+        originalidade: 10
+        credibilidade: 10
+        uso de evidências: 10
+        risco de alucinação: 10
+        tom humano: 10
+        densidade: 10
+        relevância: 10
+        consistência com a voz do autor: 10
+        estrutura obrigatória: 10
+        pergunta final: 10
+        tamanho editorial: 10
+        rastreabilidade das fontes: 10
+      hard_failures: []
+      feedback: []
+      artifact: research/briefs/topic_c.md
 ```
 
 Cada `reviews/cycle-<NN>.yaml` usa o contrato do revisor. O `result_path` aponta sempre para `results/<stage>-cycle-<NN>.yaml`; o `review_path` aponta para `reviews/cycle-<NN>.yaml`.

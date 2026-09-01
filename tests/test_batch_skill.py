@@ -608,6 +608,33 @@ def test_commit_event_requires_the_exact_complete_event_shape():
     assert _valid_commit_event({**event, "diagnostic": "incomplete"}) is False
 
 
+def test_incomplete_or_naive_commit_timestamps_never_enter_metrics():
+    event = {
+        "event_id": "evt_0001",
+        "phase": "commit",
+        "idempotency_key": ["run_001", "topic_c", "research-topic", 1],
+        "stage": "research-topic",
+        "cycle": 1,
+        "artifact_path": "content/draft.md",
+        "result_path": "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml",
+        "review_path": "runs/run_001/topics/topic_c/reviews/cycle-01.yaml",
+        "committed_at": "2026-09-01T10:00:00",
+        "result": {"artifact": "content/draft.md"},
+        "review": valid_review("content/draft.md"),
+    }
+
+    for timestamp in ("2026-09-01", "2026-09-01T10:00:00"):
+        manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
+        _update_metrics(manifest, [{**event, "committed_at": timestamp}])
+        assert _valid_commit_event({**event, "committed_at": timestamp}) is False
+        assert manifest["metrics"]["cycles_per_stage"] == {}
+        assert manifest["metrics"]["reviewer_coverage"] == 0.0
+
+    manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
+    _update_metrics(manifest, [{"phase": "commit", "stage": "research-topic", "cycle": 2}])
+    assert manifest["metrics"]["cycles_per_stage"] == {}
+
+
 def test_persist_stage_rejects_quality_gate_failures(tmp_path):
     write_fixture(tmp_path)
     freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(

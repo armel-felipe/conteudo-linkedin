@@ -53,7 +53,33 @@ necessario retry.
 
 ## Saidas
 
-- Suíte completa: `170 passed`.
+- Suíte completa: `171 passed`.
 - `git diff --check`: passou.
 - Busca por `result_path` incorreto e criterios `evidence`/`author_connection`
   em `run-editorial-batch/SKILL.md`: nenhum resultado.
+
+## Rodada 2
+
+### Causa-raiz
+
+O exemplo de `phase: commit` continha somente identificacao, ciclo e
+`result_path`; faltavam `artifact_path`, `review_path`, `committed_at`,
+`result` e `review`. Alem disso, `datetime.fromisoformat` aceitava datas sem
+hora e timestamps sem timezone, que nao sao commits auditaveis para metricas.
+
+### TDD RED/GREEN
+
+- RED: `test_incomplete_or_naive_commit_timestamps_never_enter_metrics` falhou
+  porque timestamp naive era aceito por `_valid_commit_event`.
+- GREEN: timestamps exigem ISO-8601 com timezone; eventos incompletos seguem
+  fora da agregacao por validacao estrutural.
+- O exemplo documental agora contem exatamente todos os campos exigidos e um
+  `result`/`review` aprovado com as 14 chaves normativas.
+
+### Validacao
+
+- Focado: aprovado.
+- Suíte completa: `170 passed`.
+- `git diff --check`: passou.
+- Gate: `coverage >= 0.99`, criterios `>=9/10`, zero hard failures e zero
+  questoes criticas/importantes; aprovado sem retry adicional.

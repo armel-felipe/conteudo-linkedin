@@ -95,8 +95,10 @@ def _valid_commit_event(event, root=None):
             or re.fullmatch(r"evt_[0-9]{4}", event["event_id"]) is None):
         return False
     try:
-        datetime.fromisoformat(event["committed_at"])
+        committed_at = datetime.fromisoformat(event["committed_at"])
     except (TypeError, ValueError):
+        return False
+    if committed_at.tzinfo is None or committed_at.utcoffset() is None:
         return False
     key = event["idempotency_key"]
     if (not isinstance(key, list) or len(key) != 4 or not _valid_id(key[0], "run_")
