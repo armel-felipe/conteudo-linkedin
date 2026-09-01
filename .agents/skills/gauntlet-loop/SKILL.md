@@ -11,6 +11,17 @@ Validar um artefato produzido por uma tarefa nova sem confiar no contexto ou no 
 
 O caller decide se deve continuar a fila depois de um `blocked`. O Gauntlet nunca libera uma tarefa bloqueada por conta propria.
 
+## Interfaces Python
+
+O procedimento executavel esta em `gauntlet_loop.py` e expoe somente estas interfaces:
+
+```python
+validate_review(review) -> dict
+run_gauntlet(executor, reviewer, max_cycles=5) -> dict
+```
+
+`executor(feedback) -> artifact` e `reviewer(artifact, feedback) -> review` sao callbacks independentes. `validate_review` faz a validacao estrutural estrita e identifica criterios abaixo do gate; `run_gauntlet` transforma falhas de qualidade em `feedback`, repete ate cinco rodadas e reserva `blocked` para falhas terminais ou esgotamento.
+
 ## Contratos de entrada
 
 Antes de iniciar, confirme que existem:
@@ -40,7 +51,7 @@ Para cada ciclo:
 5. Aceite o resultado apenas se ele for JSON valido, parseavel e conforme o contrato. O objeto deve conter `decision`, `coverage`, `criteria`, `hard_failures`, `feedback` e `artifact`.
 6. Persista `runs/<run_id>/topics/<topic_id>/reviews/cycle-<NN>.yaml` ou o caminho de review definido pelo caller antes de avancar.
 7. Aprove somente quando `decision` for `approved`, `coverage > 0.99` (coverage >99%, mais de 99%) e todos os criterios forem `>=9/10` (all criteria at least 9/10), sem `hard_failures`.
-8. Se o JSON for valido, mas `coverage <=99%` ou algum `criteria <9/10`, o resultado e `feedback`, nao bloqueia. Exija feedback completo e acionavel para cada criterio falho; o proximo executor recebe esse feedback e consome uma nova rodada.
+8. Se o JSON for valido, mas `coverage <=99%` ou algum `criteria <9/10`, o resultado e `feedback`, nao bloqueia. Exija feedback completo e acionavel associado a cada criterio falho; para coverage abaixo do gate, exija feedback acionavel. O proximo executor recebe esse feedback e consome uma nova rodada.
 9. Se a decisao for `feedback`, exija feedback completo e acionavel para cada criterio falho. O proximo executor recebe esse feedback e inicia um novo ciclo.
 
 ## Contrato JSON estrito
@@ -55,7 +66,7 @@ Antes de avaliar gates, valide sem coercoes:
 - `hard_failures` e `feedback` devem ser hard_failures/feedback listas JSON, mesmo quando vazias;
 - `artifact` deve ser artifact string nao vazia, relativa ao workspace e igual ao artefato verificado.
 
-JSON invalido, objeto raiz errado, campo ausente, tipo incorreto, valor fora dos limites ou campo extra que quebre o contrato e falha estrutural terminal.
+JSON invalido, objeto raiz errado, campo ausente, tipo incorreto, valor fora dos limites ou qualquer campo extra e falha estrutural terminal.
 
 ## Validacao fail-closed
 
@@ -67,7 +78,7 @@ Qualquer uma destas condicoes bloqueia imediatamente, sem aprovar e sem tentar m
 - saida do revisor que nao seja valid JSON, seja JSON truncado ou nao contenha todos os campos obrigatorios;
 - falha estrutural no objeto JSON, incluindo `decision` fora do enum, tipos incorretos, coverage nao finito ou fora de 0-1;
 - `hard_failures` nao vazio (hard failure);
-- feedback ausente ou incompleto quando houver retry; cada retry exige complete feedback;
+- feedback ausente ou incompleto quando houver retry; cada retry exige complete feedback associado ao criterio;
 - falha em qualquer validacao deterministica (`failed validation`) ou erro de persistencia do review.
 
 `coverage <=99%` e `criteria <9/10` nao sao falhas terminais quando o JSON, o artefato e os participantes sao validos: produzem `feedback` por criterio e nova rodada. Nao trate texto livre, JSON parcial ou uma aprovacao verbal como resultado estruturado. Em caso de duvida estrutural, o resultado e `blocked`.
