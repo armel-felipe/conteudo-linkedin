@@ -504,6 +504,93 @@ def test_terminal_state_rejects_invalid_types_values_and_feedback_without_overwr
     assert state_path.read_text() == original
 
 
+def test_blocked_result_is_persisted_and_resumed_without_rerunning_callbacks(tmp_path):
+    calls = []
+
+    def executor(feedback):
+        calls.append("executor")
+        return "missing.md"
+
+    def reviewer(artifact, feedback):
+        calls.append("reviewer")
+        return review(artifact=artifact)
+
+    first = run_gauntlet(
+        executor,
+        reviewer,
+        artifact_path="missing.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+    state_before = (tmp_path / "state.yaml").read_text()
+    second = run_gauntlet(
+        executor,
+        reviewer,
+        artifact_path="missing.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+
+    assert first["status"] == second["status"] == "blocked"
+    assert first["last_review"]["artifact"] == "missing.md"
+    assert first["artifact_fingerprint"] is None
+    assert second == first
+    assert calls == ["executor"]
+    assert (tmp_path / "state.yaml").read_text() == state_before
+
+
+def test_terminal_state_accepts_failed_criteria_in_different_order(tmp_path):
+    artifact = tmp_path / "mapa.md"
+    artifact.write_text("artifact")
+    last_review = review(coverage=0.98, decision="feedback")
+    last_review["criteria"]["clareza"] = 8
+    last_review["criteria"]["originalidade"] = 8
+    last_review["feedback"] = [
+        {"criterion": "clareza", "message": "Be specific."},
+        {"criterion": "originalidade", "message": "Add a distinct angle."},
+    ]
+    state = {
+        "status": "blocked",
+        "cycles": 1,
+        "cycle_count": 1,
+        "last_artifact": "mapa.md",
+        "last_review": last_review,
+        "feedback": last_review["feedback"],
+        "failed_criteria": ["originalidade", "clareza"],
+        "artifact_fingerprint": "sha256:" + sha256(artifact.read_bytes()).hexdigest(),
+    }
+    state_path = tmp_path / "state.yaml"
+    state_path.write_text(json.dumps(state))
+
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+
+    assert result == state
+    assert state_path.read_text() == json.dumps(state)
+
+
+def test_invalid_persistence_bytes_fail_closed_without_overwriting(tmp_path):
+    state_path = tmp_path / "state.yaml"
+    state_path.write_bytes(b"\xff\xfe\xfd")
+    original = state_path.read_bytes()
+
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert "persistence" in result["failure_reasons"][0].lower()
+    assert state_path.read_bytes() == original
+
+
 def test_accepts_099_coverage_but_hard_failures_and_critical_questions_block(tmp_path):
     (tmp_path / "mapa.md").write_text("artifact")
 

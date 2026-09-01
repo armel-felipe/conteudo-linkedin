@@ -94,16 +94,46 @@ def validate_review(review):
     }
 
 
-def _blocked(cycle, reasons, artifact="", last_review=None, feedback=None, failed_criteria=None):
+def _blocked(
+    cycle, reasons, artifact="", last_review=None, feedback=None, failed_criteria=None,
+    *, workspace_root=None,
+):
+    cycle = cycle if isinstance(cycle, int) and not isinstance(cycle, bool) and 1 <= cycle <= 5 else 1
+    artifact = artifact if _relative_artifact(artifact) else ""
+    root = Path.cwd().resolve() if workspace_root is None else Path(workspace_root).resolve()
+    if not isinstance(last_review, dict) or not validate_review(last_review)["valid"] or last_review.get("artifact") != artifact:
+        last_review = {
+            "decision": "feedback",
+            "coverage": 1.0,
+            "criteria": {name: 10 for name in NORMATIVE_CRITERIA},
+            "hard_failures": [str(reason) for reason in reasons],
+            "feedback": [],
+            "artifact": artifact,
+        }
+        feedback = []
+        failed_criteria = []
+    if not isinstance(feedback, list):
+        feedback = []
+    if not isinstance(failed_criteria, list) or any(not isinstance(item, str) for item in failed_criteria):
+        failed_criteria = []
+    fingerprint = None
+    if artifact:
+        artifact_file = root / artifact
+        try:
+            if artifact_file.is_file():
+                fingerprint = "sha256:" + sha256(artifact_file.read_bytes()).hexdigest()
+        except OSError:
+            fingerprint = None
     return {
         "status": "blocked",
         "cycle_count": cycle,
         "cycles": cycle,
-        "failure_reasons": reasons,
-        "failed_criteria": [] if failed_criteria is None else failed_criteria,
+        "failure_reasons": [str(reason) for reason in reasons],
+        "failed_criteria": sorted(set(failed_criteria)),
         "last_artifact": artifact,
         "last_review": last_review,
-        "feedback": [] if feedback is None else feedback,
+        "feedback": feedback,
+        "artifact_fingerprint": fingerprint,
     }
 
 
@@ -211,11 +241,11 @@ def _validate_terminal_state(state, artifact_path, root):
     ):
         raise ValueError("state feedback is invalid")
     failed_criteria = state["failed_criteria"]
-    expected_failed = [name for name, score in last_review["criteria"].items() if score < 9]
+    expected_failed = sorted(name for name, score in last_review["criteria"].items() if score < 9)
     if (
         not isinstance(failed_criteria, list)
         or any(not isinstance(item, str) for item in failed_criteria)
-        or failed_criteria != expected_failed
+        or sorted(failed_criteria) != expected_failed
     ):
         raise ValueError("state failed criteria are invalid")
     if state["status"] == "approved" and (
@@ -227,22 +257,42 @@ def _validate_terminal_state(state, artifact_path, root):
     ):
         raise ValueError("approved state does not pass acceptance gates")
     checks = _artifact_checks(root, artifact_path, artifact_path)
-    expected = "sha256:" + sha256((root / artifact_path).read_bytes()).hexdigest() if not checks else ""
+    artifact_file = root / artifact_path
+    expected = None
+    try:
+        if artifact_file.is_file():
+            expected = "sha256:" + sha256(artifact_file.read_bytes()).hexdigest()
+    except OSError:
+        pass
     fingerprint = state["artifact_fingerprint"]
     if (
-        checks
-        or not isinstance(fingerprint, str)
-        or len(fingerprint) != 71
-        or not fingerprint.startswith("sha256:")
-        or any(character not in "0123456789abcdef" for character in fingerprint[7:])
-        or fingerprint != expected
+        not isinstance(fingerprint, (str, type(None)))
+        or fingerprint is not None and (
+            len(fingerprint) != 71
+            or not fingerprint.startswith("sha256:")
+            or any(character not in "0123456789abcdef" for character in fingerprint[7:])
+        )
+        or (expected is not None and fingerprint != expected)
+        or (expected is None and fingerprint is not None)
+        or state["status"] == "approved" and checks
     ):
         raise ValueError("state fingerprint is divergent")
 
 
-def _terminal(directory, result):
+def _terminal(directory, result, workspace_root=None):
     if directory is not None:
-        _persist_terminal(directory, result)
+        try:
+            _persist_terminal(directory, result)
+        except (UnicodeDecodeError, OSError) as error:
+            return _blocked(
+                result.get("cycles", 1),
+                [f"persistence error: {error}"],
+                result.get("last_artifact", ""),
+                result.get("last_review"),
+                result.get("feedback", []),
+                result.get("failed_criteria", []),
+                workspace_root=workspace_root,
+            )
     return result
 
 
@@ -293,34 +343,41 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
     if executor is reviewer:
         return _blocked(0, ["executor and reviewer must be distinct callbacks"])
     root = Path.cwd().resolve() if workspace_root is None else Path(workspace_root).resolve()
+    blocked = lambda *args: _blocked(*args, workspace_root=root)
     directory = Path(persistence_dir) if persistence_dir is not None else None
     if directory is not None:
         if directory.exists() and not directory.is_dir():
-            return _blocked(0, ["persistence directory is not a directory"])
+            return blocked(0, ["persistence directory is not a directory"])
         state_path = directory / "state.yaml"
         try:
             existing = _load_json(state_path, None)
-        except OSError as error:
-            return _blocked(0, [f"persistence error: {error}"])
+        except (UnicodeDecodeError, OSError) as error:
+            return blocked(0, [f"persistence error: {error}"])
         if state_path.exists():
             if not isinstance(existing, dict):
-                return _blocked(0, ["state payload is invalid"])
+                return blocked(0, ["state payload is invalid"])
             if existing.get("status") in {"approved", "blocked"}:
                 try:
                     _validate_terminal_state(existing, artifact_path, root)
                 except ValueError as error:
-                    return _blocked(0, [str(error)])
+                    return blocked(0, [str(error)])
                 return existing
-            return _blocked(0, ["state payload is invalid"])
+            return blocked(0, ["state payload is invalid"])
     feedback = []
     last_artifact = ""
     last_review = None
     for cycle in range(1, max_cycles + 1):
         if directory is not None:
-            _persist_event(directory, run_id, artifact_path, cycle, "cycle-start", {"cycle": cycle})
-        stored_review, partial_errors = _partial_review(directory, run_id, artifact_path, cycle)
+            try:
+                _persist_event(directory, run_id, artifact_path, cycle, "cycle-start", {"cycle": cycle})
+            except (UnicodeDecodeError, OSError) as error:
+                return blocked(cycle, [f"persistence error: {error}"], artifact_path)
+        try:
+            stored_review, partial_errors = _partial_review(directory, run_id, artifact_path, cycle)
+        except (UnicodeDecodeError, OSError) as error:
+            return blocked(cycle, [f"persistence error: {error}"], artifact_path)
         if partial_errors:
-            return _terminal(directory, _blocked(cycle, partial_errors, artifact_path))
+            return _terminal(directory, blocked(cycle, partial_errors, artifact_path), root)
         if stored_review is not None:
             last_artifact = artifact_path
             result = stored_review
@@ -329,51 +386,57 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
             try:
                 last_artifact = executor(deepcopy(feedback))
             except Exception as error:
-                return _terminal(directory, _blocked(cycle, [f"executor unavailable: {error}"], last_artifact))
+                return _terminal(directory, blocked(cycle, [f"executor unavailable: {error}"], last_artifact), root)
             checks = _artifact_checks(root, artifact_path, last_artifact)
         if directory is not None:
-            _persist_event(directory, run_id, artifact_path, cycle, "deterministic-checks", {"checks": checks})
+            try:
+                _persist_event(directory, run_id, artifact_path, cycle, "deterministic-checks", {"checks": checks})
+            except (UnicodeDecodeError, OSError) as error:
+                return blocked(cycle, [f"persistence error: {error}"], last_artifact)
         if checks:
-            return _terminal(directory, _blocked(cycle, checks, last_artifact))
+            return _terminal(directory, blocked(cycle, checks, last_artifact), root)
 
         if stored_review is None:
             try:
                 result = reviewer(last_artifact, deepcopy(feedback))
             except Exception as error:
-                return _terminal(directory, _blocked(cycle, [f"reviewer unavailable: {error}"], last_artifact))
+                return _terminal(directory, blocked(cycle, [f"reviewer unavailable: {error}"], last_artifact), root)
 
             validation = validate_review(result)
             if not validation["valid"]:
-                return _terminal(directory, _blocked(cycle, validation["errors"], last_artifact, result))
+                return _terminal(directory, blocked(cycle, validation["errors"], last_artifact, result), root)
         else:
             validation = validate_review(result)
         if result["artifact"] != artifact_path:
-            return _terminal(directory, _blocked(cycle, ["review artifact differs from expected path"], last_artifact, result))
+            return _terminal(directory, blocked(cycle, ["review artifact differs from expected path"], last_artifact, result), root)
         last_review = result
         if directory is not None:
-            _atomic_json(directory / f"cycle-{cycle:02d}.yaml", {"idempotency_key": [run_id, artifact_path, cycle], "review": result})
-            _persist_event(directory, run_id, artifact_path, cycle, "review", {"review": result})
+            try:
+                _atomic_json(directory / f"cycle-{cycle:02d}.yaml", {"idempotency_key": [run_id, artifact_path, cycle], "review": result})
+                _persist_event(directory, run_id, artifact_path, cycle, "review", {"review": result})
+            except (UnicodeDecodeError, OSError) as error:
+                return blocked(cycle, [f"persistence error: {error}"], last_artifact, last_review, result["feedback"])
         if result["hard_failures"]:
-            return _terminal(directory, _blocked(cycle, result["hard_failures"], last_artifact, last_review, result["feedback"]))
+            return _terminal(directory, blocked(cycle, result["hard_failures"], last_artifact, last_review, result["feedback"]), root)
 
         failed_criteria = set(validation["quality_feedback"])
         provided_criteria = {item["criterion"] for item in result["feedback"]}
         quality_failed = bool(failed_criteria) or result["coverage"] < 0.99
         if quality_failed:
             if result["coverage"] < 0.99 and not result["feedback"]:
-                return _terminal(directory, _blocked(cycle, ["feedback missing for coverage gate"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)))
+                return _terminal(directory, blocked(cycle, ["feedback missing for coverage gate"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)), root)
             if not failed_criteria <= provided_criteria:
-                return _terminal(directory, _blocked(cycle, ["feedback missing for failed criterion"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)))
+                return _terminal(directory, blocked(cycle, ["feedback missing for failed criterion"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)), root)
             if cycle == max_cycles:
-                return _terminal(directory, _blocked(cycle, ["quality gates not met"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)))
+                return _terminal(directory, blocked(cycle, ["quality gates not met"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)), root)
             feedback = deepcopy(result["feedback"])
             continue
 
         if result["decision"] == "feedback":
             if not result["feedback"]:
-                return _terminal(directory, _blocked(cycle, ["feedback decision has no actionable feedback"], last_artifact, last_review, result["feedback"]))
+                return _terminal(directory, blocked(cycle, ["feedback decision has no actionable feedback"], last_artifact, last_review, result["feedback"]), root)
             if cycle == max_cycles:
-                return _terminal(directory, _blocked(cycle, ["feedback remained unresolved"], last_artifact, last_review, result["feedback"]))
+                return _terminal(directory, blocked(cycle, ["feedback remained unresolved"], last_artifact, last_review, result["feedback"]), root)
             feedback = deepcopy(result["feedback"])
             continue
 
@@ -382,6 +445,6 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
             "last_artifact": last_artifact, "last_review": last_review,
             "feedback": [], "failed_criteria": [],
             "artifact_fingerprint": "sha256:" + sha256((root / last_artifact).read_bytes()).hexdigest(),
-        })
+        }, root)
 
-    return _terminal(directory, _blocked(max_cycles, ["maximum cycles exhausted"], last_artifact, last_review, feedback))
+    return _terminal(directory, blocked(max_cycles, ["maximum cycles exhausted"], last_artifact, last_review, feedback), root)

@@ -103,3 +103,56 @@ PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py
 PYTHONPATH=. pytest -q
 128 passed in 0.66s
 ```
+
+## Remediation Round 3
+
+### Scope
+
+Hardened only the Gauntlet core plus the requested acceptance wording in `AGENTS.md`, `docs/roadmap.md`, and the editorial plan. Falha 2, batch behavior, integration behavior, and scheduling were not changed.
+
+### Root Cause
+
+`_blocked()` did not produce a complete terminal checkpoint: it omitted `artifact_fingerprint`, could emit cycle `0`, and could leave `last_review` as `None`. Terminal-state resume also compared failed criteria in insertion order and allowed persistence read/write exceptions to escape from `state.yaml` and `events.yaml`.
+
+### RED
+
+Added regressions for:
+
+- blocked checkpoint production and resume without rerunning callbacks;
+- multiple failed criteria persisted in a different order;
+- invalid UTF-8 bytes in `state.yaml` without overwriting the original file.
+
+Focused RED output:
+
+```text
+3 failed
+```
+
+The failures showed a non-resumable blocked payload, order-sensitive criteria validation, and an uncaught `UnicodeDecodeError`.
+
+### GREEN
+
+- `_blocked()` now emits coherent terminal fields, normalizes cycles to `1..5`, creates a valid blocked review when needed, and computes `sha256:<64 hex>` whenever the artifact is readable.
+- Terminal validation compares `failed_criteria` canonically and accepts blocked payloads with complete review/feedback data.
+- `UnicodeDecodeError` and `OSError` from persistence reads/writes return `blocked` without replacing the affected file.
+- Acceptance wording now consistently states `coverage >=0.99` / `coverage >= 0.99` in the three requested documents.
+
+Focused GREEN output:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py -k 'blocked_result_is_persisted or failed_criteria_in_different_order or invalid_persistence_bytes'
+3 passed, 45 deselected
+```
+
+Full verification:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py
+48 passed in 0.05s
+
+PYTHONPATH=. pytest -q
+131 passed in 0.63s
+
+python3 -m compileall -q gauntlet_loop.py
+git diff --check
+```
