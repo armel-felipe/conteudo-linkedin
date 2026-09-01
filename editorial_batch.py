@@ -9,6 +9,8 @@ from pathlib import Path
 
 import yaml
 
+from gauntlet_loop import validate_review
+
 
 CANONICAL_STAGES = [
     "research-topic",
@@ -121,6 +123,12 @@ def checkpoint_valid(state, workspace_root):
         return False
     if not checkpoint.get("result") or not checkpoint.get("last_artifact"):
         return False
+    if (
+        isinstance(checkpoint.get("cycle"), bool)
+        or not isinstance(checkpoint.get("cycle"), int)
+        or checkpoint["cycle"] < 1
+    ):
+        return False
     fingerprint = checkpoint.get("input_fingerprint", "")
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", fingerprint):
         return False
@@ -137,17 +145,19 @@ def checkpoint_valid(state, workspace_root):
         if root not in candidate.parents or not candidate.is_file():
             return False
     result_path = checkpoint.get("result_path")
-    if result_path:
-        if Path(result_path).is_absolute():
+    expected_result_path = _canonical_result_path(
+        state["run_id"], state["topic_id"], checkpoint["stage"], checkpoint["cycle"]
+    )
+    if result_path != expected_result_path or Path(result_path).is_absolute():
+        return False
+    result_file = (root / result_path).resolve()
+    if root not in result_file.parents or not result_file.is_file():
+        return False
+    try:
+        if _load_yaml(result_file, "result") != checkpoint["result"]:
             return False
-        result_file = (root / result_path).resolve()
-        if root not in result_file.parents or not result_file.is_file():
-            return False
-        try:
-            if _load_yaml(result_file, "result") != checkpoint["result"]:
-                return False
-        except ValueError:
-            return False
+    except ValueError:
+        return False
     artifact_bytes = (root / checkpoint["last_artifact"]).read_bytes()
     if fingerprint != "sha256:" + sha256(artifact_bytes).hexdigest():
         return False
@@ -197,13 +207,13 @@ def _load_yaml(path, label):
     return value
 
 
+def _canonical_result_path(run_id, topic_id, stage, cycle):
+    return str(Path("runs") / run_id / "topics" / topic_id / "results" / f"{stage}-cycle-{cycle:02d}.yaml")
+
+
 def _valid_review(review, artifact_path):
-    required = {"decision", "coverage", "criteria", "hard_failures", "feedback", "artifact"}
     return (
-        isinstance(review, dict)
-        and required <= set(review)
-        and review["decision"] in {"approved", "feedback"}
-        and isinstance(review["feedback"], list)
+        validate_review(review)["valid"]
         and review["artifact"] == artifact_path
     )
 
@@ -221,6 +231,22 @@ def _update_metrics(manifest, events):
         and isinstance(event["review"].get("coverage"), (int, float))
     ]
     metrics["human_writing_conformity"] = sum(human) / len(human) if human else 0.0
+    committed_cycles = {
+        event.get("stage"): event.get("cycle")
+        for event in events
+        if event.get("phase") == "commit"
+        and isinstance(event.get("stage"), str)
+        and isinstance(event.get("cycle"), int)
+        and not isinstance(event.get("cycle"), bool)
+    }
+    metrics["cycles_per_stage"] = {
+        stage: max(
+            event["cycle"]
+            for event in events
+            if event.get("phase") == "commit" and event.get("stage") == stage
+        )
+        for stage in committed_cycles
+    }
     approval = next((event for event in events if event.get("phase") == "commit" and event.get("stage") == "approval_humana"), None)
     if approval:
         try:
@@ -269,13 +295,16 @@ def continue_after_failure(
             "error": error, "artifact_fingerprint": state.get("artifact_fingerprint"),
             "last_review": state.get("last_review"), "feedback": state.get("feedback", []),
             "cycle_count": state.get("cycle_count", 0),
+            "stage": state.get("current_stage") or checkpoint.get("stage") or item.get("current_stage"),
+            "current_stage": state.get("current_stage") or checkpoint.get("stage") or item.get("current_stage"),
         })
         _atomic_write(events_path, events)
-    item.update(status="blocked", current_stage=None, error=error)
+    item.update(status="blocked", current_stage=state.get("current_stage"), error=error)
     metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
     metrics["queue_size"] = len(manifest["queue"])
     metrics["completed"] = sum(entry["status"] == "completed" for entry in manifest["queue"])
     metrics["blocked"] = sum(entry["status"] == "blocked" for entry in manifest["queue"])
+    _update_metrics(manifest, events["events"])
     _atomic_write(manifest_path, manifest)
     return [entry["topic_id"] for entry in manifest["queue"] if entry["status"] == "queued"]
 
@@ -329,7 +358,7 @@ def persist_stage(
     existing = _load_events(events)
     key = list(idempotency_key(run_id, topic_id, stage, cycle))
     result_file = Path(runs_dir) / run_id / "topics" / topic_id / "results" / f"{stage}-cycle-{cycle:02d}.yaml"
-    result_relative = str(result_file.resolve().relative_to(root))
+    result_relative = _canonical_result_path(run_id, topic_id, stage, cycle)
     review_file = review_path(runs_dir, run_id, topic_id, cycle)
     review_relative = str(review_file.resolve().relative_to(root))
     pending_intent = next(

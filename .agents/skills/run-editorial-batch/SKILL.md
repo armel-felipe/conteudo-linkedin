@@ -92,6 +92,7 @@ checkpoint:
   result:
     decision: approved
     artifact: research/briefs/topic_c.md
+  result_path: runs/run_20260901_001/topics/topic_c/results/brief_review_gauntlet-cycle-01.yaml
   last_artifact: research/briefs/topic_c.md
   input_fingerprint: sha256:4f8d7c2a91b0e6f3d1c5a8b7e2f9d4c6
   paths:

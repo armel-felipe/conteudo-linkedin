@@ -60,3 +60,29 @@ None. Tasks 2 and 3 remain `BLOCKED`, Task 4 remains approved, and no LinkedIn i
 ## Round 4 Concerns
 
 None. Task 2 and Task 3 remain `BLOCKED`, scheduling was not changed, and no LinkedIn implementation was touched.
+
+## Round 5
+
+### Status
+
+Complete. Tasks 2 and 3 remain `BLOCKED`; Task 4 remains approved. Scheduling and LinkedIn publication were not changed.
+
+### Implemented
+
+- Made `result_path` mandatory in checkpoint validation, requiring the canonical stage/cycle result path, an existing regular file, and YAML content equal to the checkpoint result.
+- Applied the strict Gauntlet review validator to batch stage persistence, including exact fields, the normative criteria allowlist, numeric bounds, and typed hard failures/feedback.
+- Preserved `current_stage` in the blocked manifest queue item and recorded both `stage` and `current_stage` in `topic_blocked` events.
+- Rebuilt `cycles_per_stage` exclusively from committed events, ignoring intent events and stale metric values.
+- Replaced the local-dictionary metrics test with a full runtime persistence test covering the canonical stage sequence.
+- Added regressions for missing result paths, blocked-stage preservation, repeated blocked events, committed-cycle aggregation, and invalid reviews.
+
+### Verification
+
+- `python3 -m pytest tests/test_batch_skill.py tests/test_documentation_consistency.py -q` -> `25 passed`
+- `python3 -m pytest tests -q` -> `71 passed`
+- `python3 -m compileall -q editorial_batch.py gauntlet_loop.py tests` -> passed
+- `git diff --check` -> passed
+
+### Concerns
+
+None. Tasks 2 and 3 remain `BLOCKED`; scheduling was not changed, and no LinkedIn implementation was touched.

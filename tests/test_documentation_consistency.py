@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from editorial_batch import freeze_manifest, load_and_select_topics, persist_stage
+from editorial_batch import CANONICAL_STAGES, freeze_manifest, load_and_select_topics, persist_stage
 from gauntlet_loop import NORMATIVE_CRITERIA, run_gauntlet
 
 
@@ -124,18 +124,21 @@ def test_reviews_are_persisted_and_scheduling_is_not_a_batch_stage(tmp_path):
     assert "human-writing_conformity" not in docs
 
 
-def test_manifest_metrics_use_explicit_aggregates_and_approval_elapsed_time(tmp_path):
-    artifact = tmp_path / "draft.md"
-    artifact.write_text("draft")
-    run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
-                 artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
-    manifest = {
-        "created_at": "2026-09-01T10:00:00+00:00",
-        "metrics": {
-            "reviewer_coverage": "mean of all persisted review coverages",
-            "human_writing_conformity": "mean of humanize review coverages",
-            "time_to_approval": "approval timestamp minus created_at",
-        },
+def test_manifest_metrics_are_aggregated_by_the_persistence_runtime(tmp_path):
+    _topics_fixture(tmp_path)
+    topic = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "1")
+    freeze_manifest(tmp_path / "runs", "run-1", "1", topic)
+    for stage in CANONICAL_STAGES:
+        artifact = f"content/{stage}.md"
+        persist_stage(
+            tmp_path / "runs", tmp_path, "run-1", "topic_a", stage, 1,
+            artifact, stage, {"stage": stage}, _review(artifact),
+        )
+
+    manifest = yaml.safe_load((tmp_path / "runs/run-1/manifest.yaml").read_text())
+    assert manifest["metrics"]["reviewer_coverage"] == 1.0
+    assert manifest["metrics"]["human_writing_conformity"] == 1.0
+    assert manifest["metrics"]["cycles_per_stage"] == {
+        stage: 1 for stage in CANONICAL_STAGES
     }
-    assert manifest["metrics"]["reviewer_coverage"].startswith("mean")
-    assert "approval timestamp" in manifest["metrics"]["time_to_approval"]
+    assert manifest["metrics"]["time_to_approval"].startswith("PT")
