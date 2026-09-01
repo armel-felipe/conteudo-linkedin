@@ -156,14 +156,14 @@ linkedin_fit    10%
 
 A soma ponderada é multiplicada por 10, gerando score final de 0 a 100. Os melhores topics recebem status `ready_for_research` no arquivo `research/topics/topics_*.yaml`.
 
-### 5. Escolher um topic e pesquisar — sob demanda
+### 5. Execução editorial — somente pelo lote
 
-Escolha um topic do `content/backlog.md`.
+Não invoque as etapas editoriais abaixo isoladamente para uma rodada. Escolha os topics via `run-editorial-batch`, que congela a fila, executa a sequência completa e registra checkpoints.
 
 **Pedido ao agente:**
 
 ```text
-Pesquise o topic topic_YYYYMMDD_01 e gere o research brief.
+Rode `run-editorial-batch --topics topic_YYYYMMDD_01`.
 ```
 
 **Entrada:** topic escolhido, signals relacionados, `last30days` e busca web manual.
@@ -174,14 +174,14 @@ O brief deve conter fatos, números, estudos, argumentos favoráveis e contrári
 
 Depois dessa etapa, revise o brief. Se faltar evidência ou contexto, peça uma nova pesquisa antes de escrever.
 
-### 6. Escrever o post
+### 6. Contrato das etapas do lote
 
 Só execute depois que o brief estiver pronto e revisado.
 
 **Pedido ao agente:**
 
 ```text
-Escreva o post do topic topic_YYYYMMDD_01 usando write-post.
+Dentro do lote, as etapas são chamadas nesta ordem: `research-topic` → brief review Gauntlet → `write-post` → `critique-post` → correction Gauntlet → `escrita-humana` 1 → review → `escrita-humana` 2 → review → aprovação humana.
 ```
 
 **Entrada:** `research/briefs/topic_YYYYMMDD_01.md` e os três arquivos em `memory/`.
@@ -204,7 +204,9 @@ O post deve ter:
 
 O writer não faz pesquisa nova. Todo fato precisa estar no brief. O arquivo deve terminar com `## Fontes`, listando título, URL e data das fontes usadas.
 
-### 7. Criticar o draft
+### 7. Artefatos produzidos pelo lote
+
+O lote persiste `runs/<run_id>/manifest.yaml` e `runs/<run_id>/topics/<topic_id>/state.yaml`, além dos artefatos editoriais de cada etapa.
 
 **Pedido ao agente:**
 
@@ -218,7 +220,7 @@ O agente deve apontar problemas específicos e sugerir correções, mas não sub
 
 ### 8. Revisar com escrita humana — obrigatório
 
-Depois da crítica e dos ajustes necessários:
+Depois da crítica e dos ajustes necessários, o lote executa duas passagens independentes:
 
 ```text
 Revise o draft content/drafts/topic_YYYYMMDD_01.md com escrita-humana.
@@ -266,17 +268,12 @@ A imagem continua sendo anexada manualmente quando necessário.
 2. analyze-discussions (opcional)
 3. cluster-signals
 4. score-opportunities
-5. escolher um topic do backlog
-6. research-topic
-7. revisar o brief
-8. write-post
-9. critique-post
-10. escrita-humana
-11. aprovação humana
-12. publicar-linkedin
+5. `run-editorial-batch`
+6. aprovação humana
+7. `publicar-linkedin` (somente após aprovação, fora do lote)
 ```
 
-Não pule a revisão do brief, a revisão com `escrita-humana` nem a aprovação humana.
+Dentro de `run-editorial-batch`, não pule a revisão do brief, a crítica, a correção Gauntlet, as duas revisões com `escrita-humana` nem a aprovação humana. `orquestrador-runtime` continua legado e não deve ser usado como alternativa.
 
 ## Estados dos artefatos
 
