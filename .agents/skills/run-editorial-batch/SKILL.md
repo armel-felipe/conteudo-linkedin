@@ -167,7 +167,7 @@ Cada stage/ciclo usa a chave idempotente `(run_id, topic_id, stage, cycle)`. Se 
 
 Every stage writes an event after its artifact and state are valid. Every reviewer result is saved per cycle, including feedback and hard failures. A resumed run skips only stages with valid artifacts and passing reviews; **Never rerun an approved topic automatically**. If an approved topic needs new work, start a new run with an explicit selection.
 
-The run manifest also records these metrics for the complete frozen queue. Only complete canonical commit events with valid `event_id`, timestamp, paths, result, review and passing gate contribute; malformed or incomplete commit-shaped events are rejected and never affect metrics:
+The run manifest also records these metrics for the complete frozen queue. Only complete canonical commit events with valid `event_id`, timestamp, paths, `result.artifact == artifact_path`, an existing regular non-empty review file when the workspace root is available, a complete review and passing gate contribute; malformed or incomplete commit-shaped events are rejected and never affect metrics:
 
 ```yaml
 metrics:

@@ -111,13 +111,17 @@ def _valid_commit_event(event, root=None):
     expected_review_path = str(Path("runs") / key[0] / "topics" / key[1] / "reviews" / f"cycle-{key[3]:02d}.yaml")
     if event["review_path"] != expected_review_path:
         return False
-    if (not isinstance(event["result"], dict) or not _review_passes(event["review"], event["artifact_path"])):
+    if (not isinstance(event["result"], dict)
+            or event["result"].get("artifact") != event["artifact_path"]
+            or not _review_passes(event["review"], event["artifact_path"])):
         return False
     if root is not None:
         try:
             return (_valid_relative_file(root, event["artifact_path"])
                     and _valid_relative_file(root, event["result_path"])
-                    and _load_yaml(root / event["result_path"], "result") == event["result"])
+                    and _load_yaml(root / event["result_path"], "result") == event["result"]
+                    and _valid_relative_file(root, event["review_path"])
+                    and _load_yaml(root / event["review_path"], "review") == event["review"])
         except ValueError:
             return False
     return True
@@ -210,7 +214,8 @@ def checkpoint_valid(state, workspace_root):
     if (state.get("contract_version") != "1" or not _valid_id(state.get("run_id"), "run_")
             or not _valid_id(state.get("topic_id"), "topic_")):
         return False
-    if not checkpoint.get("result") or not checkpoint.get("last_artifact"):
+    result = checkpoint.get("result")
+    if not isinstance(result, dict) or not result or not checkpoint.get("last_artifact"):
         return False
     if (
         isinstance(checkpoint.get("cycle"), bool)
@@ -235,7 +240,7 @@ def checkpoint_valid(state, workspace_root):
         return False
     if state.get("status") == "blocked" and state.get("current_stage") != stage:
         return False
-    if checkpoint.get("result", {}).get("artifact") != checkpoint.get("last_artifact"):
+    if result.get("artifact") != checkpoint.get("last_artifact"):
         return False
     root = Path(workspace_root).resolve()
     expected_review_path = str(Path("runs") / state["run_id"] / "topics" / state["topic_id"] / "reviews" / f"cycle-{checkpoint['cycle']:02d}.yaml")

@@ -761,3 +761,54 @@ def test_invalid_committed_cycle_does_not_raise_cycles_metric(tmp_path):
     malformed = {**valid, "cycle": 99, "stage": "research-topic"}
     _update_metrics(manifest, [valid, malformed])
     assert manifest["metrics"]["cycles_per_stage"]["research-topic"] == 1
+
+
+def test_commit_event_rejects_divergent_result_artifact_and_preserves_metrics(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                  "content/draft.md", "draft", valid_result("content/draft.md"),
+                  valid_review("content/draft.md"))
+    event = yaml.safe_load(event_path(tmp_path / "runs", "run_001").read_text())["events"][-1]
+    altered = {**event, "result": {"artifact": "content/other.md"}}
+    manifest = yaml.safe_load((tmp_path / "runs/run_001/manifest.yaml").read_text())
+    metrics_before = manifest["metrics"].copy()
+    _update_metrics(manifest, [event, altered])
+    assert _valid_commit_event(altered, tmp_path) is False
+    assert manifest["metrics"] == metrics_before
+
+
+def test_commit_event_with_root_requires_existing_regular_nonempty_review(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                  "content/draft.md", "draft", valid_result("content/draft.md"),
+                  valid_review("content/draft.md"))
+    events = yaml.safe_load(event_path(tmp_path / "runs", "run_001").read_text())["events"]
+    event = events[-1]
+    review_file = tmp_path / event["review_path"]
+    review_file.unlink()
+    assert _valid_commit_event(event, tmp_path) is False
+    review_file.write_text("")
+    assert _valid_commit_event(event, tmp_path) is False
+
+
+def test_checkpoint_result_non_dict_returns_false_and_preserves_state(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                  "content/draft.md", "draft", valid_result("content/draft.md"),
+                  valid_review("content/draft.md"))
+    state_file = state_path(tmp_path / "runs", "run_001", "topic_c")
+    original = state_file.read_bytes()
+    state = yaml.safe_load(original)
+    for result in (None, [], "invalid"):
+        state["checkpoint"]["result"] = result
+        assert checkpoint_valid(state, tmp_path) is False
+        assert state_file.read_bytes() == original

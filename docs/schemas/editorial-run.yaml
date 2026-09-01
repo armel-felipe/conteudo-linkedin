@@ -24,4 +24,5 @@ metrics:
 # Checkpoints require known status, result.artifact, canonical result_path/review_path/paths,
 # relative paths inside the workspace, and a passing review gate (coverage >= 0.99,
 # 14 criteria >= 9, no hard failures, and no unresolved feedback).
-# Commit events require evt_NNNN, an ISO-8601 timestamp, canonical paths, and a passing review.
+# Commit events require evt_NNNN, an ISO-8601 timestamp, canonical paths,
+# result.artifact equal to artifact_path, and a passing complete review.

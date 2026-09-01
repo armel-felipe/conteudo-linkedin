@@ -39,3 +39,7 @@ Os achados P1 foram reproduzidos antes das alterações com regressões de ausê
 - Gate: nenhum `hard_failure`.
 - Gate: nenhuma questão crítica/importante aberta.
 - Limite: até cinco rodadas; sem alteração em `gauntlet_loop.py`.
+
+## Rodada 3
+
+Os P1 foram reproduzidos antes da correção: `result.artifact` divergente entrava na métrica, review ausente/vazio era aceito com `root`, e `result` lista/string/null causava `AttributeError` no checkpoint. As regressões também verificam que métricas canônicas e o state persistido permanecem inalterados. A correção vincula result ao artifact, exige review regular não vazio quando há root, mantém somente eventos válidos em todas as métricas e retorna `False` para result não-dict.
