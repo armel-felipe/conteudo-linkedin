@@ -53,7 +53,7 @@ necessario retry.
 
 ## Saidas
 
-- Suíte completa: `171 passed`.
+- Suíte completa: `170 passed`.
 - `git diff --check`: passou.
 - Busca por `result_path` incorreto e criterios `evidence`/`author_connection`
   em `run-editorial-batch/SKILL.md`: nenhum resultado.
@@ -79,7 +79,47 @@ hora e timestamps sem timezone, que nao sao commits auditaveis para metricas.
 ### Validacao
 
 - Focado: aprovado.
-- Suíte completa: `170 passed`.
+- Suíte completa: `171 passed`.
+- `git diff --check`: passou.
+- Gate: `coverage >= 0.99`, criterios `>=9/10`, zero hard failures e zero
+  questoes criticas/importantes; aprovado sem retry adicional.
+
+### Ajuste de fixture
+
+Com a agregacao usando root, o teste de metricas revelou que reutilizar
+`cycle: 1` em todos os stages sobrescrevia o mesmo `review_path`. O fixture
+foi ajustado para ciclos distintos, preservando a validacao estrita dos
+arquivos persistidos. `compileall` tambem identificou um erro pre-existente
+fora do escopo em `.agents/skills/last30days/scripts/lib/hackernews.py`.
+
+## Rodada 3
+
+### Causa-raiz
+
+`_update_metrics()` validava eventos sem receber o root do workspace. Assim,
+um commit com paths de `result` ou `review` ausentes, vazios ou invalidos
+nao era revalidado contra os arquivos persistidos durante a agregacao.
+
+### TDD RED/GREEN
+
+- RED: `test_missing_commit_payload_files_are_excluded_from_metrics` falhou
+  porque `_update_metrics()` nao aceitava o terceiro argumento `root`.
+- GREEN: `_update_metrics(manifest, events, root)` chama
+  `_valid_commit_event(event, root)`; a regressao remove os dois arquivos e
+  confirma `cycles_per_stage`, `reviewer_coverage` e
+  `human_writing_conformity` vazios/zero.
+- A evidencia da rodada 2 foi corrigida de `170 passed` para `171 passed`,
+  sem alterar o historico factual restante.
+
+### Validacao
+
+- Focado: `3 passed`.
+- Suíte completa: `172 passed`.
+- `python3 -m compileall -q .`: falhou somente no arquivo pre-existente
+  mencionado abaixo.
+- `python3 -m compileall -q editorial_batch.py tests`: passou.
+- O `compileall` global continua bloqueado pelo erro de sintaxe pre-existente
+  em `.agents/skills/last30days/scripts/lib/hackernews.py`, fora do escopo.
 - `git diff --check`: passou.
 - Gate: `coverage >= 0.99`, criterios `>=9/10`, zero hard failures e zero
   questoes criticas/importantes; aprovado sem retry adicional.

@@ -574,7 +574,7 @@ def test_incomplete_commit_event_does_not_change_metrics(tmp_path):
     manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
     events = [{"phase": "commit", "stage": "research-topic", "cycle": 99,
                "review": {"coverage": 1.0}}]
-    _update_metrics(manifest, events)
+    _update_metrics(manifest, events, None)
     assert manifest["metrics"]["cycles_per_stage"] == {}
     assert manifest["metrics"]["reviewer_coverage"] == 0.0
 
@@ -583,7 +583,7 @@ def test_commit_event_with_only_stage_and_cycle_is_not_a_metric_input():
     manifest = {"queue": [], "metrics": {**DEFAULT_METRICS, "cycles_per_stage": {"research-topic": 1}}}
     events = [{"phase": "commit", "stage": "research-topic", "cycle": 99}]
 
-    _update_metrics(manifest, events)
+    _update_metrics(manifest, events, None)
 
     assert manifest["metrics"]["cycles_per_stage"] == {}
 
@@ -625,14 +625,37 @@ def test_incomplete_or_naive_commit_timestamps_never_enter_metrics():
 
     for timestamp in ("2026-09-01", "2026-09-01T10:00:00"):
         manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
-        _update_metrics(manifest, [{**event, "committed_at": timestamp}])
+        _update_metrics(manifest, [{**event, "committed_at": timestamp}], None)
         assert _valid_commit_event({**event, "committed_at": timestamp}) is False
         assert manifest["metrics"]["cycles_per_stage"] == {}
         assert manifest["metrics"]["reviewer_coverage"] == 0.0
 
     manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
-    _update_metrics(manifest, [{"phase": "commit", "stage": "research-topic", "cycle": 2}])
+    _update_metrics(manifest, [{"phase": "commit", "stage": "research-topic", "cycle": 2}], None)
     assert manifest["metrics"]["cycles_per_stage"] == {}
+
+
+def test_missing_commit_payload_files_are_excluded_from_metrics(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        "content/draft.md", "draft", valid_result("content/draft.md"), valid_review("content/draft.md")
+    )
+    events = yaml.safe_load(event_path(tmp_path / "runs", "run_001").read_text())["events"]
+    result_file = tmp_path / events[-1]["result_path"]
+    review_file = tmp_path / events[-1]["review_path"]
+    result_file.unlink()
+    review_file.unlink()
+    manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
+
+    _update_metrics(manifest, events, tmp_path)
+
+    assert manifest["metrics"]["cycles_per_stage"] == {}
+    assert manifest["metrics"]["reviewer_coverage"] == 0.0
+    assert manifest["metrics"]["human_writing_conformity"] == 0.0
 
 
 def test_persist_stage_rejects_quality_gate_failures(tmp_path):
@@ -762,7 +785,7 @@ def test_human_metrics_ignore_incomplete_commit_events(tmp_path):
     manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
     events = [{"phase": "commit", "stage": "humanize_review_1", "cycle": 1,
                "review": {"coverage": 0.0}}]
-    _update_metrics(manifest, events)
+    _update_metrics(manifest, events, None)
     assert manifest["metrics"]["human_writing_conformity"] == 0.0
 
 
@@ -815,7 +838,7 @@ def test_invalid_committed_cycle_does_not_raise_cycles_metric(tmp_path):
         "review": valid_review("content/draft.md"),
     }
     malformed = {**valid, "cycle": 99, "stage": "research-topic"}
-    _update_metrics(manifest, [valid, malformed])
+    _update_metrics(manifest, [valid, malformed], None)
     assert manifest["metrics"]["cycles_per_stage"]["research-topic"] == 1
 
 
@@ -831,7 +854,7 @@ def test_commit_event_rejects_divergent_result_artifact_and_preserves_metrics(tm
     altered = {**event, "result": {"artifact": "content/other.md"}}
     manifest = yaml.safe_load((tmp_path / "runs/run_001/manifest.yaml").read_text())
     metrics_before = manifest["metrics"].copy()
-    _update_metrics(manifest, [event, altered])
+    _update_metrics(manifest, [event, altered], tmp_path)
     assert _valid_commit_event(altered, tmp_path) is False
     assert manifest["metrics"] == metrics_before
 

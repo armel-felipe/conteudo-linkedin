@@ -134,10 +134,10 @@ def test_manifest_metrics_are_aggregated_by_the_persistence_runtime(tmp_path):
     _topics_fixture(tmp_path)
     topic = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "1")
     freeze_manifest(tmp_path / "runs", "run-1", "1", topic)
-    for stage in CANONICAL_STAGES:
+    for cycle, stage in enumerate(CANONICAL_STAGES, start=1):
         artifact = f"content/{stage}.md"
         persist_stage(
-            tmp_path / "runs", tmp_path, "run-1", "topic_a", stage, 1,
+            tmp_path / "runs", tmp_path, "run-1", "topic_a", stage, cycle,
             artifact, stage, {"stage": stage, "artifact": artifact}, _review(artifact),
         )
 
@@ -145,6 +145,6 @@ def test_manifest_metrics_are_aggregated_by_the_persistence_runtime(tmp_path):
     assert manifest["metrics"]["reviewer_coverage"] == 1.0
     assert manifest["metrics"]["human_writing_conformity"] == 1.0
     assert manifest["metrics"]["cycles_per_stage"] == {
-        stage: 1 for stage in CANONICAL_STAGES
+        stage: cycle for cycle, stage in enumerate(CANONICAL_STAGES, start=1)
     }
     assert manifest["metrics"]["time_to_approval"].startswith("PT")

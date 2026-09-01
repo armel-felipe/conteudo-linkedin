@@ -345,9 +345,9 @@ def _valid_review(review, artifact_path):
     return _review_passes(review, artifact_path)
 
 
-def _update_metrics(manifest, events):
+def _update_metrics(manifest, events, root):
     metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
-    valid_events = [event for event in events if _valid_commit_event(event)]
+    valid_events = [event for event in events if _valid_commit_event(event, root)]
     reviews = [event["review"] for event in valid_events]
     coverages = [review["coverage"] for review in reviews if isinstance(review.get("coverage"), (int, float))]
     metrics["reviewer_coverage"] = sum(coverages) / len(coverages) if coverages else 0.0
@@ -433,7 +433,7 @@ def continue_after_failure(
     metrics["queue_size"] = len(manifest["queue"])
     metrics["completed"] = sum(entry["status"] == "completed" for entry in manifest["queue"])
     metrics["blocked"] = sum(entry["status"] == "blocked" for entry in manifest["queue"])
-    _update_metrics(manifest, events["events"])
+    _update_metrics(manifest, events["events"], workspace_root)
     _atomic_write(manifest_path, manifest)
     return [entry["topic_id"] for entry in manifest["queue"] if entry["status"] == "queued"]
 
@@ -594,7 +594,7 @@ def persist_stage(
     metrics["cycles_per_stage"][stage] = max(metrics["cycles_per_stage"].get(stage, 0), cycle)
     existing["events"][-1]["stage"] = stage
     existing["events"][-1]["review"] = review
-    _update_metrics(manifest, existing["events"])
+    _update_metrics(manifest, existing["events"], root)
     _atomic_write(events, existing)
     _atomic_write(manifest_path, manifest)
     return manifest
