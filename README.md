@@ -72,7 +72,7 @@ Rode run-editorial-batch --topics topic_20260831_01,topic_20260831_03
 
 O lote retoma do último checkpoint válido e nunca publica automaticamente. `orquestrador-runtime` permanece disponível apenas como legado e não é o ponto de entrada do fluxo novo.
 
-Cada etapa grava seu artefato, estado e evento; cada resultado de revisor é preservado por ciclo. Na retomada, somente etapas com artefato válido e review aprovado são puladas. Um topic aprovado nunca é reexecutado automaticamente. O manifesto também registra `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human_writing_conformity` e `time_to_approval`.
+Cada etapa grava seu artefato, estado e evento; cada resultado de revisor é preservado por ciclo. Na retomada, somente etapas com artefato válido e review aprovado são puladas. Um topic aprovado nunca é reexecutado automaticamente. Um topic `blocked` retoma no mesmo estágio com fingerprint, review, feedback e `cycle_count` preservados. O manifesto também registra `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human_writing_conformity` e `time_to_approval`; as três últimas métricas são, respectivamente, média de todos os `coverage`, média dos dois reviews `humanize_review_*` e duração ISO-8601 entre criação do manifesto e commit de `approval_humana`.
 
 ### 1. Descobrir sinais — diariamente
 

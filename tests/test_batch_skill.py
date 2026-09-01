@@ -114,6 +114,67 @@ def test_checkpoint_requires_result_artifact_fingerprint_paths_and_validates_res
     assert checkpoint_valid(state, tmp_path) is False
 
 
+def test_checkpoint_rejects_result_file_that_diverges_from_canonical_checkpoint(tmp_path):
+    artifact = tmp_path / "brief.md"
+    artifact.write_text("brief")
+    result_path = tmp_path / "result.yaml"
+    result = {"decision": "approved", "artifact": "brief.md", "version": 1}
+    result_path.write_text(yaml.safe_dump(result))
+    state = {
+        "contract_version": "1", "run_id": "run", "topic_id": "topic",
+        "completed_stages": ["research-topic"],
+        "checkpoint": {
+            "stage": "research-topic", "cycle": 1, "result": result,
+            "last_artifact": "brief.md", "result_path": "result.yaml",
+            "input_fingerprint": "sha256:" + hashlib.sha256(b"brief").hexdigest(),
+            "paths": ["brief.md", "result.yaml"], "saved_at": "now",
+        },
+    }
+    result_path.write_text(yaml.safe_dump({**result, "version": 2}))
+    assert checkpoint_valid(state, tmp_path) is False
+
+
+def test_blocked_topic_preserves_context_and_can_resume_same_stage(tmp_path):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "1")
+    freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
+    continue_after_failure(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "review failed",
+        artifact_fingerprint="sha256:" + "a" * 64,
+        review={"artifact": "content/draft.md"},
+        feedback=[{"criterion": "clareza", "message": "clarify"}],
+        cycle_count=2,
+    )
+    state_file = tmp_path / "runs/run_001/topics/topic_c/state.yaml"
+    state = yaml.safe_load(state_file.read_text())
+    assert state["status"] == "blocked"
+    assert state["current_stage"] == "research-topic"
+    assert state["artifact_fingerprint"] == "sha256:" + "a" * 64
+    assert state["last_review"]["artifact"] == "content/draft.md"
+    assert state["feedback"][0]["criterion"] == "clareza"
+    assert state["cycle_count"] == 2
+
+
+def test_commit_event_requires_exact_artifact_result_and_review_paths(tmp_path):
+    write_fixture(tmp_path)
+    topic = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "1")
+    freeze_manifest(tmp_path / "runs", "run_001", "1", topic)
+    persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                  "content/draft.md", "draft", {"ok": True},
+                  {"decision": "approved", "coverage": 1.0, "criteria": {},
+                   "hard_failures": [], "feedback": [], "artifact": "content/draft.md"})
+    events_file = tmp_path / "runs/run_001/events.yaml"
+    events = yaml.safe_load(events_file.read_text())
+    commit = events["events"][-1]
+    commit["result_path"] = "content/draft.md"
+    events_file.write_text(yaml.safe_dump(events))
+    with pytest.raises(ValueError, match="divergent"):
+        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                      "content/draft.md", "draft", {"ok": True},
+                      {"decision": "approved", "coverage": 1.0, "criteria": {},
+                       "hard_failures": [], "feedback": [], "artifact": "content/draft.md"})
+
+
 def test_idempotency_and_persistence_contract_are_explicit():
     assert idempotency_key("run_001", "topic_c", "brief_review_gauntlet", 1) == (
         "run_001",
@@ -317,7 +378,8 @@ def test_approval_stage_sets_terminal_current_stage(tmp_path):
     freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
     for index, stage in enumerate(CANONICAL_STAGES, start=1):
         artifact_path = f"content/{stage}.md"
-        review = {"decision": "approved", "coverage": 1.0, "criteria": {}, "hard_failures": [], "feedback": [], "artifact": artifact_path}
+        coverage = {"research-topic": 0.5, "humanize_review_1": 0.8}.get(stage, 1.0)
+        review = {"decision": "approved", "coverage": coverage, "criteria": {}, "hard_failures": [], "feedback": [], "artifact": artifact_path}
         persist_stage(
             tmp_path / "runs", tmp_path, "run_001", "topic_c", stage, index,
             artifact_path, stage, {"stage": stage}, review,
@@ -327,3 +389,7 @@ def test_approval_stage_sets_terminal_current_stage(tmp_path):
     assert state["current_stage"] is None
     assert manifest["queue"][0]["current_stage"] is None
     assert manifest["queue"][0]["status"] == "completed"
+    assert manifest["metrics"]["reviewer_coverage"] == 0.93
+    assert manifest["metrics"]["human_writing_conformity"] == 0.9
+    assert manifest["metrics"]["cycles_per_stage"]["research-topic"] == 1
+    assert manifest["metrics"]["time_to_approval"].startswith("PT")

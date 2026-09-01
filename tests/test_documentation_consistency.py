@@ -122,3 +122,20 @@ def test_reviews_are_persisted_and_scheduling_is_not_a_batch_stage(tmp_path):
     assert "human_writing_conformity" in docs
     assert "time_to_approval" in docs
     assert "human-writing_conformity" not in docs
+
+
+def test_manifest_metrics_use_explicit_aggregates_and_approval_elapsed_time(tmp_path):
+    artifact = tmp_path / "draft.md"
+    artifact.write_text("draft")
+    run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                 artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+    manifest = {
+        "created_at": "2026-09-01T10:00:00+00:00",
+        "metrics": {
+            "reviewer_coverage": "mean of all persisted review coverages",
+            "human_writing_conformity": "mean of humanize review coverages",
+            "time_to_approval": "approval timestamp minus created_at",
+        },
+    }
+    assert manifest["metrics"]["reviewer_coverage"].startswith("mean")
+    assert "approval timestamp" in manifest["metrics"]["time_to_approval"]

@@ -104,13 +104,13 @@ Os campos `failure reasons`, `failed criteria`, `last artifact` e `cycle count` 
 
 ## Persistencia e idempotencia
 
-Cada ciclo deve deixar um arquivo de review identificavel pelo numero `cycle-01` ate `cycle-05`. Escreva de forma atomica e nao sobrescreva um review valido com resultado diferente para a mesma chave `(run_id, topic_id, gauntlet, cycle)`. Ao retomar, valide o review existente; se estiver invalido, bloqueie em vez de confiar nele.
+Cada ciclo deve deixar um arquivo de review identificavel pelo numero `cycle-01` ate `cycle-05`. Escreva de forma atomica e nao sobrescreva um review valido com resultado diferente para a mesma chave `(run_id, topic_id, gauntlet, cycle)`. Ao retomar, valide o review existente; se estiver invalido, bloqueie em vez de confiar nele. Um evento `commit` so e valido quando `artifact_path`, `result_path` e `review_path` sao exatamente os tres caminhos canonicos esperados para aquela chave, e os arquivos correspondentes conferem com os payloads salvos.
 
 Quando `persistence_dir` for fornecido, grave atomicamente `cycle-01.yaml` ate `cycle-05.yaml`, `events.yaml` e `state.yaml`. O ciclo usa a chave `(run_id, artifact, cycle)`; uma repeticao do mesmo ciclo nao duplica review ou evento. `events.yaml` deve registrar `cycle-start`, `deterministic-checks` e `review` nessa ordem, e `state.yaml` deve conter o resultado terminal completo.
 
 Every stage writes an event, and every reviewer result is saved per cycle. A resumed run skips only stages with valid artifacts and passing reviews; **Never rerun an approved topic automatically**. The caller must create an explicit new run for approved work that needs revision.
 
-The caller's run manifest records `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human_writing_conformity`, and `time_to_approval`. These operational metrics do not weaken the acceptance gate: coverage must be `> 0.99`, every criterion must be `>=9/10`, and any `hard_failures` blocks approval.
+The caller's run manifest records `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human_writing_conformity`, and `time_to_approval`. `reviewer_coverage` is the mean coverage of all persisted review events; `human_writing_conformity` is the mean of the two `humanize_review_*` coverages; `cycles_per_stage` is the greatest committed cycle; and `time_to_approval` is the ISO-8601 elapsed duration from manifest creation to the approval commit, otherwise `null`. These operational metrics do not weaken the acceptance gate: coverage must be `> 0.99`, every criterion must be `>=9/10`, and any `hard_failures` blocks approval.
 
 O resultado `blocked` apos a quinta rodada deve conter `failed_criteria`, `last_artifact`, `last_review`, `feedback` completo, `cycles` igual a 5 e as razoes da falha. O resultado tambem pode expor `cycle_count` para compatibilidade com os checkpoints existentes.
 

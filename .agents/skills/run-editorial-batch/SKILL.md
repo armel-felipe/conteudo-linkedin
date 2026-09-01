@@ -179,9 +179,9 @@ metrics:
   time_to_approval: "PT42M"
 ```
 
-The metric keys mean queue size, completed and blocked topics, cycles per stage, reviewer coverage, human-writing conformity, and elapsed time to human approval. Metrics are updated in the manifest without changing the frozen queue.
+The metric keys mean queue size, completed and blocked topics, cycles per stage, reviewer coverage, human-writing conformity, and elapsed time to human approval. `reviewer_coverage` is the arithmetic mean of `coverage` from every persisted review event in the run; `human_writing_conformity` is the arithmetic mean from only `humanize_review_1` and `humanize_review_2`; `cycles_per_stage` is the highest cycle number committed for each stage; and `time_to_approval` is the ISO-8601 duration from manifest `created_at` to the `approval_humana` commit timestamp, or `null` before approval. Metrics are updated in the manifest without changing the frozen queue.
 
-Se uma etapa falhar, registre o erro e o artefato mais recente, marque o topic como `blocked` e persista o checkpoint antes de continuar para o próximo item da fila. Uma falha individual não interrompe a rodada nem libera o topic para a etapa seguinte. Ao final, o manifest deve registrar o resultado de todos os itens, inclusive `blocked`, e a aprovação humana continua sendo necessária antes de qualquer publicação.
+Se uma etapa falhar, registre o erro, fingerprint do artefato, último review, feedback e `cycle_count`, marque o topic como `blocked` e persista o checkpoint antes de continuar para o próximo item da fila. Ao retomar, preserve esses campos e recomece no mesmo `current_stage` sem zerar ciclos ou feedback. Uma falha individual não interrompe a rodada nem libera o topic para a etapa seguinte. Ao final, o manifest deve registrar o resultado de todos os itens, inclusive `blocked`, e a aprovação humana continua sendo necessária antes de qualquer publicação.
 
 Exemplo de falha sem interromper a fila:
 

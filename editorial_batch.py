@@ -136,6 +136,18 @@ def checkpoint_valid(state, workspace_root):
         candidate = (root / relative_path).resolve()
         if root not in candidate.parents or not candidate.is_file():
             return False
+    result_path = checkpoint.get("result_path")
+    if result_path:
+        if Path(result_path).is_absolute():
+            return False
+        result_file = (root / result_path).resolve()
+        if root not in result_file.parents or not result_file.is_file():
+            return False
+        try:
+            if _load_yaml(result_file, "result") != checkpoint["result"]:
+                return False
+        except ValueError:
+            return False
     artifact_bytes = (root / checkpoint["last_artifact"]).read_bytes()
     if fingerprint != "sha256:" + sha256(artifact_bytes).hexdigest():
         return False
@@ -196,7 +208,34 @@ def _valid_review(review, artifact_path):
     )
 
 
-def continue_after_failure(runs_dir, workspace_root, run_id, topic_id, error):
+def _update_metrics(manifest, events):
+    metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
+    reviews = [event["review"] for event in events if event.get("phase") == "commit" and isinstance(event.get("review"), dict)]
+    coverages = [review["coverage"] for review in reviews if isinstance(review.get("coverage"), (int, float))]
+    metrics["reviewer_coverage"] = sum(coverages) / len(coverages) if coverages else 0.0
+    human = [
+        event["review"]["coverage"] for event in events
+        if event.get("phase") == "commit"
+        and str(event.get("stage", "")).startswith("humanize_review_")
+        and isinstance(event.get("review"), dict)
+        and isinstance(event["review"].get("coverage"), (int, float))
+    ]
+    metrics["human_writing_conformity"] = sum(human) / len(human) if human else 0.0
+    approval = next((event for event in events if event.get("phase") == "commit" and event.get("stage") == "approval_humana"), None)
+    if approval:
+        try:
+            started = datetime.fromisoformat(manifest["created_at"])
+            finished = datetime.fromisoformat(approval["committed_at"])
+            seconds = max(0, int((finished - started).total_seconds()))
+            metrics["time_to_approval"] = f"PT{seconds}S"
+        except (KeyError, TypeError, ValueError):
+            metrics["time_to_approval"] = None
+
+
+def continue_after_failure(
+    runs_dir, workspace_root, run_id, topic_id, error, *,
+    artifact_fingerprint=None, review=None, feedback=None, cycle_count=0,
+):
     manifest_path = Path(runs_dir) / run_id / "manifest.yaml"
     manifest = _load_manifest(manifest_path, run_id)
     item = next((item for item in manifest["queue"] if item["topic_id"] == topic_id), None)
@@ -209,13 +248,28 @@ def continue_after_failure(runs_dir, workspace_root, run_id, topic_id, error):
     }
     if state.get("contract_version") != "1" or state.get("run_id") != run_id or state.get("topic_id") != topic_id:
         raise ValueError("state ids are invalid")
-    state.update(status="blocked", current_stage=None, failure={"error": error})
+    checkpoint = state.get("checkpoint", {})
+    state.update(
+        status="blocked",
+        current_stage=state.get("current_stage") or checkpoint.get("stage") or item.get("current_stage"),
+        failure={"error": error},
+        artifact_fingerprint=artifact_fingerprint or checkpoint.get("input_fingerprint"),
+        last_review=review if review is not None else state.get("last_review"),
+        feedback=feedback if feedback is not None else state.get("feedback", []),
+        cycle_count=cycle_count or state.get("cycle_count") or checkpoint.get("cycle", 0),
+    )
     _atomic_write(state_file, state)
     events_path = event_path(runs_dir, run_id)
     events = _load_events(events_path)
     key = list(idempotency_key(run_id, topic_id, "blocked", 0))
     if not any(event.get("idempotency_key") == key and event.get("phase") == "commit" for event in events["events"]):
-        events["events"].append({"event_id": f"evt_{len(events['events']) + 1:04d}", "type": "topic_blocked", "phase": "commit", "idempotency_key": key, "error": error})
+        events["events"].append({
+            "event_id": f"evt_{len(events['events']) + 1:04d}",
+            "type": "topic_blocked", "phase": "commit", "idempotency_key": key,
+            "error": error, "artifact_fingerprint": state.get("artifact_fingerprint"),
+            "last_review": state.get("last_review"), "feedback": state.get("feedback", []),
+            "cycle_count": state.get("cycle_count", 0),
+        })
         _atomic_write(events_path, events)
     item.update(status="blocked", current_stage=None, error=error)
     metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
@@ -274,14 +328,22 @@ def persist_stage(
     events = event_path(runs_dir, run_id)
     existing = _load_events(events)
     key = list(idempotency_key(run_id, topic_id, stage, cycle))
+    result_file = Path(runs_dir) / run_id / "topics" / topic_id / "results" / f"{stage}-cycle-{cycle:02d}.yaml"
+    result_relative = str(result_file.resolve().relative_to(root))
+    review_file = review_path(runs_dir, run_id, topic_id, cycle)
+    review_relative = str(review_file.resolve().relative_to(root))
     pending_intent = next(
         (event for event in existing["events"] if event.get("idempotency_key") == key and event.get("phase") == "intent"),
         None,
     )
     for event in existing["events"]:
         if event.get("idempotency_key") == key and event.get("phase") == "commit":
-            event_paths = [event.get("artifact_path"), event.get("result_path"), event.get("review_path")]
-            if not all(path and not Path(path).is_absolute() and (root / path).is_file() for path in event_paths):
+            expected_paths = {
+                "artifact_path": artifact_path,
+                "result_path": result_relative,
+                "review_path": review_relative,
+            }
+            if any(event.get(name) != value for name, value in expected_paths.items()):
                 raise ValueError("checkpoint is divergent")
             stored_result = _load_yaml(root / event["result_path"], "result")
             stored_review = _load_yaml(root / event["review_path"], "review")
@@ -299,19 +361,17 @@ def persist_stage(
     if not _valid_review(review, artifact_path):
         raise ValueError("review is invalid")
 
+    state["status"] = "running"
     _atomic_write_bytes(artifact, str(artifact_content).encode())
-    result_file = Path(runs_dir) / run_id / "topics" / topic_id / "results" / f"{stage}-cycle-{cycle:02d}.yaml"
     _atomic_write(result_file, result)
     digest = "sha256:" + sha256(artifact.read_bytes()).hexdigest()
-    review_file = review_path(runs_dir, run_id, topic_id, cycle)
-    result_relative = str(result_file.resolve().relative_to(root))
-    review_relative = str(review_file.resolve().relative_to(root))
     _atomic_write(review_file, review)
     state["completed_stages"] = [*state.get("completed_stages", []), stage]
     state["current_stage"] = None if stage == "approval_humana" else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
     state["checkpoint"] = {
         "stage": stage, "cycle": cycle, "result": result,
         "last_artifact": artifact_path, "input_fingerprint": digest,
+        "result_path": result_relative, "review_path": review_relative,
         "paths": [artifact_path, result_relative] + ([review_relative] if review is not None else []),
         "saved_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -329,6 +389,7 @@ def persist_stage(
     commit["event_id"] = f"evt_{len(existing['events']) + 1:04d}"
     commit["phase"] = "commit"
     commit.update({"artifact_path": artifact_path, "result_path": result_relative, "review_path": review_relative})
+    commit["committed_at"] = datetime.now(timezone.utc).isoformat()
     existing["events"].append(commit)
     _atomic_write(events, existing)
     manifest["persistence_order"] = PERSISTENCE_ORDER
@@ -340,9 +401,10 @@ def persist_stage(
     metrics["queue_size"] = len(manifest["queue"])
     metrics["completed"] = sum(item["status"] == "completed" for item in manifest["queue"])
     metrics["blocked"] = sum(item["status"] == "blocked" for item in manifest["queue"])
-    metrics["cycles_per_stage"][stage] = metrics["cycles_per_stage"].get(stage, 0) + 1
-    metrics["reviewer_coverage"] = review.get("coverage", metrics["reviewer_coverage"])
-    if stage.startswith("humanize_review_"):
-        metrics["human_writing_conformity"] = review.get("coverage", metrics["human_writing_conformity"])
+    metrics["cycles_per_stage"][stage] = max(metrics["cycles_per_stage"].get(stage, 0), cycle)
+    existing["events"][-1]["stage"] = stage
+    existing["events"][-1]["review"] = review
+    _update_metrics(manifest, existing["events"])
+    _atomic_write(events, existing)
     _atomic_write(manifest_path, manifest)
     return manifest

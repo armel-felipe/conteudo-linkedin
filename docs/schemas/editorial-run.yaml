@@ -16,3 +16,7 @@ metrics:
   reviewer_coverage: 0.0
   human_writing_conformity: 0.0
   time_to_approval: null
+# reviewer_coverage: mean coverage of all persisted review events
+# human_writing_conformity: mean coverage of humanize_review_1 and humanize_review_2
+# cycles_per_stage: highest committed cycle number per stage
+# time_to_approval: ISO-8601 duration from created_at to approval_humana commit, or null
