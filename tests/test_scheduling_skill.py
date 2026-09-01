@@ -1,7 +1,13 @@
 import pytest
 from pathlib import Path
 
-from scheduling_contract import validate_reschedule_events, validate_schedule_events
+from scheduling_contract import (
+    can_advance_schedule,
+    can_register_timestamp,
+    validate_receipt,
+    validate_reschedule_events,
+    validate_schedule_events,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +119,43 @@ def test_validate_reschedule_events_rejects_duplicate_or_invalid_existing_post_f
         validate_reschedule_events(events, "existing_post")
 
 
+def test_behavioral_helper_blocks_divergent_summary_and_missing_confirmation_or_list():
+    assert can_advance_schedule("01/09/2026 10:00", "01/09/2026 10:00") is True
+    assert can_advance_schedule("01/09/2026 10:00", "02/09/2026 10:00") is False
+    assert can_register_timestamp(True, True) is True
+    assert can_register_timestamp(False, True) is False
+    assert can_register_timestamp(True, False) is False
+
+
+def test_reschedule_requires_existing_post_and_complete_new_selection():
+    assert validate_reschedule_events(
+        [
+            "existing_post_menu",
+            "alter_schedule",
+            "date_selected",
+            "time_selected",
+        ],
+        "existing_post",
+    ) is True
+
+
+def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
+    receipt = {
+        "route": "browser",
+        "fallback": "CDP",
+        "requested_timestamp": "01/09/2026 10:00",
+        "displayed_timestamp": "01/09/2026 10:00",
+        "date_selected": "pass",
+        "time_selected": "pass",
+        "summary": "pass",
+        "preview": "pass",
+        "confirmation": "pass",
+        "scheduled_list": "pass",
+        "duplicate_created": False,
+    }
+    assert validate_receipt(receipt) is True
+
+
 def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
     roadmap = (ROOT / "docs" / "roadmap.md").read_text()
     report = (ROOT / ".superpowers" / "sdd" / "scheduling-task-3-report.md").read_text()
@@ -127,15 +170,27 @@ def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
     for case in expected_cases:
         assert case in roadmap
 
-    assert "real verified" in roadmap
+    assert "executado: real" in roadmap
+    assert "simulado: não destrutivo" in roadmap
     assert "summary divergence blocks Avançar" in roadmap
     assert "confirmation/list absence blocks registration" in roadmap
     assert "never duplicate" in roadmap
-    assert "route: browser/CDP fallback" in report
-    assert "requested timestamp: 01/09/2026 10:00" in report
-    assert "displayed timestamp: 01/09/2026 10:00" in report
-    assert "confirmation: pass" in report
-    assert "scheduled list: pass" in report
+    receipt_fields = (
+        "route: browser",
+        "fallback: CDP",
+        'requested_timestamp: "01/09/2026 10:00"',
+        'displayed_timestamp: "01/09/2026 10:00"',
+        "date_selected: pass",
+        "time_selected: pass",
+        "summary: pass",
+        "preview: pass",
+        "confirmation: pass",
+        "scheduled_list: pass",
+        "duplicate_created: false",
+    )
+    for field in receipt_fields:
+        assert field in roadmap
+        assert field in report
 
-    sensitive_terms = ("cookie", "account identifier", "private page content")
+    sensitive_terms = ("screenshot", "cookie", "account identifier", "private page content")
     assert not any(term in report.lower() for term in sensitive_terms)

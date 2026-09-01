@@ -26,6 +26,20 @@ _VISUAL_BRANCHES = {
     ),
 }
 
+_RECEIPT_FIELDS = (
+    "route",
+    "fallback",
+    "requested_timestamp",
+    "displayed_timestamp",
+    "date_selected",
+    "time_selected",
+    "summary",
+    "preview",
+    "confirmation",
+    "scheduled_list",
+    "duplicate_created",
+)
+
 
 def _validate_exact(events, expected):
     observed = tuple(events)
@@ -64,3 +78,23 @@ def validate_reschedule_events(events, route):
             "time_selected",
         ),
     )
+
+
+def can_advance_schedule(requested_timestamp, displayed_timestamp):
+    return requested_timestamp == displayed_timestamp
+
+
+def can_register_timestamp(confirmation, scheduled_list):
+    return bool(confirmation and scheduled_list)
+
+
+def validate_receipt(receipt):
+    if set(receipt) != set(_RECEIPT_FIELDS):
+        raise ValueError("incomplete receipt")
+    if any(receipt[field] != "pass" for field in _RECEIPT_FIELDS[4:-1]):
+        raise ValueError("receipt gate failed")
+    if receipt["duplicate_created"] is not False:
+        raise ValueError("duplicate publication recorded")
+    if not receipt["requested_timestamp"] or not receipt["displayed_timestamp"]:
+        raise ValueError("receipt timestamp missing")
+    return True

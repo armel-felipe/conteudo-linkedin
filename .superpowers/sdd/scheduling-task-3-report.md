@@ -4,18 +4,31 @@
 
 PASS para a evidência real fornecida nesta sessão. A publicação existente foi reagendada pelo caminho `... → Alterar agenda`, com re-seleção explícita de data e horário.
 
-## Receipt
+## Receipt estruturada
 
-- route: browser/CDP fallback
-- visual evidence: screenshot with successful native vision
-- requested timestamp: 01/09/2026 10:00
-- displayed timestamp: 01/09/2026 10:00
-- summary: pass
-- confirmation: pass
-- scheduled list: pass
-- duplicate publication: not created
+```yaml
+route: browser
+fallback: CDP
+requested_timestamp: "01/09/2026 10:00"
+displayed_timestamp: "01/09/2026 10:00"
+date_selected: pass
+time_selected: pass
+summary: pass
+preview: pass
+confirmation: pass
+scheduled_list: pass
+duplicate_created: false
+```
 
-Playwright não estava disponível no runtime. O fallback browser/CDP foi a rota real usada para a verificação visual. Nenhuma publicação nova foi criada, publicada ou agendada.
+Playwright não estava disponível no runtime. Browser/CDP foi a rota real usada, com visão nativa bem-sucedida. Nenhuma publicação nova foi criada, publicada ou agendada.
+
+## Casos executados
+
+- `reschedule existing post with same time and different date`: executado realmente; a publicação existente seguiu `... → Alterar agenda`.
+- `new schedule with different date and time`: simulado de forma não destrutiva.
+- `new schedule for today with explicit date and time`: simulado de forma não destrutiva.
+- `wrong summary detected before Avançar`: simulado de forma não destrutiva; bloqueia Avançar.
+- `scheduled post missing from the scheduled list`: simulado de forma não destrutiva; bloqueia o registro.
 
 ## Failure gates
 
