@@ -8,3 +8,4 @@ weights:
   linkedin_fit: 0.10
 
 scale: 0-100
+# Escala: cada critério é avaliado de 0 a 10; o score final (soma ponderada × 10) vai de 0 a 100.

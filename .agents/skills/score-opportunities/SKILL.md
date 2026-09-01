@@ -25,7 +25,9 @@ freshness, relevance, debate, evidence, author_fit, originality, linkedin_fit
 
 ## Fórmula
 
-score = freshness*0.15 + relevance*0.20 + debate*0.15 + evidence*0.10 + author_fit*0.20 + originality*0.10 + linkedin_fit*0.10 → 0-100
+score = (freshness*0.15 + relevance*0.20 + debate*0.15 + evidence*0.10 + author_fit*0.20 + originality*0.10 + linkedin_fit*0.10) * 10 → 0-100
+
+Cada critério é avaliado de 0 a 10; a soma ponderada (máximo 10) é multiplicada por 10 para o score final em escala 0-100.
 
 ## Saída
 
