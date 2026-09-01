@@ -23,6 +23,15 @@ CANONICAL_STAGES = [
     "approval_humana",
 ]
 PERSISTENCE_ORDER = ["artifact", "result", "state.yaml", "event", "manifest"]
+DEFAULT_METRICS = {
+    "queue_size": 0,
+    "completed": 0,
+    "blocked": 0,
+    "cycles_per_stage": {},
+    "reviewer_coverage": 0.0,
+    "human_writing_conformity": 0.0,
+    "time_to_approval": None,
+}
 
 
 def _atomic_write(path, value):
@@ -100,6 +109,7 @@ def freeze_manifest(runs_dir, run_id, selection, topics):
             for position, topic in enumerate(topics, start=1)
         ],
         "topics": {},
+        "metrics": {**DEFAULT_METRICS, "queue_size": len(topics)},
     }
     _atomic_write(path, manifest)
     return manifest
@@ -142,8 +152,11 @@ def idempotency_key(run_id, topic_id, stage, cycle):
 
 
 def _load_manifest(manifest_path, run_id):
-    manifest = yaml.safe_load(manifest_path.read_text())
-    if manifest.get("contract_version") != "1":
+    try:
+        manifest = yaml.safe_load(manifest_path.read_text())
+    except (FileNotFoundError, yaml.YAMLError) as exc:
+        raise ValueError("manifest is corrupt or missing") from exc
+    if not isinstance(manifest, dict) or manifest.get("contract_version") != "1":
         raise ValueError("manifest contract_version must be 1")
     if manifest.get("run_id") != run_id or not manifest.get("queue_frozen"):
         raise ValueError("manifest ids or frozen queue are invalid")
@@ -160,6 +173,16 @@ def _load_events(events_path):
     if not isinstance(events, dict) or events.get("contract_version") != "1" or not isinstance(events.get("events"), list):
         raise ValueError("events are invalid")
     return events
+
+
+def _load_yaml(path, label):
+    try:
+        value = yaml.safe_load(path.read_text())
+    except (FileNotFoundError, yaml.YAMLError) as exc:
+        raise ValueError(f"{label} is corrupt or missing") from exc
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} is invalid")
+    return value
 
 
 def _valid_review(review, artifact_path):
@@ -180,7 +203,7 @@ def continue_after_failure(runs_dir, workspace_root, run_id, topic_id, error):
     if item is None:
         raise ValueError("topic is not in manifest")
     state_file = state_path(runs_dir, run_id, topic_id)
-    state = yaml.safe_load(state_file.read_text()) if state_file.exists() else {
+    state = _load_yaml(state_file, "state") if state_file.exists() else {
         "contract_version": "1", "run_id": run_id, "topic_id": topic_id,
         "completed_stages": [],
     }
@@ -195,6 +218,10 @@ def continue_after_failure(runs_dir, workspace_root, run_id, topic_id, error):
         events["events"].append({"event_id": f"evt_{len(events['events']) + 1:04d}", "type": "topic_blocked", "phase": "commit", "idempotency_key": key, "error": error})
         _atomic_write(events_path, events)
     item.update(status="blocked", current_stage=None, error=error)
+    metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
+    metrics["queue_size"] = len(manifest["queue"])
+    metrics["completed"] = sum(entry["status"] == "completed" for entry in manifest["queue"])
+    metrics["blocked"] = sum(entry["status"] == "blocked" for entry in manifest["queue"])
     _atomic_write(manifest_path, manifest)
     return [entry["topic_id"] for entry in manifest["queue"] if entry["status"] == "queued"]
 
@@ -237,7 +264,7 @@ def persist_stage(
     if queue_item is None:
         raise ValueError("manifest ids do not match stage")
     state_file = state_path(runs_dir, run_id, topic_id)
-    state = yaml.safe_load(state_file.read_text()) if state_file.exists() else {
+    state = _load_yaml(state_file, "state") if state_file.exists() else {
         "contract_version": "1", "run_id": run_id, "topic_id": topic_id,
         "status": "running", "current_stage": queue_item.get("current_stage", "research-topic"),
         "completed_stages": [],
@@ -254,8 +281,16 @@ def persist_stage(
     for event in existing["events"]:
         if event.get("idempotency_key") == key and event.get("phase") == "commit":
             event_paths = [event.get("artifact_path"), event.get("result_path"), event.get("review_path")]
-            if all(path and not Path(path).is_absolute() and (root / path).is_file() for path in event_paths):
-                return yaml.safe_load(manifest_path.read_text())
+            if not all(path and not Path(path).is_absolute() and (root / path).is_file() for path in event_paths):
+                raise ValueError("checkpoint is divergent")
+            stored_result = _load_yaml(root / event["result_path"], "result")
+            stored_review = _load_yaml(root / event["review_path"], "review")
+            if stored_result != result or stored_review != review:
+                raise ValueError("checkpoint payload is divergent")
+            state = _load_yaml(state_file, "state")
+            if not checkpoint_valid(state, root) or state["checkpoint"].get("stage") != stage:
+                raise ValueError("checkpoint fingerprint is divergent")
+            return manifest
     expected_stage = state.get("current_stage", queue_item.get("current_stage"))
     if stage != expected_stage:
         raise ValueError("stage does not match current_stage")
@@ -301,5 +336,13 @@ def persist_stage(
         if item["topic_id"] == topic_id:
             item["status"] = "completed" if stage == "approval_humana" else "running"
             item["current_stage"] = state["current_stage"]
+    metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
+    metrics["queue_size"] = len(manifest["queue"])
+    metrics["completed"] = sum(item["status"] == "completed" for item in manifest["queue"])
+    metrics["blocked"] = sum(item["status"] == "blocked" for item in manifest["queue"])
+    metrics["cycles_per_stage"][stage] = metrics["cycles_per_stage"].get(stage, 0) + 1
+    metrics["reviewer_coverage"] = review.get("coverage", metrics["reviewer_coverage"])
+    if stage.startswith("humanize_review_"):
+        metrics["human_writing_conformity"] = review.get("coverage", metrics["human_writing_conformity"])
     _atomic_write(manifest_path, manifest)
     return manifest

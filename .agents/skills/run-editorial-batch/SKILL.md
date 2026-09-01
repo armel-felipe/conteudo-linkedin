@@ -175,8 +175,8 @@ metrics:
   cycles_per_stage:
     brief_review_gauntlet: 2
   reviewer_coverage: 1.0
-  human-writing_conformity: 1.0
-  time-to-approval: "PT42M"
+  human_writing_conformity: 1.0
+  time_to_approval: "PT42M"
 ```
 
 The metric keys mean queue size, completed and blocked topics, cycles per stage, reviewer coverage, human-writing conformity, and elapsed time to human approval. Metrics are updated in the manifest without changing the frozen queue.

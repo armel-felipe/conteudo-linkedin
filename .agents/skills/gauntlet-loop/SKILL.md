@@ -110,7 +110,7 @@ Quando `persistence_dir` for fornecido, grave atomicamente `cycle-01.yaml` ate `
 
 Every stage writes an event, and every reviewer result is saved per cycle. A resumed run skips only stages with valid artifacts and passing reviews; **Never rerun an approved topic automatically**. The caller must create an explicit new run for approved work that needs revision.
 
-The caller's run manifest records `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human-writing_conformity`, and `time-to-approval`. These operational metrics do not weaken the acceptance gate: coverage must be `> 0.99`, every criterion must be `>=9/10`, and any `hard_failures` blocks approval.
+The caller's run manifest records `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human_writing_conformity`, and `time_to_approval`. These operational metrics do not weaken the acceptance gate: coverage must be `> 0.99`, every criterion must be `>=9/10`, and any `hard_failures` blocks approval.
 
 O resultado `blocked` apos a quinta rodada deve conter `failed_criteria`, `last_artifact`, `last_review`, `feedback` completo, `cycles` igual a 5 e as razoes da falha. O resultado tambem pode expor `cycle_count` para compatibilidade com os checkpoints existentes.
 

@@ -5,6 +5,7 @@ import math
 from numbers import Real
 import os
 from copy import deepcopy
+from hashlib import sha256
 from pathlib import Path
 import tempfile
 
@@ -137,13 +138,22 @@ def _atomic_json(path, value):
 def _load_json(path, default):
     try:
         return json.loads(path.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
+    except FileNotFoundError:
         return default
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{path.name} is corrupt") from exc
+
+
+def _load_events(path):
+    events = _load_json(path, [])
+    if not isinstance(events, list) or any(not isinstance(event, dict) for event in events):
+        raise ValueError("events are invalid")
+    return events
 
 
 def _persist_event(directory, run_id, artifact, cycle, event_type, payload):
     path = directory / "events.yaml"
-    events = _load_json(path, [])
+    events = _load_events(path)
     key = [run_id, artifact, cycle, event_type]
     if not any(event.get("idempotency_key") == key for event in events):
         events.append({"type": event_type, "idempotency_key": key, **payload})
@@ -152,6 +162,23 @@ def _persist_event(directory, run_id, artifact, cycle, event_type, payload):
 
 def _persist_terminal(directory, result):
     _atomic_json(directory / "state.yaml", result)
+
+
+def _validate_terminal_state(state, artifact_path, root):
+    required = {
+        "status", "cycles", "cycle_count", "last_artifact", "last_review",
+        "feedback", "artifact_fingerprint",
+    }
+    if not isinstance(state, dict) or not required <= set(state) or state["status"] not in {"approved", "blocked"}:
+        raise ValueError("state payload is invalid")
+    if state["last_artifact"] != artifact_path or not isinstance(state["last_review"], dict):
+        raise ValueError("state payload is divergent")
+    if state["last_review"].get("artifact") != artifact_path or not validate_review(state["last_review"])["valid"]:
+        raise ValueError("state review is divergent")
+    checks = _artifact_checks(root, artifact_path, artifact_path)
+    expected = "sha256:" + sha256((root / artifact_path).read_bytes()).hexdigest() if not checks else ""
+    if checks or state["artifact_fingerprint"] != expected:
+        raise ValueError("state fingerprint is divergent")
 
 
 def _terminal(directory, result):
@@ -210,14 +237,17 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
     directory = Path(persistence_dir) if persistence_dir is not None else None
     if directory is not None:
         existing = _load_json(directory / "state.yaml", None)
-        if isinstance(existing, dict) and existing.get("status") in {"approved", "blocked"}:
-            if existing.get("last_artifact") != artifact_path:
-                return _blocked(0, ["state artifact is divergent"])
-            if existing.get("status") == "blocked" and not {
-                "failed_criteria", "last_review", "feedback", "cycles"
-            } <= set(existing):
-                return _blocked(0, ["state payload is invalid"])
-            return existing
+        state_path = directory / "state.yaml"
+        if state_path.exists():
+            if not isinstance(existing, dict):
+                raise ValueError("state payload is invalid")
+            if existing.get("status") in {"approved", "blocked"}:
+                try:
+                    _validate_terminal_state(existing, artifact_path, root)
+                except ValueError as error:
+                    return _blocked(0, [str(error)])
+                return existing
+            raise ValueError("state payload is invalid")
     feedback = []
     last_artifact = ""
     last_review = None
@@ -283,6 +313,11 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
             feedback = deepcopy(result["feedback"])
             continue
 
-        return _terminal(directory, {"status": "approved", "cycle_count": cycle, "cycles": cycle, "last_artifact": last_artifact, "last_review": last_review, "feedback": []})
+        return _terminal(directory, {
+            "status": "approved", "cycle_count": cycle, "cycles": cycle,
+            "last_artifact": last_artifact, "last_review": last_review,
+            "feedback": [],
+            "artifact_fingerprint": "sha256:" + sha256((root / last_artifact).read_bytes()).hexdigest(),
+        })
 
     return _terminal(directory, _blocked(max_cycles, ["maximum cycles exhausted"], last_artifact, last_review, feedback))

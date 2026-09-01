@@ -1,44 +1,124 @@
+import json
 from pathlib import Path
 
+import pytest
+import yaml
 
-DOCS = [Path("README.md"), Path("mapa.md"), Path("AGENTS.md")]
-RUNBOOKS = [
-    Path("README.md"),
-    Path(".agents/skills/run-editorial-batch/SKILL.md"),
-    Path(".agents/skills/gauntlet-loop/SKILL.md"),
-    Path("docs/roadmap.md"),
-]
+from editorial_batch import freeze_manifest, load_and_select_topics, persist_stage
+from gauntlet_loop import NORMATIVE_CRITERIA, run_gauntlet
 
 
-def test_docs_reference_same_batch_and_gauntlet_names():
-    text = "\n".join(path.read_text() for path in DOCS)
-    assert "run-editorial-batch" in text
-    assert "gauntlet-loop" in text
-    assert "escrita-humana" in text
+def _topics_fixture(root):
+    (root / "content").mkdir()
+    (root / "research/topics").mkdir(parents=True)
+    (root / "content/backlog.md").write_text("topic_a 81 ready_for_research")
+    (root / "research/topics/topics_20260901.yaml").write_text(yaml.safe_dump({
+        "topics": [{"topic_id": "topic_a", "score": 81, "status": "ready_for_research"}]
+    }))
 
 
-def test_runbooks_document_resumable_events_and_metrics():
-    text = "\n".join(path.read_text() for path in RUNBOOKS)
-    for term in (
-        "checkpoint",
-        "retom",
-        "events",
-        "queue size",
-        "completed",
-        "blocked",
-        "cycles per stage",
-        "reviewer coverage",
-        "human-writing conformity",
-        "time-to-approval",
-    ):
-        assert term in text
+def _review(artifact):
+    return {
+        "decision": "approved",
+        "coverage": 1.0,
+        "criteria": {criterion: 10 for criterion in NORMATIVE_CRITERIA},
+        "hard_failures": [],
+        "feedback": [],
+        "artifact": artifact,
+    }
 
 
-def test_runbooks_preserve_approved_gates_and_separate_scheduling():
-    text = "\n".join(path.read_text() for path in RUNBOOKS)
-    assert "coverage > 0.99" in text
-    assert ">=9/10" in text
-    assert "hard_failures" in text
-    assert "Never rerun an approved topic automatically" in text
-    assert "scheduling" in text.lower()
-    assert "publicar-linkedin" in text
+def test_manifest_persists_canonical_metrics(tmp_path):
+    _topics_fixture(tmp_path)
+    topic = load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    )
+    manifest = freeze_manifest(tmp_path / "runs", "run-1", "1", topic)
+
+    assert manifest["metrics"] == {
+        "queue_size": 1,
+        "completed": 0,
+        "blocked": 0,
+        "cycles_per_stage": {},
+        "reviewer_coverage": 0.0,
+        "human_writing_conformity": 0.0,
+        "time_to_approval": None,
+    }
+    saved = yaml.safe_load((tmp_path / "runs/run-1/manifest.yaml").read_text())
+    assert saved["metrics"] == manifest["metrics"]
+
+
+def test_resume_rejects_divergent_artifact_result_review_or_fingerprint(tmp_path):
+    _topics_fixture(tmp_path)
+    topic = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "1")
+    freeze_manifest(tmp_path / "runs", "run-1", "1", topic)
+    artifact = "content/draft.md"
+    result = {"decision": "approved", "artifact": artifact}
+    review = _review(artifact)
+    persist_stage(tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
+                  artifact, "original", result, review)
+
+    (tmp_path / artifact).write_text("tampered")
+    with pytest.raises(ValueError, match="divergent"):
+        persist_stage(tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
+                      artifact, "original", result, review)
+
+    with pytest.raises(ValueError, match="divergent"):
+        persist_stage(tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
+                      artifact, "original", {**result, "decision": "feedback"}, review)
+
+    review_path = tmp_path / "runs/run-1/topics/topic_a/reviews/cycle-01.yaml"
+    review_path.write_text(yaml.safe_dump({**review, "coverage": 0.5}))
+    with pytest.raises(ValueError, match="divergent"):
+        persist_stage(tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
+                      artifact, "original", result, review)
+
+
+def test_corrupt_gauntlet_events_and_state_fail_closed(tmp_path):
+    artifact = tmp_path / "draft.md"
+    artifact.write_text("draft")
+    (tmp_path / "events.yaml").write_text("{broken")
+    with pytest.raises(ValueError, match="corrupt"):
+        run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                     artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+
+    (tmp_path / "events.yaml").unlink()
+    (tmp_path / "state.yaml").write_text("{broken")
+    with pytest.raises(ValueError, match="corrupt"):
+        run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                     artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+
+
+def test_resume_requires_matching_review_and_artifact_fingerprint(tmp_path):
+    artifact = tmp_path / "draft.md"
+    artifact.write_text("draft")
+    run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                 artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+    state_path = tmp_path / "state.yaml"
+    state = json.loads(state_path.read_text())
+    state["artifact_fingerprint"] = "sha256:invalid"
+    state_path.write_text(json.dumps(state))
+
+    result = run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                          artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+    assert result["status"] == "blocked"
+    assert "state fingerprint is divergent" in result["failure_reasons"]
+
+
+def test_reviews_are_persisted_and_scheduling_is_not_a_batch_stage(tmp_path):
+    artifact = tmp_path / "draft.md"
+    artifact.write_text("draft")
+    run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                 artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+
+    review = json.loads((tmp_path / "cycle-01.yaml").read_text())["review"]
+    assert review["artifact"] == "draft.md"
+    assert "publicar-linkedin" not in Path("editorial_batch.py").read_text()
+    assert "publicar-linkedin" not in Path("gauntlet_loop.py").read_text()
+    docs = "\n".join(Path(path).read_text() for path in (
+        "README.md", ".agents/skills/run-editorial-batch/SKILL.md", "docs/roadmap.md"
+    ))
+    assert "agendamento permanece separado" in docs.lower() or "scheduling remains outside" in docs.lower()
+    assert "human_writing_conformity" in docs
+    assert "time_to_approval" in docs
+    assert "human-writing_conformity" not in docs

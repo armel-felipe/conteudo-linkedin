@@ -1,9 +1,18 @@
 run_id: run_YYYYMMDD_NNN
 created_at: ISO-8601
 selection: "1 | N | all | comma-separated topic ids"
+queue_frozen: true
 queue:
   - topic_id: topic_YYYYMMDD_NN
     position: 1
     status: queued
     current_stage: research-topic
 topics: {}
+metrics:
+  queue_size: 0
+  completed: 0
+  blocked: 0
+  cycles_per_stage: {}
+  reviewer_coverage: 0.0
+  human_writing_conformity: 0.0
+  time_to_approval: null
