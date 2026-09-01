@@ -146,7 +146,7 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 → humanize_pass_2 → humanize_review_2 → approval_humana
 ```
 
-Cada stage usa executor e revisor separados. Cada Gauntlet executa no máximo 5 ciclos, só aprova com `coverage >99%` e todos os critérios `>=9/10`; resposta inválida, artefato ausente ou falha de validação bloqueia o topic. `brief_review_gauntlet` exige duas fontes independentes quando disponíveis e conexão explícita com a experiência do autor. `critique-post` produz feedback; a correção acontece no `correction_gauntlet`. `humanize_pass_1` e `humanize_pass_2` são obrigatórios e cada um precisa de seu próprio review.
+Cada stage usa executor e revisor separados. Cada Gauntlet executa no máximo 5 ciclos, só aprova com `coverage >=99%` e todos os critérios `>=9/10`; resposta inválida, artefato ausente ou falha de validação bloqueia o topic. `brief_review_gauntlet` exige duas fontes independentes quando disponíveis e conexão explícita com a experiência do autor. `critique-post` produz feedback; a correção acontece no `correction_gauntlet`. `humanize_pass_1` e `humanize_pass_2` são obrigatórios e cada um precisa de seu próprio review.
 
 O stage recebido deve ser igual ao `current_stage` persistido e todos os stages anteriores devem estar em `completed_stages`; execução fora de ordem é rejeitada. Depois de `approval_humana`, `current_stage` passa a `null` e o item passa a `completed`.
 

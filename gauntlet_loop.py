@@ -122,7 +122,7 @@ def _blocked(
         try:
             if artifact_file.is_file():
                 fingerprint = "sha256:" + sha256(artifact_file.read_bytes()).hexdigest()
-        except OSError:
+        except (UnicodeDecodeError, OSError):
             fingerprint = None
     return {
         "status": "blocked",
@@ -262,8 +262,8 @@ def _validate_terminal_state(state, artifact_path, root):
     try:
         if artifact_file.is_file():
             expected = "sha256:" + sha256(artifact_file.read_bytes()).hexdigest()
-    except OSError:
-        pass
+    except (UnicodeDecodeError, OSError) as error:
+        raise ValueError(f"artifact read failed: {error}") from error
     fingerprint = state["artifact_fingerprint"]
     if (
         not isinstance(fingerprint, (str, type(None)))

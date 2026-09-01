@@ -156,3 +156,57 @@ PYTHONPATH=. pytest -q
 python3 -m compileall -q gauntlet_loop.py
 git diff --check
 ```
+
+## Remediation Round 4
+
+### Scope
+
+Updated the acceptance wording in the Gauntlet, batch, research, writing, `AGENTS.md`, roadmap, and editorial specification documents. Hardened only terminal-resume artifact validation in `gauntlet_loop.py`; Falha 2 logic was not changed.
+
+### Root Cause
+
+Terminal resume called `_validate_terminal_state()` through a path where artifact fingerprint reads could raise `OSError`, `PermissionError`, or `UnicodeDecodeError`, instead of becoming a fail-closed blocked result. Several relevant documents also still described the superseded strict gate (`>0.99` or `>99%`).
+
+### RED
+
+Added a parameterized regression that makes artifact reads raise `OSError`, `PermissionError`, and `UnicodeDecodeError` during terminal resume, then asserts `blocked` and an untouched `state.yaml`.
+
+Focused RED output:
+
+```text
+3 failed, 48 deselected
+```
+
+The failures exposed fingerprint divergence/uncaught decoding behavior rather than an artifact-read failure result.
+
+### GREEN
+
+- Artifact fingerprint reads during terminal validation now convert the three requested read failures to a clear artifact-read validation error; the existing fail-closed resume path returns `blocked` without writing state.
+- `_blocked()` fingerprint fallback also handles `UnicodeDecodeError`.
+- All relevant documents now state `coverage >=0.99` or `coverage >=99%`.
+
+Focused GREEN output:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py -k terminal_resume_artifact_read_errors
+3 passed, 48 deselected
+```
+
+Full verification:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py
+51 passed in 0.08s
+
+PYTHONPATH=. pytest -q
+134 passed in 0.65s
+
+python3 -m compileall -q gauntlet_loop.py
+git diff --check
+```
+
+Documentation scan:
+
+```text
+No files found for >0.99, > 0.99, >99%, > 99%, superior a 99, or maior que 99.
+```

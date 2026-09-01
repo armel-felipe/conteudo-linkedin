@@ -38,7 +38,7 @@ Escrever o post a partir do brief e da memória do autor. O writer NÃO pesquisa
 
 ## Contrato de revisão
 
-O revisor deve retornar um objeto JSON conforme `docs/schemas/gauntlet-review.json`, sem campos extras. Os campos obrigatórios são `decision` (`approved` ou `feedback`), `coverage` (número entre 0 e 1), `criteria` (objeto não vazio com notas numéricas de 0 a 10), `hard_failures` (lista), `feedback` (lista de objetos com `criterion` e `message`) e `artifact` (caminho relativo não vazio do draft). Em aprovação, `coverage` deve ser `>0.99`, todos os critérios devem ser `>=9`, `hard_failures` deve ser uma lista vazia e `feedback` deve ser uma lista vazia. Em `feedback`, cada critério abaixo de 9 e a coverage abaixo de 0.99 precisam de feedback acionável. Qualquer `hard_failures` não vazio bloqueia.
+O revisor deve retornar um objeto JSON conforme `docs/schemas/gauntlet-review.json`, sem campos extras. Os campos obrigatórios são `decision` (`approved` ou `feedback`), `coverage` (número entre 0 e 1), `criteria` (objeto não vazio com notas numéricas de 0 a 10), `hard_failures` (lista), `feedback` (lista de objetos com `criterion` e `message`) e `artifact` (caminho relativo não vazio do draft). Em aprovação, `coverage` deve ser `>=0.99`, todos os critérios devem ser `>=9`, `hard_failures` deve ser uma lista vazia e `feedback` deve ser uma lista vazia. Em `feedback`, cada critério abaixo de 9 e a coverage abaixo de 0.99 precisam de feedback acionável. Qualquer `hard_failures` não vazio bloqueia.
 
 ## Critérios normativos do post
 
@@ -59,7 +59,7 @@ O revisor deve pontuar exatamente estes 14 critérios, cada um de 0 a 10, sem re
 13. Tamanho editorial
 14. Rastreabilidade das fontes
 
-O post só pode ser aprovado pelo Gauntlet quando todos os 14 critérios forem `>=9/10` e a coverage for `>99%`. A aprovação agregada de 95% não substitui esses gates. O writer não pode avançar com critério abaixo do mínimo ou `hard_failures`.
+O post só pode ser aprovado pelo Gauntlet quando todos os 14 critérios forem `>=9/10` e a coverage for `>=99%`. A aprovação agregada de 95% não substitui esses gates. O writer não pode avançar com critério abaixo do mínimo ou `hard_failures`.
 
 Depois da correção no Gauntlet, executar obrigatoriamente duas passagens separadas de `escrita-humana`: `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2`. Cada passagem deve ter seu próprio revisor e retornar o mesmo contrato JSON, com `artifact` relativo ao draft da passagem. Cada passagem precisa de aprovação independente; `hard_failures` de escrita-humana sobrepõem a pontuação agregada de 95% e bloqueiam a aprovação.
 

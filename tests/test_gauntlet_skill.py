@@ -591,6 +591,42 @@ def test_invalid_persistence_bytes_fail_closed_without_overwriting(tmp_path):
     assert state_path.read_bytes() == original
 
 
+@pytest.mark.parametrize("read_error", [OSError, PermissionError, UnicodeDecodeError])
+def test_terminal_resume_artifact_read_errors_block_without_overwriting(tmp_path, monkeypatch, read_error):
+    artifact = tmp_path / "mapa.md"
+    artifact.write_text("artifact")
+    run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+    state_path = tmp_path / "state.yaml"
+    original = state_path.read_text()
+    original_read_bytes = Path.read_bytes
+
+    def failing_read_bytes(path):
+        if path == artifact:
+            if read_error is UnicodeDecodeError:
+                raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid")
+            raise read_error("artifact read failed")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", failing_read_bytes)
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert "artifact" in result["failure_reasons"][0]
+    assert state_path.read_text() == original
+
+
 def test_accepts_099_coverage_but_hard_failures_and_critical_questions_block(tmp_path):
     (tmp_path / "mapa.md").write_text("artifact")
 
