@@ -1,6 +1,10 @@
 import pytest
+from pathlib import Path
 
 from scheduling_contract import validate_reschedule_events, validate_schedule_events
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 COMMON_EVENTS = [
@@ -107,3 +111,31 @@ def test_validate_reschedule_events_accepts_existing_post_flow():
 def test_validate_reschedule_events_rejects_duplicate_or_invalid_existing_post_flow(events):
     with pytest.raises(ValueError):
         validate_reschedule_events(events, "existing_post")
+
+
+def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
+    roadmap = (ROOT / "docs" / "roadmap.md").read_text()
+    report = (ROOT / ".superpowers" / "sdd" / "scheduling-task-3-report.md").read_text()
+
+    expected_cases = (
+        "new schedule with different date and time",
+        "new schedule for today with explicit date and time",
+        "reschedule existing post with same time and different date",
+        "wrong summary detected before Avançar",
+        "scheduled post missing from the scheduled list",
+    )
+    for case in expected_cases:
+        assert case in roadmap
+
+    assert "real verified" in roadmap
+    assert "summary divergence blocks Avançar" in roadmap
+    assert "confirmation/list absence blocks registration" in roadmap
+    assert "never duplicate" in roadmap
+    assert "route: browser/CDP fallback" in report
+    assert "requested timestamp: 01/09/2026 10:00" in report
+    assert "displayed timestamp: 01/09/2026 10:00" in report
+    assert "confirmation: pass" in report
+    assert "scheduled list: pass" in report
+
+    sensitive_terms = ("cookie", "account identifier", "private page content")
+    assert not any(term in report.lower() for term in sensitive_terms)
