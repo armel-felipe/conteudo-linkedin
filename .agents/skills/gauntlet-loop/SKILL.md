@@ -40,28 +40,41 @@ Para cada ciclo:
 5. Aceite o resultado apenas se ele for JSON valido, parseavel e conforme o contrato. O objeto deve conter `decision`, `coverage`, `criteria`, `hard_failures`, `feedback` e `artifact`.
 6. Persista `runs/<run_id>/topics/<topic_id>/reviews/cycle-<NN>.yaml` ou o caminho de review definido pelo caller antes de avancar.
 7. Aprove somente quando `decision` for `approved`, `coverage > 0.99` (coverage >99%, mais de 99%) e todos os criterios forem `>=9/10` (all criteria at least 9/10), sem `hard_failures`.
-8. Se a decisao for `feedback`, exija feedback completo e acionavel para cada criterio falho. O proximo executor recebe esse feedback e inicia um novo ciclo.
+8. Se o JSON for valido, mas `coverage <=99%` ou algum `criteria <9/10`, o resultado e `feedback`, nao bloqueia. Exija feedback completo e acionavel para cada criterio falho; o proximo executor recebe esse feedback e consome uma nova rodada.
+9. Se a decisao for `feedback`, exija feedback completo e acionavel para cada criterio falho. O proximo executor recebe esse feedback e inicia um novo ciclo.
+
+## Contrato JSON estrito
+
+Antes de avaliar gates, valide sem coercoes:
+
+- a resposta deve ser um objeto raiz JSON, nunca array, string, numero, `null` ou texto adicional;
+- os campos obrigatorios devem ter tipos corretos: `decision` string, `coverage` numero, `criteria` objeto, `hard_failures` lista, `feedback` lista e `artifact` string;
+- `decision` e um decision enum restrito a `approved` ou `feedback`;
+- `coverage` deve ser coverage finito e estar entre 0 e 1, inclusive; rejeite `NaN`, `Infinity`, strings e booleanos;
+- `criteria` deve ser criteria objeto nao vazio, com valores numeros 0-10, finitos e sem booleanos;
+- `hard_failures` e `feedback` devem ser hard_failures/feedback listas JSON, mesmo quando vazias;
+- `artifact` deve ser artifact string nao vazia, relativa ao workspace e igual ao artefato verificado.
+
+JSON invalido, objeto raiz errado, campo ausente, tipo incorreto, valor fora dos limites ou campo extra que quebre o contrato e falha estrutural terminal.
 
 ## Validacao fail-closed
 
-Qualquer uma destas condicoes bloqueia imediatamente, sem aprovar e sem tentar mascarar o erro:
+Qualquer uma destas condicoes bloqueia imediatamente, sem aprovar e sem tentar mascarar o erro. Estas sao as unicas categorias terminais:
 
-- executor ou revisor ausente, nao isolado ou chamado sem `task` nova;
+- executor/revisor indisponivel, ausente, nao isolado ou chamado sem `task` nova;
 - contrato ausente, entrada ambigua, missing artifact ou artefato ausente;
-- artefato fora do caminho esperado, vazio, incompleto ou nao verificavel;
-- saida do revisor que nao seja valid JSON, JSON valido, seja JSON truncado ou nao contenha todos os campos obrigatorios;
-- `decision` diferente de `approved` ou `feedback`;
-- `coverage` ausente, nao numerica ou igual/inferior a 99%;
-- criterio ausente, nao numerico, fora de 0-10 ou abaixo de 9/10;
-- `hard_failures` nao vazio;
+- artefato fora do caminho esperado, vazio, incompleto ou nao verificavel (artifact ausente);
+- saida do revisor que nao seja valid JSON, seja JSON truncado ou nao contenha todos os campos obrigatorios;
+- falha estrutural no objeto JSON, incluindo `decision` fora do enum, tipos incorretos, coverage nao finito ou fora de 0-1;
+- `hard_failures` nao vazio (hard failure);
 - feedback ausente ou incompleto quando houver retry; cada retry exige complete feedback;
 - falha em qualquer validacao deterministica (`failed validation`) ou erro de persistencia do review.
 
-Nao trate texto livre, JSON parcial ou uma aprovacao verbal como resultado estruturado. Em caso de duvida, o resultado e `blocked`.
+`coverage <=99%` e `criteria <9/10` nao sao falhas terminais quando o JSON, o artefato e os participantes sao validos: produzem `feedback` por criterio e nova rodada. Nao trate texto livre, JSON parcial ou uma aprovacao verbal como resultado estruturado. Em caso de duvida estrutural, o resultado e `blocked`.
 
 ## Limite terminal
 
-Execute no maximo 5 rodadas (maximum of 5 rounds). Apos a quinta rodada sem um resultado que passe todos os gates, escreva um resultado terminal `blocked` contendo:
+Execute no maximo 5 rodadas (maximum of 5 rounds). Faca retries ate 5 rodadas, sem sexta rodada. Apos a quinta rodada sem um resultado que passe todos os gates, escreva um resultado terminal `blocked` contendo:
 
 ```json
 {
@@ -87,8 +100,7 @@ Cada ciclo deve deixar um arquivo de review identificavel pelo numero `cycle-01`
 - [ ] deterministic checks passaram;
 - [ ] artefato existe no caminho relativo esperado;
 - [ ] review e JSON valido e completo;
-- [ ] coverage e maior que 99%;
-- [ ] todos os criterios sao no minimo 9/10;
+- [ ] coverage maior que 99% e todos os criterios no minimo 9/10, ou feedback foi gerado para cada falha de qualidade;
 - [ ] feedback e completo em cada retry;
 - [ ] limite de 5 rodadas foi respeitado;
 - [ ] resultado final e `approved` ou `blocked` e esta persistido.

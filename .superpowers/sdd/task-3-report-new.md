@@ -19,3 +19,20 @@ TDD evidence:
 
 - RED: `python3 -m pytest tests/test_gauntlet_skill.py -q` failed because the skill did not exist.
 - GREEN: focused tests passed after implementation.
+
+## Rodada 2
+
+Status: PASS
+
+Achados corrigidos:
+
+- `coverage <=99%` e `criteria <9/10` agora produzem `feedback` acionavel por criterio e consomem retry; somente falhas terminais bloqueiam.
+- O review agora exige JSON estrito: objeto raiz, tipos corretos, `coverage` finito entre 0 e 1, criterios numericos de 0 a 10, listas para `hard_failures` e `feedback`, artifact string nao vazia e decision enum.
+- Os testes cobrem retries ate 5 sem sexta rodada, feedback por criterio, diferenca entre hard failure e feedback e rejeicao de JSON invalido.
+
+TDD evidence:
+
+- RED: os tres testes novos falharam contra o contrato anterior.
+- GREEN: `python3 -m pytest tests/test_gauntlet_skill.py -q` passou com 6 testes.
+
+Task 2 e qualquer agendamento permaneceram inalterados.
