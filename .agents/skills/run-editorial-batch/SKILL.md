@@ -54,6 +54,7 @@ run_id: run_20260901_001
 created_at: "2026-09-01T10:00:00Z"
 selection: "--topics 3"
 queue_frozen: true
+queue_fingerprint: sha256:<64 lowercase hex characters>
 queue:
   - topic_id: topic_c
     position: 1
@@ -156,17 +157,17 @@ Não publique nem agende posts nesta skill: nunca chame `publicar-linkedin`.
 
 Depois de cada stage, persista exatamente nesta ordem: `artefato` → `resultado` → `state.yaml` → `evento` em `runs/<run_id>/events.yaml` → `manifesto`. O resultado de cada revisor fica em `runs/<run_id>/topics/<topic_id>/reviews/cycle-<NN>.yaml`, com o schema de review (`decision`, `coverage`, `criteria`, `hard_failures`, `feedback`, `artifact`).
 
-Uma escrita de checkpoint é válida somente quando o YAML parseia, `contract_version` é `"1"`, `run_id` e `topic_id` conferem com o caminho, o `result` existe, `last_artifact` e todos os `paths` são relativos ao workspace e existem, `input_fingerprint` é um SHA-256, a etapa está em `completed_stages` e `saved_at` está presente.
+Uma escrita de checkpoint é válida somente quando o YAML parseia, `contract_version` é `"1"`, `run_id` e `topic_id` conferem com o caminho, o `result` e `review` existem, `last_artifact`, `result_path`, `review_path` e todos os `paths` são os caminhos canônicos relativos ao workspace e existem, `input_fingerprint` é um SHA-256, a etapa está em `completed_stages`, `current_stage` é consistente com o status terminal e `saved_at` está presente.
 
 Escreva primeiro em arquivo temporário no mesmo diretório e renomeie atomicamente para cada artefato, resultado, `state.yaml`, `events.yaml`, review e `manifest.yaml`. O `manifest.yaml` é imutável depois de `queue_frozen: true`: `selection`, ordem, ids e scores não podem mudar. A gravação usa eventos `intent` e `commit`: se houver interrupção entre arquivos, um novo início detecta o `intent`, valida os arquivos existentes, completa somente o stage pendente e grava um único `commit` antes do manifesto. Ao reiniciar uma rodada, leia o manifesto e retome do último checkpoint válido; se o checkpoint não passar todas as validações, repita somente a etapa incompleta após corrigir o estado, sem recriar a fila.
 
-Cada stage/ciclo usa a chave idempotente `(run_id, topic_id, stage, cycle)`. Se essa chave já tiver artefato, resultado e review válidos, não execute o stage novamente; apenas avance a partir do checkpoint. Uma gravação repetida do mesmo resultado não cria evento, review ou arquivo duplicado nem altera a ordem da fila.
+Cada stage/ciclo usa a chave idempotente `(run_id, topic_id, stage, cycle)`. Se essa chave já tiver commit canônico, artefato, resultado, review e checkpoint válidos, não execute o stage novamente; qualquer divergência de payload, fingerprint, caminho ou evento bloqueia. Uma gravação repetida do mesmo resultado não cria evento, review ou arquivo duplicado nem altera a ordem da fila. Um `intent` só recupera arquivos que coincidam integralmente com o payload recebido; nunca autoriza sobrescrever um ciclo parcial divergente.
 
 ### Retomada e métricas do manifesto
 
 Every stage writes an event after its artifact and state are valid. Every reviewer result is saved per cycle, including feedback and hard failures. A resumed run skips only stages with valid artifacts and passing reviews; **Never rerun an approved topic automatically**. If an approved topic needs new work, start a new run with an explicit selection.
 
-The run manifest also records these metrics for the complete frozen queue:
+The run manifest also records these metrics for the complete frozen queue. Only complete canonical commit events with matching persisted result/review payloads contribute; malformed or incomplete commit-shaped events are rejected and never affect metrics:
 
 ```yaml
 metrics:

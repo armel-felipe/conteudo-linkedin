@@ -2,6 +2,7 @@ run_id: run_YYYYMMDD_NNN
 created_at: ISO-8601
 selection: "1 | N | all | comma-separated topic ids"
 queue_frozen: true
+queue_fingerprint: sha256:<64 lowercase hex characters>
 queue:
   - topic_id: topic_YYYYMMDD_NN
     position: 1
@@ -20,3 +21,4 @@ metrics:
 # human_writing_conformity: mean coverage of humanize_review_1 and humanize_review_2
 # cycles_per_stage: highest committed cycle number per stage
 # time_to_approval: ISO-8601 duration from created_at to approval_humana commit, or null
+# Checkpoints also require canonical result_path, review_path, paths, and review payload.

@@ -36,6 +36,62 @@ DEFAULT_METRICS = {
 }
 
 
+def _valid_id(value, prefix):
+    separator = "[-_]" if prefix in {"run_", "topic_"} else "_"
+    stem = prefix.rstrip("_-")
+    return isinstance(value, str) and re.fullmatch(rf"{stem}{separator}[A-Za-z0-9_]+", value) is not None
+
+
+def _queue_fingerprint(queue):
+    immutable_queue = [
+        {"topic_id": item.get("topic_id"), "position": item.get("position"), "score": item.get("score")}
+        for item in queue
+    ]
+    payload = yaml.safe_dump(immutable_queue, sort_keys=True).encode()
+    return "sha256:" + sha256(payload).hexdigest()
+
+
+def _valid_relative_file(root, relative_path):
+    if not isinstance(relative_path, str) or not relative_path or Path(relative_path).is_absolute():
+        return False
+    candidate = (root / relative_path).resolve()
+    return root in candidate.parents and candidate.is_file()
+
+
+def _valid_commit_event(event, root=None):
+    required = {
+        "event_id", "phase", "idempotency_key", "stage", "cycle", "artifact_path",
+        "result_path", "review_path", "committed_at", "result", "review",
+    }
+    if not isinstance(event, dict) or not required <= set(event) or event.get("phase") != "commit":
+        return False
+    key = event["idempotency_key"]
+    if (not isinstance(key, list) or len(key) != 4 or not _valid_id(key[0], "run_")
+            or not _valid_id(key[1], "topic_") or key[2] not in CANONICAL_STAGES
+            or isinstance(key[3], bool) or not isinstance(key[3], int) or key[3] < 1):
+        return False
+    if event["stage"] != key[2] or event["cycle"] != key[3]:
+        return False
+    if event["result_path"] != _canonical_result_path(*key):
+        return False
+    if not isinstance(event["review_path"], str) or not event["review_path"].endswith(
+        f"/reviews/cycle-{key[3]:02d}.yaml"
+    ):
+        return False
+    if not isinstance(event["result"], dict) or not isinstance(event["review"], dict):
+        return False
+    if root is not None:
+        try:
+            return (_valid_relative_file(root, event["artifact_path"])
+                    and _valid_relative_file(root, event["result_path"])
+                    and _valid_relative_file(root, event["review_path"])
+                    and _load_yaml(root / event["result_path"], "result") == event["result"]
+                    and _load_yaml(root / event["review_path"], "review") == event["review"])
+        except ValueError:
+            return False
+    return True
+
+
 def _atomic_write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False) as handle:
@@ -113,13 +169,15 @@ def freeze_manifest(runs_dir, run_id, selection, topics):
         "topics": {},
         "metrics": {**DEFAULT_METRICS, "queue_size": len(topics)},
     }
+    manifest["queue_fingerprint"] = _queue_fingerprint(manifest["queue"])
     _atomic_write(path, manifest)
     return manifest
 
 
 def checkpoint_valid(state, workspace_root):
     checkpoint = state.get("checkpoint", {})
-    if state.get("contract_version") != "1" or not state.get("run_id") or not state.get("topic_id"):
+    if (state.get("contract_version") != "1" or not _valid_id(state.get("run_id"), "run_")
+            or not _valid_id(state.get("topic_id"), "topic_")):
         return False
     if not checkpoint.get("result") or not checkpoint.get("last_artifact"):
         return False
@@ -132,12 +190,30 @@ def checkpoint_valid(state, workspace_root):
     fingerprint = checkpoint.get("input_fingerprint", "")
     if not re.fullmatch(r"sha256:[0-9a-f]{64}", fingerprint):
         return False
-    if not checkpoint.get("saved_at") or checkpoint.get("stage") not in state.get("completed_stages", []):
+    stage = checkpoint.get("stage")
+    if (not checkpoint.get("saved_at") or stage not in CANONICAL_STAGES
+            or stage not in state.get("completed_stages", [])
+            or not isinstance(state.get("completed_stages"), list)
+            or any(item not in CANONICAL_STAGES for item in state["completed_stages"])):
+        return False
+    expected_current = None if stage == CANONICAL_STAGES[-1] else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
+    if state.get("status") == "completed" and expected_current is not None:
+        return False
+    if state.get("status") == "running" and state.get("current_stage") != expected_current:
+        return False
+    if state.get("status") == "blocked" and state.get("current_stage") != stage:
         return False
     if checkpoint.get("result", {}).get("artifact") != checkpoint.get("last_artifact"):
         return False
     root = Path(workspace_root).resolve()
-    paths = [checkpoint["last_artifact"], *checkpoint.get("paths", [])]
+    if checkpoint.get("result_path") != _canonical_result_path(
+        state["run_id"], state["topic_id"], stage, checkpoint["cycle"]
+    ) or not isinstance(checkpoint.get("review_path"), str):
+        return False
+    paths = checkpoint.get("paths")
+    if paths != [checkpoint["last_artifact"], checkpoint["result_path"], checkpoint["review_path"]]:
+        return False
+    paths = [checkpoint["last_artifact"], *paths[1:]]
     for relative_path in paths:
         if Path(relative_path).is_absolute():
             return False
@@ -161,6 +237,12 @@ def checkpoint_valid(state, workspace_root):
     artifact_bytes = (root / checkpoint["last_artifact"]).read_bytes()
     if fingerprint != "sha256:" + sha256(artifact_bytes).hexdigest():
         return False
+    review_path_value = (root / checkpoint["review_path"]).resolve()
+    try:
+        if _load_yaml(review_path_value, "review") != checkpoint.get("review"):
+            return False
+    except ValueError:
+        return False
     return True
 
 
@@ -180,8 +262,15 @@ def _load_manifest(manifest_path, run_id):
         raise ValueError("manifest is corrupt or missing") from exc
     if not isinstance(manifest, dict) or manifest.get("contract_version") != "1":
         raise ValueError("manifest contract_version must be 1")
-    if manifest.get("run_id") != run_id or not manifest.get("queue_frozen"):
+    if (manifest.get("run_id") != run_id or not _valid_id(run_id, "run_")
+            or not manifest.get("queue_frozen") or not isinstance(manifest.get("queue"), list)
+            or manifest.get("queue_fingerprint") != _queue_fingerprint(manifest["queue"])):
         raise ValueError("manifest ids or frozen queue are invalid")
+    for position, item in enumerate(manifest["queue"], start=1):
+        if (not isinstance(item, dict) or not _valid_id(item.get("topic_id"), "topic_")
+                or item.get("position") != position or item.get("status") not in {"queued", "running", "blocked", "completed"}
+                or item.get("current_stage") not in CANONICAL_STAGES + [None]):
+            raise ValueError("manifest frozen queue is invalid")
     return manifest
 
 
@@ -220,7 +309,8 @@ def _valid_review(review, artifact_path):
 
 def _update_metrics(manifest, events):
     metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
-    reviews = [event["review"] for event in events if event.get("phase") == "commit" and isinstance(event.get("review"), dict)]
+    valid_events = [event for event in events if _valid_commit_event(event)]
+    reviews = [event["review"] for event in valid_events]
     coverages = [review["coverage"] for review in reviews if isinstance(review.get("coverage"), (int, float))]
     metrics["reviewer_coverage"] = sum(coverages) / len(coverages) if coverages else 0.0
     human = [
@@ -233,11 +323,7 @@ def _update_metrics(manifest, events):
     metrics["human_writing_conformity"] = sum(human) / len(human) if human else 0.0
     committed_cycles = {
         event.get("stage"): event.get("cycle")
-        for event in events
-        if event.get("phase") == "commit"
-        and isinstance(event.get("stage"), str)
-        and isinstance(event.get("cycle"), int)
-        and not isinstance(event.get("cycle"), bool)
+        for event in valid_events
     }
     metrics["cycles_per_stage"] = {
         stage: max(
@@ -247,7 +333,7 @@ def _update_metrics(manifest, events):
         )
         for stage in committed_cycles
     }
-    approval = next((event for event in events if event.get("phase") == "commit" and event.get("stage") == "approval_humana"), None)
+    approval = next((event for event in valid_events if event.get("stage") == "approval_humana"), None)
     if approval:
         try:
             started = datetime.fromisoformat(manifest["created_at"])
@@ -272,8 +358,13 @@ def continue_after_failure(
         "contract_version": "1", "run_id": run_id, "topic_id": topic_id,
         "completed_stages": [],
     }
-    if state.get("contract_version") != "1" or state.get("run_id") != run_id or state.get("topic_id") != topic_id:
+    if state.get("status") == "completed":
+        raise ValueError("terminal state cannot transition")
+    if (state.get("contract_version") != "1" or state.get("run_id") != run_id
+            or state.get("topic_id") != topic_id):
         raise ValueError("state ids are invalid")
+    if state.get("status") == "blocked" and state.get("current_stage") not in CANONICAL_STAGES:
+        raise ValueError("blocked current_stage is invalid")
     checkpoint = state.get("checkpoint", {})
     state.update(
         status="blocked",
@@ -284,6 +375,8 @@ def continue_after_failure(
         feedback=feedback if feedback is not None else state.get("feedback", []),
         cycle_count=cycle_count or state.get("cycle_count") or checkpoint.get("cycle", 0),
     )
+    if state["status"] == "blocked" and state.get("current_stage") not in CANONICAL_STAGES:
+        raise ValueError("blocked current_stage is invalid")
     _atomic_write(state_file, state)
     events_path = event_path(runs_dir, run_id)
     events = _load_events(events_path)
@@ -333,6 +426,8 @@ def persist_stage(
     result,
     review,
 ):
+    if not _valid_id(run_id, "run_") or not _valid_id(topic_id, "topic_"):
+        raise ValueError("run or topic id is invalid")
     if stage not in CANONICAL_STAGES:
         raise ValueError(f"unknown stage: {stage}")
     if Path(artifact_path).is_absolute():
@@ -352,10 +447,15 @@ def persist_stage(
         "status": "running", "current_stage": queue_item.get("current_stage", "research-topic"),
         "completed_stages": [],
     }
-    if state.get("contract_version") != "1" or state.get("run_id") != run_id or state.get("topic_id") != topic_id:
+    if (state.get("contract_version") != "1" or state.get("run_id") != run_id
+            or state.get("topic_id") != topic_id):
         raise ValueError("state ids are invalid")
+    if state.get("status") in {"blocked", "completed"}:
+        raise ValueError("terminal state cannot transition")
     events = event_path(runs_dir, run_id)
     existing = _load_events(events)
+    if any(event.get("phase") == "commit" and not _valid_commit_event(event) for event in existing["events"]):
+        raise ValueError("event commit is invalid")
     key = list(idempotency_key(run_id, topic_id, stage, cycle))
     result_file = Path(runs_dir) / run_id / "topics" / topic_id / "results" / f"{stage}-cycle-{cycle:02d}.yaml"
     result_relative = _canonical_result_path(run_id, topic_id, stage, cycle)
@@ -376,7 +476,8 @@ def persist_stage(
                 raise ValueError("checkpoint is divergent")
             stored_result = _load_yaml(root / event["result_path"], "result")
             stored_review = _load_yaml(root / event["review_path"], "review")
-            if stored_result != result or stored_review != review:
+            if (stored_result != result or stored_review != review or event.get("result") != result
+                    or event.get("review") != review):
                 raise ValueError("checkpoint payload is divergent")
             state = _load_yaml(state_file, "state")
             if not checkpoint_valid(state, root) or state["checkpoint"].get("stage") != stage:
@@ -389,6 +490,28 @@ def persist_stage(
         raise ValueError("stage prerequisites are incomplete")
     if not _valid_review(review, artifact_path):
         raise ValueError("review is invalid")
+    if (review.get("decision") != "approved" or review.get("coverage", 0) < 0.99
+            or any(score < 9 for score in review["criteria"].values())
+            or review.get("hard_failures") or review.get("feedback")):
+        raise ValueError("review quality gate failed")
+
+    pending_paths = [artifact, result_file, review_file]
+    if pending_intent and any(path.exists() for path in pending_paths):
+        if (not all(path.is_file() for path in pending_paths)
+                or artifact.read_bytes() != str(artifact_content).encode()
+                or _load_yaml(result_file, "result") != result
+                or _load_yaml(review_file, "review") != review):
+            raise ValueError("partial recovery payload is divergent")
+
+    intent = pending_intent or {
+        "event_id": f"evt_{len(existing['events']) + 1:04d}",
+        "phase": "intent", "idempotency_key": key, "stage": stage, "cycle": cycle,
+        "artifact_path": artifact_path, "result_path": result_relative,
+        "review_path": review_relative,
+    }
+    if pending_intent is None:
+        existing["events"].append(intent)
+        _atomic_write(events, existing)
 
     state["status"] = "running"
     _atomic_write_bytes(artifact, str(artifact_content).encode())
@@ -399,26 +522,20 @@ def persist_stage(
     state["current_stage"] = None if stage == "approval_humana" else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
     state["checkpoint"] = {
         "stage": stage, "cycle": cycle, "result": result,
+        "review": review,
         "last_artifact": artifact_path, "input_fingerprint": digest,
         "result_path": result_relative, "review_path": review_relative,
         "paths": [artifact_path, result_relative] + ([review_relative] if review is not None else []),
         "saved_at": datetime.now(timezone.utc).isoformat(),
     }
     _atomic_write(state_file, state)
-    intent = pending_intent or {
-        "event_id": f"evt_{len(existing['events']) + 1:04d}",
-        "phase": "intent", "idempotency_key": key, "stage": stage, "cycle": cycle,
-        "artifact_path": artifact_path, "result_path": result_relative,
-        "review_path": review_relative,
-    }
-    if pending_intent is None:
-        existing["events"].append(intent)
-        _atomic_write(events, existing)
     commit = dict(intent)
     commit["event_id"] = f"evt_{len(existing['events']) + 1:04d}"
     commit["phase"] = "commit"
     commit.update({"artifact_path": artifact_path, "result_path": result_relative, "review_path": review_relative})
     commit["committed_at"] = datetime.now(timezone.utc).isoformat()
+    commit["result"] = result
+    commit["review"] = review
     existing["events"].append(commit)
     _atomic_write(events, existing)
     manifest["persistence_order"] = PERSISTENCE_ORDER

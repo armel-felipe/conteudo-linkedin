@@ -6,6 +6,7 @@ import yaml
 
 from editorial_batch import (
     CANONICAL_STAGES,
+    DEFAULT_METRICS,
     PERSISTENCE_ORDER,
     checkpoint_valid,
     continue_after_failure,
@@ -17,6 +18,7 @@ from editorial_batch import (
     review_path,
     resume_stage,
     state_path,
+    _update_metrics,
 )
 from gauntlet_loop import NORMATIVE_CRITERIA
 
@@ -114,13 +116,18 @@ def test_checkpoint_requires_result_artifact_fingerprint_paths_and_validates_res
             "last_artifact": "research/briefs/topic_c.md",
             "input_fingerprint": "sha256:" + hashlib.sha256(b"brief").hexdigest(),
             "result_path": "runs/run_001/topics/topic_c/results/brief_review_gauntlet-cycle-01.yaml",
-            "paths": ["research/briefs/topic_c.md"],
+            "review_path": "runs/run_001/topics/topic_c/reviews/cycle-01.yaml",
+            "review": valid_review("research/briefs/topic_c.md"),
+            "paths": ["research/briefs/topic_c.md", "runs/run_001/topics/topic_c/results/brief_review_gauntlet-cycle-01.yaml", "runs/run_001/topics/topic_c/reviews/cycle-01.yaml"],
             "saved_at": "2026-09-01T10:00:00Z",
         },
     }
     result_file = tmp_path / "runs/run_001/topics/topic_c/results/brief_review_gauntlet-cycle-01.yaml"
     result_file.parent.mkdir(parents=True)
     result_file.write_text(yaml.safe_dump(state["checkpoint"]["result"]))
+    review_file = tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml"
+    review_file.parent.mkdir(parents=True)
+    review_file.write_text(yaml.safe_dump(state["checkpoint"]["review"]))
     assert checkpoint_valid(state, tmp_path) is True
     assert resume_stage(state) == "write-post"
     state["checkpoint"]["stage"] = "write-post"
@@ -219,7 +226,7 @@ def test_commit_event_requires_exact_artifact_result_and_review_paths(tmp_path):
     commit = events["events"][-1]
     commit["result_path"] = "content/draft.md"
     events_file.write_text(yaml.safe_dump(events))
-    with pytest.raises(ValueError, match="divergent"):
+    with pytest.raises(ValueError, match="divergent|event"):
         persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
                       "content/draft.md", "draft", {"ok": True},
                        valid_review("content/draft.md"))
@@ -426,13 +433,11 @@ def test_cycles_per_stage_are_rebuilt_from_committed_events(tmp_path):
     events["events"].append({"phase": "intent", "stage": "research-topic", "cycle": 99})
     events["events"].append({"phase": "commit", "stage": "research-topic", "cycle": 3})
     events_file.write_text(yaml.safe_dump(events))
-    persist_stage(
-        tmp_path / "runs", tmp_path, "run_001", "topic_c", "brief_review_gauntlet", 1,
-        "content/brief.md", "brief", {"ok": True}, valid_review("content/brief.md"),
-    )
-    manifest = yaml.safe_load((tmp_path / "runs/run_001/manifest.yaml").read_text())
-    assert manifest["metrics"]["cycles_per_stage"]["research-topic"] == 3
-    assert manifest["metrics"]["cycles_per_stage"]["brief_review_gauntlet"] == 1
+    with pytest.raises(ValueError, match="event"):
+        persist_stage(
+            tmp_path / "runs", tmp_path, "run_001", "topic_c", "brief_review_gauntlet", 1,
+            "content/brief.md", "brief", {"ok": True}, valid_review("content/brief.md"),
+        )
 
 
 def test_persist_stage_rejects_invalid_gauntlet_review_contract(tmp_path):
@@ -457,7 +462,7 @@ def test_approval_stage_sets_terminal_current_stage(tmp_path):
     freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
     for index, stage in enumerate(CANONICAL_STAGES, start=1):
         artifact_path = f"content/{stage}.md"
-        coverage = {"research-topic": 0.5, "humanize_review_1": 0.8}.get(stage, 1.0)
+        coverage = {"research-topic": 0.99, "humanize_review_1": 1.0}.get(stage, 1.0)
         review = valid_review(artifact_path)
         review["coverage"] = coverage
         persist_stage(
@@ -469,7 +474,135 @@ def test_approval_stage_sets_terminal_current_stage(tmp_path):
     assert state["current_stage"] is None
     assert manifest["queue"][0]["current_stage"] is None
     assert manifest["queue"][0]["status"] == "completed"
-    assert manifest["metrics"]["reviewer_coverage"] == 0.93
-    assert manifest["metrics"]["human_writing_conformity"] == 0.9
+    assert manifest["metrics"]["reviewer_coverage"] == 0.999
+    assert manifest["metrics"]["human_writing_conformity"] == 1.0
     assert manifest["metrics"]["cycles_per_stage"]["research-topic"] == 1
     assert manifest["metrics"]["time_to_approval"].startswith("PT")
+
+
+def test_idempotency_rejects_adultered_review_even_when_file_exists(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    artifact = "content/draft.md"
+    result = {"ok": True}
+    review = valid_review(artifact)
+    persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                  artifact, "draft", result, review)
+    adultered = dict(review)
+    adultered["coverage"] = 0.99
+    (tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml").write_text(yaml.safe_dump(adultered))
+    with pytest.raises(ValueError, match="payload|event"):
+        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                      artifact, "changed", result, adultered)
+
+
+def test_partial_recovery_rejects_existing_files_that_do_not_match_intent(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    events_file = tmp_path / "runs/run_001/events.yaml"
+    events_file.write_text(yaml.safe_dump({"contract_version": "1", "events": [{
+        "event_id": "evt_0001", "phase": "intent",
+        "idempotency_key": ["run_001", "topic_c", "research-topic", 1],
+        "artifact_path": "content/draft.md",
+        "result_path": "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml",
+        "review_path": "runs/run_001/topics/topic_c/reviews/cycle-01.yaml",
+    }]}))
+    (tmp_path / "content/draft.md").parent.mkdir(exist_ok=True)
+    (tmp_path / "content/draft.md").write_text("old")
+    with pytest.raises(ValueError, match="partial"):
+        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                      "content/draft.md", "new", {"ok": True}, valid_review("content/draft.md"))
+
+
+def test_blocked_or_terminal_state_cannot_transition_and_blocked_stage_is_canonical(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    state_file = state_path(tmp_path / "runs", "run_001", "topic_c")
+    state_file.parent.mkdir(parents=True)
+    state_file.write_text(yaml.safe_dump({
+        "contract_version": "1", "run_id": "run_001", "topic_id": "topic_c",
+        "status": "blocked", "current_stage": None, "completed_stages": [],
+    }))
+    with pytest.raises(ValueError, match="terminal|current_stage"):
+        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                      "content/draft.md", "draft", {"ok": True}, valid_review("content/draft.md"))
+    state_file.write_text(yaml.safe_dump({
+        "contract_version": "1", "run_id": "run_001", "topic_id": "topic_c",
+        "status": "completed", "current_stage": None, "completed_stages": CANONICAL_STAGES,
+    }))
+    with pytest.raises(ValueError, match="terminal"):
+        continue_after_failure(tmp_path / "runs", tmp_path, "run_001", "topic_c", "failed")
+
+
+def test_checkpoint_and_event_paths_and_ids_must_match_canonical_locations(tmp_path):
+    artifact = tmp_path / "brief.md"
+    artifact.write_text("brief")
+    state = {
+        "contract_version": "1", "run_id": "run", "topic_id": "topic",
+        "completed_stages": ["research-topic"],
+        "checkpoint": {
+            "stage": "research-topic", "cycle": 1, "result": {"ok": True},
+            "last_artifact": "brief.md", "result_path": "result.yaml",
+            "input_fingerprint": "sha256:" + hashlib.sha256(b"brief").hexdigest(),
+            "paths": ["brief.md", "result.yaml", "review.yaml"], "review_path": "review.yaml",
+            "saved_at": "now",
+        },
+    }
+    (tmp_path / "result.yaml").write_text(yaml.safe_dump({"ok": True}))
+    (tmp_path / "review.yaml").write_text(yaml.safe_dump({"ok": True}))
+    assert checkpoint_valid(state, tmp_path) is False
+
+
+def test_incomplete_commit_event_does_not_change_metrics(tmp_path):
+    manifest = {"queue": [], "metrics": {**DEFAULT_METRICS}}
+    events = [{"phase": "commit", "stage": "research-topic", "cycle": 99,
+               "review": {"coverage": 1.0}}]
+    _update_metrics(manifest, events)
+    assert manifest["metrics"]["cycles_per_stage"] == {}
+    assert manifest["metrics"]["reviewer_coverage"] == 0.0
+
+
+def test_persist_stage_rejects_quality_gate_failures(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    review = valid_review("content/draft.md")
+    review["coverage"] = 0.98
+    with pytest.raises(ValueError, match="quality gate"):
+        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                      "content/draft.md", "draft", {"ok": True}, review)
+
+
+def test_manifest_rejects_frozen_queue_tampering(tmp_path):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "1")
+    freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
+    manifest_path = tmp_path / "runs/run_001/manifest.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text())
+    manifest["queue"][0]["score"] = 1
+    manifest_path.write_text(yaml.safe_dump(manifest))
+    with pytest.raises(ValueError, match="frozen queue"):
+        freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
+
+
+def test_metrics_use_only_canonical_commits_and_real_review_coverage(tmp_path):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "1")
+    freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
+    persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+                  "content/research.md", "research", {"ok": True}, valid_review("content/research.md"))
+    events_path_value = event_path(tmp_path / "runs", "run_001")
+    events = yaml.safe_load(events_path_value.read_text())
+    events["events"].append({"phase": "commit", "stage": "write-post", "cycle": 40,
+                              "review": {"coverage": 0.0}})
+    events_path_value.write_text(yaml.safe_dump(events))
+    with pytest.raises(ValueError, match="event"):
+        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "brief_review_gauntlet", 1,
+                      "content/brief.md", "brief", {"ok": True}, valid_review("content/brief.md"))
