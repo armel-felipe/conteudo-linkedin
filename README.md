@@ -251,7 +251,9 @@ A skill `publicar-linkedin` usa a sessão logada do browser. Para agendamento, e
 <!-- agendado: 2026-09-10T09:00 America/Sao_Paulo -->
 ```
 
-A imagem continua sendo anexada manualmente quando necessário.
+A imagem continua sendo anexada manualmente quando necessário. A aprovação editorial é separada da operação de publicação/agendamento: somente um arquivo em `content/approved/` pode entrar nessa etapa.
+
+Na publicação pelo browser, a primeira tentativa é sempre Playwright. Para confirmações visuais, a rota é `screenshot + visão nativa → image-analyzer(native_failed) → stop`; o fallback não substitui evidência visual. O agendamento exige seleção explícita de data e horário, nova seleção do horário após trocar a data, resumo visual antes de `Avançar`, prévia final antes de `Agendar` e confirmação em `Publicações agendadas`. Para alterar um post existente, use `... → Alterar agenda`, nunca um compositor novo. O timestamp só é registrado no arquivo aprovado depois da confirmação na lista.
 
 ## Sequência resumida
 

@@ -29,8 +29,8 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 5. Aplicar agendamento:
    - Envio "agora": colar conteúdo, PAUSAR antes do clique final, informar que a pessoa pode anexar imagem manualmente, e aguardar o comando para concluir.
    - Agendado: abrir o seletor de agendamento e preencher data/hora conforme o caso (ver "Agendamento — detalhes").
-6. Registrar o agendamento no arquivo (ver "Registro do agendamento").
-7. Verificar o agendamento (ver "Verificação pós-agendamento").
+6. Verificar o agendamento (ver "Verificação pós-agendamento").
+7. Somente depois da verificação, registrar o agendamento no arquivo (ver "Registro do agendamento").
 
 ## Conversão Markdown → texto LinkedIn (OBRIGATÓRIA, antes da colagem)
 
@@ -68,10 +68,17 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 
 O seletor de agendamento do LinkedIn é um popover com campos de data e hora. Erros comuns: clicar em "amanhã" mas deixar a hora no padrão, ou preencher a data mas não confirmar o valor antes de clicar em "Agendar".
 
-- **Hoje mais tarde** (ex.: "hoje às 18h"): no seletor, escolher a data de HOJE e preencher a hora desejada.
-- **Outro dia** (ex.: "amanhã às 9h"): escolher o dia correto (amanhã, ou data específica) e preencher a hora.
-- **ANTES de clicar em "Agendar"**: confirmar visualmente que o valor exibido no seletor corresponde EXATAMENTE ao dia/mês/ano e hora pedidos. Se o valor exibido não bater, corrigir antes de agendar.
+- **Seleção explícita obrigatória**: escolher a data solicitada e preencher a hora solicitada; nunca aceitar silenciosamente os valores padrão.
+- **Hoje mais tarde** (ex.: "hoje às 18h"): selecionar explicitamente a data de HOJE e o horário desejado.
+- **Outro dia** (ex.: "amanhã às 9h"): selecionar explicitamente o dia correto e o horário desejado.
+- **Ao mudar a data**: selecionar novamente o horário, inclusive quando o horário desejado for o mesmo de antes; depois confirmar os dois valores.
+- **Antes de "Avançar"**: fazer um resumo visual e confirmar que data e hora exibidas correspondem exatamente ao pedido.
+- **Antes de "Agendar"**: confirmar visualmente a prévia final e o conteúdo correto; se qualquer valor não bater, corrigir antes de agendar.
 - Se o seletor não abrir ou os campos não aparecerem, parar e informar — não tentar agendar "às cegas".
+
+### Reagendamento
+
+Para um post já agendado, abrir a lista de publicações agendadas e usar exatamente `... → Alterar agenda`. Não abrir um compositor novo para corrigir um post existente. Depois de alterar a agenda, repetir a seleção explícita da data e do horário, incluindo selecionar novamente o horário após mudar a data, o resumo visual antes de "Avançar", a prévia final antes de "Agendar" e a verificação na lista.
 
 ## Registro do agendamento
 
@@ -90,16 +97,25 @@ Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arqu
 Após clicar em "Agendar", o LinkedIn mostra uma confirmação. Verificar:
 
 1. A confirmação apareceu (se não apareceu, o agendamento pode não ter sido criado — parar e informar).
-2. Navegar até "Ver publicações agendadas" (menu de publicações) e confirmar que o post está na lista, com a data/hora corretas.
+2. Navegar até "Ver publicações agendadas" (menu de publicações) e confirmar que o post está na lista, com a data/hora corretas. No reagendamento, confirmar a nova data/hora do post alterado.
 3. Se o post NÃO estiver na lista ou a data/hora estiverem erradas, informar a pessoa e NÃO concluir como sucesso — o agendamento falhou silenciosamente.
 
-## Visão (política nativa primeiro)
+A confirmação final deve ocorrer em **Publicações agendadas**, com o post e o horário esperado visíveis na lista.
 
-- Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo central de roteamento visual.
-- Quando houver visão nativa, analise a tela nativamente primeiro. Use essa análise para confirmar o estado da tela (campo de texto, botão publicar, seletor de agendamento).
-- Se o modelo não tiver visão nativa, delegue a leitura de tela ao subagente `image-analyzer` (task com `subagent_type "image-analyzer"`, passando o caminho do screenshot).
-- Se a visão nativa falhar, delegue ao `image-analyzer` com motivo `native_failed`.
-- Se nenhuma rota funcionar, ou se a imagem estiver ilegível, relate a limitação de leitura e não produza inferências sobre o estado da tela.
+## Visão e rota de interação
+
+Use esta ordem exata, sem tratar fallback como substituto de evidência visual:
+
+```text
+Playwright → screenshot + visão nativa → image-analyzer(native_failed) → stop
+```
+
+1. Tentar primeiro Playwright para localizar e interagir com os elementos acessíveis.
+2. Quando a interação exigir confirmação visual, capturar screenshot e usar visão nativa para produzir um resumo visual do estado: conteúdo, data, hora, botões e prévia.
+3. Se a visão nativa falhar, delegar ao `image-analyzer` com motivo `native_failed`, passando o screenshot. Isso é um fallback de leitura visual, não uma substituição por inferência.
+4. Se nenhuma rota funcionar ou a imagem estiver ilegível, parar, relatar a limitação e não inferir o estado da tela.
+
+Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar para a visão nativa.
 
 ## Credenciais
 
@@ -114,6 +130,9 @@ Após clicar em "Agendar", o LinkedIn mostra uma confirmação. Verificar:
 - Não validar que o arquivo está em approved/ — bloquear se não estiver.
 - Agendar sem confirmar o valor exibido no seletor — o LinkedIn pode manter data/hora padrão; confirmar antes de clicar em "Agendar".
 - Concluir como sucesso sem verificar "Ver publicações agendadas" — o agendamento pode ter falhado silenciosamente.
+- Usar outra rota antes de tentar Playwright, ou tratar o fallback visual como evidência ausente.
+- Não selecionar novamente o horário depois de trocar a data.
+- Reagendar abrindo um compositor novo em vez de usar `... → Alterar agenda`.
 - Não registrar o agendamento no arquivo do post — sem o bloco `<!-- agendado: ... -->` não há rastreabilidade.
 
 ## Roadmap (fora de escopo)
