@@ -366,9 +366,13 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
         state_path = directory / "state.yaml"
         try:
             existing = _load_json(state_path, None)
-        except (UnicodeDecodeError, OSError) as error:
+        except (UnicodeDecodeError, OSError, ValueError) as error:
             return blocked(0, [f"persistence error: {error}"])
-        if state_path.exists():
+        try:
+            state_exists = state_path.exists()
+        except (UnicodeDecodeError, OSError) as error:
+            return blocked(0, [f"persistence state validation failed: {error}"])
+        if state_exists:
             if not isinstance(existing, dict):
                 return blocked(0, ["state payload is invalid"])
             if existing.get("status") in {"approved", "blocked"}:
@@ -385,11 +389,11 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
         if directory is not None:
             try:
                 _persist_event(directory, run_id, artifact_path, cycle, "cycle-start", {"cycle": cycle})
-            except (UnicodeDecodeError, OSError) as error:
+            except (UnicodeDecodeError, OSError, ValueError) as error:
                 return blocked(cycle, [f"persistence error: {error}"], artifact_path)
         try:
             stored_review, partial_errors = _partial_review(directory, run_id, artifact_path, cycle)
-        except (UnicodeDecodeError, OSError) as error:
+        except (UnicodeDecodeError, OSError, ValueError) as error:
             return blocked(cycle, [f"persistence error: {error}"], artifact_path)
         if partial_errors:
             return _terminal(directory, blocked(cycle, partial_errors, artifact_path), root)

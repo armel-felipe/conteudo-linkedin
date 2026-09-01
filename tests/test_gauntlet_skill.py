@@ -812,3 +812,50 @@ def test_persistence_directory_exists_error_blocks_without_callbacks_or_state_ov
     assert result["failure_reasons"] == ["persistence directory validation failed: persistence metadata denied"]
     assert calls == []
     assert state_path.read_text() == original_state
+
+
+def test_state_path_exists_error_blocks_without_callbacks_or_state_overwrite(tmp_path, monkeypatch):
+    state_path = tmp_path / "state.yaml"
+    original_state = '{"status": "running"}\n'
+    state_path.write_text(original_state)
+    original_exists = Path.exists
+    calls = []
+
+    def failing_exists(path, *args, **kwargs):
+        if path == state_path:
+            raise PermissionError("state metadata denied")
+        return original_exists(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "exists", failing_exists)
+
+    result = run_gauntlet(
+        lambda feedback: calls.append("executor") or "mapa.md",
+        lambda artifact, feedback: calls.append("reviewer") or review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"] == ["persistence state validation failed: state metadata denied"]
+    assert calls == []
+    assert state_path.read_text() == original_state
+
+
+@pytest.mark.parametrize("corrupt_file", ["state.yaml", "events.yaml", "cycle-01.yaml"])
+def test_corrupt_resume_json_blocks_without_callbacks_or_overwriting(tmp_path, corrupt_file):
+    corrupt_path = tmp_path / corrupt_file
+    original = b"{not valid json\n"
+    corrupt_path.write_bytes(original)
+    calls = []
+
+    result = run_gauntlet(
+        lambda feedback: calls.append("executor") or "mapa.md",
+        lambda artifact, feedback: calls.append("reviewer") or review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"] == [f"persistence error: {corrupt_file} is corrupt"]
+    assert calls == []
+    assert corrupt_path.read_bytes() == original

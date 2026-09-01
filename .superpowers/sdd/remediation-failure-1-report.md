@@ -317,3 +317,53 @@ git diff --check -- gauntlet_loop.py tests/test_gauntlet_skill.py .superpowers/s
 ### Concerns
 
 - No residual concern identified within the requested filesystem boundary. The repository contains unrelated pre-existing worktree changes; they remain unstaged.
+
+## Remediation Round 2 — Resume Boundary
+
+### Scope
+
+This round changed only `gauntlet_loop.py`, `tests/test_gauntlet_skill.py`, and this report. Falha 2, batch, document integration, and scheduling were not changed.
+
+### Findings and Root Cause
+
+- `state_path.exists()` was outside the resume boundary, allowing `OSError`/`PermissionError` to escape before callback suppression and checkpoint preservation.
+- `_load_json()` intentionally raised `ValueError` for corrupt JSON, but resume callers only caught `OSError`/`UnicodeDecodeError`; corrupt `state.yaml`, `events.yaml`, or `cycle-*.yaml` therefore escaped.
+
+### RED
+
+Added a `state_path.exists()` monkeypatch regression and a parameterized corrupt-JSON regression for all three resume files. Each verifies `blocked`, the structured persistence reason, no callbacks, and byte-for-byte preservation of the corrupt file or state checkpoint.
+
+Focused RED output:
+
+```text
+4 failed, 60 deselected in 0.17s
+```
+
+### GREEN
+
+- Wrapped `state_path.exists()` and resume-state decisions in fail-closed handling with `persistence state validation failed: ...`.
+- Converted corrupt JSON `ValueError` from state preflight, event loading, and partial-cycle loading into `blocked` persistence results.
+- No corrupted source file is rewritten and no executor/reviewer callback runs on these resume failures.
+
+Focused GREEN output:
+
+```text
+PYTHONPATH=. python3 -m pytest -q tests/test_gauntlet_skill.py -k 'state_path_exists_error or corrupt_resume_json'
+4 passed, 60 deselected in 0.02s
+```
+
+Final verification:
+
+```text
+PYTHONPATH=. python3 -m pytest -q
+146 passed, 1 failed
+
+python3 -m compileall -q gauntlet_loop.py tests/test_gauntlet_skill.py
+git diff --check -- gauntlet_loop.py tests/test_gauntlet_skill.py .superpowers/sdd/remediation-failure-1-report.md
+```
+
+The single full-suite failure is the pre-existing integration test `tests/test_documentation_consistency.py::test_corrupt_gauntlet_events_and_state_fail_closed`, which still expects `ValueError` for corrupt `events.yaml`; updating that out-of-scope test was intentionally not done. The focused Gauntlet suite passes with the new required `blocked` behavior.
+
+### Concerns
+
+- The full suite retains one contradictory out-of-scope integration assertion described above; no integration file was changed per request. Compile and diff checks pass.
