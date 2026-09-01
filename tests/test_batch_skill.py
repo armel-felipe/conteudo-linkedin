@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from editorial_batch import (
     freeze_manifest,
     idempotency_key,
     load_and_select_topics,
+    persist_stage,
     review_path,
     resume_stage,
     state_path,
@@ -98,7 +100,7 @@ def test_checkpoint_requires_result_artifact_fingerprint_paths_and_validates_res
             "cycle": 1,
             "result": {"decision": "approved"},
             "last_artifact": "research/briefs/topic_c.md",
-            "input_fingerprint": "sha256:abc",
+            "input_fingerprint": "sha256:" + hashlib.sha256(b"brief").hexdigest(),
             "paths": ["research/briefs/topic_c.md"],
             "saved_at": "2026-09-01T10:00:00Z",
         },
@@ -147,3 +149,78 @@ def test_failed_topic_is_blocked_before_continuing_to_next_queue_item():
     remaining = continue_after_failure(queue, "topic_a", "missing artifact")
     assert queue[0] == {"topic_id": "topic_a", "status": "blocked", "error": "missing artifact"}
     assert remaining == ["topic_b"]
+
+
+def test_persist_stage_writes_all_run_artifacts_in_order_and_is_idempotent(tmp_path):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(
+        tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics", "1"
+    )
+    freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
+    result = {"decision": "approved", "artifact": "content/drafts/topic_c.md"}
+    review = {
+        "decision": "approved",
+        "coverage": 1.0,
+        "criteria": {"evidence": 9},
+        "hard_failures": [],
+        "feedback": [],
+        "artifact": "content/drafts/topic_c.md",
+    }
+
+    first = persist_stage(
+        tmp_path / "runs",
+        tmp_path,
+        "run_001",
+        "topic_c",
+        "research-topic",
+        1,
+        "content/drafts/topic_c.md",
+        "draft",
+        result,
+        review,
+    )
+    second = persist_stage(
+        tmp_path / "runs",
+        tmp_path,
+        "run_001",
+        "topic_c",
+        "research-topic",
+        1,
+        "content/drafts/topic_c.md",
+        "changed",
+        result,
+        review,
+    )
+
+    assert first["persistence_order"] == PERSISTENCE_ORDER
+    assert second == first
+    assert (tmp_path / "content/drafts/topic_c.md").read_text() == "draft"
+    assert (tmp_path / "runs/run_001/topics/topic_c/state.yaml").exists()
+    assert (tmp_path / "runs/run_001/events.yaml").exists()
+    assert (tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml").exists()
+    events = yaml.safe_load((tmp_path / "runs/run_001/events.yaml").read_text())
+    assert len(events["events"]) == 1
+    assert events["events"][0]["idempotency_key"] == ["run_001", "topic_c", "research-topic", 1]
+    state = yaml.safe_load(
+        (tmp_path / "runs/run_001/topics/topic_c/state.yaml").read_text()
+    )
+    assert state["checkpoint"]["input_fingerprint"] == "sha256:" + hashlib.sha256(b"draft").hexdigest()
+    assert checkpoint_valid(state, tmp_path) is True
+    assert not list((tmp_path / "runs/run_001").glob("*.tmp"))
+
+
+def test_persist_stage_rejects_invalid_manifest_contract_and_absolute_artifact(tmp_path):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(
+        tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics", "1"
+    )
+    freeze_manifest(tmp_path / "runs", "run_001", "1", topics)
+    manifest_path = tmp_path / "runs/run_001/manifest.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text())
+    manifest["contract_version"] = "2"
+    manifest_path.write_text(yaml.safe_dump(manifest))
+    with pytest.raises(ValueError, match="contract_version"):
+        persist_stage(
+            tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+            "content/drafts/topic_c.md", "draft", {}, {},
+        )

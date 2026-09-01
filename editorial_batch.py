@@ -4,6 +4,7 @@ import os
 import re
 import tempfile
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 
 import yaml
@@ -28,6 +29,14 @@ def _atomic_write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False) as handle:
         yaml.safe_dump(value, handle, sort_keys=False)
+        temporary = handle.name
+    os.replace(temporary, path)
+
+
+def _atomic_write_bytes(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("wb", dir=path.parent, delete=False) as handle:
+        handle.write(value)
         temporary = handle.name
     os.replace(temporary, path)
 
@@ -101,20 +110,26 @@ def freeze_manifest(runs_dir, run_id, selection, topics):
 
 def checkpoint_valid(state, workspace_root):
     checkpoint = state.get("checkpoint", {})
-    if not state.get("run_id") or not state.get("topic_id"):
+    if state.get("contract_version") != "1" or not state.get("run_id") or not state.get("topic_id"):
         return False
     if not checkpoint.get("result") or not checkpoint.get("last_artifact"):
         return False
-    if not checkpoint.get("input_fingerprint", "").startswith("sha256:"):
+    fingerprint = checkpoint.get("input_fingerprint", "")
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", fingerprint):
         return False
     if not checkpoint.get("saved_at") or checkpoint.get("stage") not in state.get("completed_stages", []):
         return False
     root = Path(workspace_root).resolve()
     paths = [checkpoint["last_artifact"], *checkpoint.get("paths", [])]
     for relative_path in paths:
+        if Path(relative_path).is_absolute():
+            return False
         candidate = (root / relative_path).resolve()
         if root not in candidate.parents or not candidate.is_file():
             return False
+    artifact_bytes = (root / checkpoint["last_artifact"]).read_bytes()
+    if fingerprint != "sha256:" + sha256(artifact_bytes).hexdigest():
+        return False
     return True
 
 
@@ -143,3 +158,77 @@ def state_path(runs_dir, run_id, topic_id):
 
 def review_path(runs_dir, run_id, topic_id, cycle):
     return Path(runs_dir) / run_id / "topics" / topic_id / "reviews" / f"cycle-{cycle:02d}.yaml"
+
+
+def persist_stage(
+    runs_dir,
+    workspace_root,
+    run_id,
+    topic_id,
+    stage,
+    cycle,
+    artifact_path,
+    artifact_content,
+    result,
+    review,
+):
+    if stage not in CANONICAL_STAGES:
+        raise ValueError(f"unknown stage: {stage}")
+    if Path(artifact_path).is_absolute():
+        raise ValueError("artifact path must be relative")
+    root = Path(workspace_root).resolve()
+    artifact = (root / artifact_path).resolve()
+    if root not in artifact.parents:
+        raise ValueError("artifact path must stay inside workspace")
+    manifest_path = Path(runs_dir) / run_id / "manifest.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text())
+    if manifest.get("contract_version") != "1":
+        raise ValueError("manifest contract_version must be 1")
+    if manifest.get("run_id") != run_id or topic_id not in {item["topic_id"] for item in manifest.get("queue", [])}:
+        raise ValueError("manifest ids do not match stage")
+
+    events = event_path(runs_dir, run_id)
+    existing = yaml.safe_load(events.read_text()) if events.exists() else {"contract_version": "1", "events": []}
+    key = list(idempotency_key(run_id, topic_id, stage, cycle))
+    for event in existing["events"]:
+        if event["idempotency_key"] == key:
+            return yaml.safe_load((Path(runs_dir) / run_id / "manifest.yaml").read_text())
+
+    _atomic_write_bytes(artifact, str(artifact_content).encode())
+    result_file = Path(runs_dir) / run_id / "topics" / topic_id / "results" / f"{stage}-cycle-{cycle:02d}.yaml"
+    _atomic_write(result_file, result)
+    digest = "sha256:" + sha256(artifact.read_bytes()).hexdigest()
+    review_file = review_path(runs_dir, run_id, topic_id, cycle)
+    result_relative = str(result_file.resolve().relative_to(root))
+    review_relative = str(review_file.resolve().relative_to(root))
+    state_file = state_path(runs_dir, run_id, topic_id)
+    state = yaml.safe_load(state_file.read_text()) if state_file.exists() else {
+        "contract_version": "1", "run_id": run_id, "topic_id": topic_id,
+        "status": "running", "completed_stages": [],
+    }
+    if review is not None:
+        _atomic_write(review_file, review)
+    state["completed_stages"] = [*state.get("completed_stages", []), stage]
+    state["current_stage"] = CANONICAL_STAGES[min(CANONICAL_STAGES.index(stage) + 1, len(CANONICAL_STAGES) - 1)]
+    state["checkpoint"] = {
+        "stage": stage, "cycle": cycle, "result": result,
+        "last_artifact": artifact_path, "input_fingerprint": digest,
+        "paths": [artifact_path, result_relative] + ([review_relative] if review is not None else []),
+        "saved_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _atomic_write(state_file, state)
+    event = {
+        "event_id": f"evt_{len(existing['events']) + 1:04d}",
+        "idempotency_key": key, "stage": stage, "cycle": cycle,
+        "artifact_path": artifact_path, "result_path": result_relative,
+        "review_path": review_relative if review is not None else None,
+    }
+    existing["events"].append(event)
+    _atomic_write(events, existing)
+    manifest["persistence_order"] = PERSISTENCE_ORDER
+    for item in manifest["queue"]:
+        if item["topic_id"] == topic_id:
+            item["status"] = "completed" if stage == "approval_humana" else "running"
+            item["current_stage"] = state["current_stage"]
+    _atomic_write(manifest_path, manifest)
+    return manifest
