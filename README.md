@@ -72,6 +72,8 @@ Rode run-editorial-batch --topics topic_20260831_01,topic_20260831_03
 
 O lote retoma do último checkpoint válido e nunca publica automaticamente. `orquestrador-runtime` permanece disponível apenas como legado e não é o ponto de entrada do fluxo novo.
 
+Cada etapa grava seu artefato, estado e evento; cada resultado de revisor é preservado por ciclo. Na retomada, somente etapas com artefato válido e review aprovado são puladas. Um topic aprovado nunca é reexecutado automaticamente. O manifesto também registra `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human-writing_conformity` e `time-to-approval`.
+
 ### 1. Descobrir sinais — diariamente
 
 **Pedido ao agente:**
@@ -264,6 +266,8 @@ A imagem continua sendo anexada manualmente quando necessário.
 ```
 
 Dentro de `run-editorial-batch`, não pule a revisão do brief, a crítica, a correção Gauntlet, as duas revisões com `escrita-humana` nem a aprovação humana. `orquestrador-runtime` continua legado e não deve ser usado como alternativa.
+
+O agendamento permanece separado do lote e pertence ao plano de publicação do LinkedIn. Só chame `publicar-linkedin` depois da aprovação humana e por solicitação explícita.
 
 ## Estados dos artefatos
 

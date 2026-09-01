@@ -161,6 +161,26 @@ Escreva primeiro em arquivo temporário no mesmo diretório e renomeie atomicame
 
 Cada stage/ciclo usa a chave idempotente `(run_id, topic_id, stage, cycle)`. Se essa chave já tiver artefato, resultado e review válidos, não execute o stage novamente; apenas avance a partir do checkpoint. Uma gravação repetida do mesmo resultado não cria evento, review ou arquivo duplicado nem altera a ordem da fila.
 
+### Retomada e métricas do manifesto
+
+Every stage writes an event after its artifact and state are valid. Every reviewer result is saved per cycle, including feedback and hard failures. A resumed run skips only stages with valid artifacts and passing reviews; **Never rerun an approved topic automatically**. If an approved topic needs new work, start a new run with an explicit selection.
+
+The run manifest also records these metrics for the complete frozen queue:
+
+```yaml
+metrics:
+  queue_size: 3
+  completed: 2
+  blocked: 1
+  cycles_per_stage:
+    brief_review_gauntlet: 2
+  reviewer_coverage: 1.0
+  human-writing_conformity: 1.0
+  time-to-approval: "PT42M"
+```
+
+The metric keys mean queue size, completed and blocked topics, cycles per stage, reviewer coverage, human-writing conformity, and elapsed time to human approval. Metrics are updated in the manifest without changing the frozen queue.
+
 Se uma etapa falhar, registre o erro e o artefato mais recente, marque o topic como `blocked` e persista o checkpoint antes de continuar para o próximo item da fila. Uma falha individual não interrompe a rodada nem libera o topic para a etapa seguinte. Ao final, o manifest deve registrar o resultado de todos os itens, inclusive `blocked`, e a aprovação humana continua sendo necessária antes de qualquer publicação.
 
 Exemplo de falha sem interromper a fila:
@@ -197,6 +217,8 @@ stages:
 ```
 
 `publicar-linkedin` não faz parte da sequência e nunca é chamada por esta skill.
+
+Scheduling remains outside this batch and belongs to the separate LinkedIn publishing plan. The batch may finish with `approval_humana`, but publication or scheduling requires an explicit later call to `publicar-linkedin`.
 
 ## Checklist Rápido
 
