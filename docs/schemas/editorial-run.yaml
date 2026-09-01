@@ -21,4 +21,7 @@ metrics:
 # human_writing_conformity: mean coverage of humanize_review_1 and humanize_review_2
 # cycles_per_stage: highest committed cycle number per stage
 # time_to_approval: ISO-8601 duration from created_at to approval_humana commit, or null
-# Checkpoints also require canonical result_path, review_path, paths, and review payload.
+# Checkpoints require known status, result.artifact, canonical result_path/review_path/paths,
+# relative paths inside the workspace, and a passing review gate (coverage >= 0.99,
+# 14 criteria >= 9, no hard failures, and no unresolved feedback).
+# Commit events require evt_NNNN, an ISO-8601 timestamp, canonical paths, and a passing review.

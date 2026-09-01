@@ -138,7 +138,7 @@ def test_manifest_metrics_are_aggregated_by_the_persistence_runtime(tmp_path):
         artifact = f"content/{stage}.md"
         persist_stage(
             tmp_path / "runs", tmp_path, "run-1", "topic_a", stage, 1,
-            artifact, stage, {"stage": stage}, _review(artifact),
+            artifact, stage, {"stage": stage, "artifact": artifact}, _review(artifact),
         )
 
     manifest = yaml.safe_load((tmp_path / "runs/run-1/manifest.yaml").read_text())

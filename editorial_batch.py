@@ -34,6 +34,7 @@ DEFAULT_METRICS = {
     "human_writing_conformity": 0.0,
     "time_to_approval": None,
 }
+VALID_STATE_STATUSES = {"running", "blocked", "completed"}
 
 
 def _valid_id(value, prefix):
@@ -52,10 +53,36 @@ def _queue_fingerprint(queue):
 
 
 def _valid_relative_file(root, relative_path):
-    if not isinstance(relative_path, str) or not relative_path or Path(relative_path).is_absolute():
+    if not _clean_relative_path(relative_path):
         return False
     candidate = (root / relative_path).resolve()
     return root in candidate.parents and candidate.is_file()
+
+
+def _clean_relative_path(value):
+    return (
+        isinstance(value, str)
+        and value
+        and not Path(value).is_absolute()
+        and all(part not in {".", ".."} for part in Path(value).parts)
+    )
+
+
+def _review_passes(review, artifact_path):
+    if not _review_is_structural(review, artifact_path):
+        return False
+    return (
+        review.get("artifact") == artifact_path
+        and review.get("decision") == "approved"
+        and review.get("coverage", 0) >= 0.99
+        and all(score >= 9 for score in review["criteria"].values())
+        and review.get("hard_failures") == []
+        and review.get("feedback") == []
+    )
+
+
+def _review_is_structural(review, artifact_path):
+    return isinstance(review, dict) and validate_review(review)["valid"] and review.get("artifact") == artifact_path
 
 
 def _valid_commit_event(event, root=None):
@@ -63,7 +90,13 @@ def _valid_commit_event(event, root=None):
         "event_id", "phase", "idempotency_key", "stage", "cycle", "artifact_path",
         "result_path", "review_path", "committed_at", "result", "review",
     }
-    if not isinstance(event, dict) or not required <= set(event) or event.get("phase") != "commit":
+    if (not isinstance(event, dict) or not required <= set(event) or event.get("phase") != "commit"
+            or not isinstance(event.get("event_id"), str)
+            or re.fullmatch(r"evt_[0-9]{4}", event["event_id"]) is None):
+        return False
+    try:
+        datetime.fromisoformat(event["committed_at"])
+    except (TypeError, ValueError):
         return False
     key = event["idempotency_key"]
     if (not isinstance(key, list) or len(key) != 4 or not _valid_id(key[0], "run_")
@@ -72,21 +105,19 @@ def _valid_commit_event(event, root=None):
         return False
     if event["stage"] != key[2] or event["cycle"] != key[3]:
         return False
-    if event["result_path"] != _canonical_result_path(*key):
+    if (not _clean_relative_path(event.get("artifact_path"))
+            or event["result_path"] != _canonical_result_path(*key)):
         return False
-    if not isinstance(event["review_path"], str) or not event["review_path"].endswith(
-        f"/reviews/cycle-{key[3]:02d}.yaml"
-    ):
+    expected_review_path = str(Path("runs") / key[0] / "topics" / key[1] / "reviews" / f"cycle-{key[3]:02d}.yaml")
+    if event["review_path"] != expected_review_path:
         return False
-    if not isinstance(event["result"], dict) or not isinstance(event["review"], dict):
+    if (not isinstance(event["result"], dict) or not _review_passes(event["review"], event["artifact_path"])):
         return False
     if root is not None:
         try:
             return (_valid_relative_file(root, event["artifact_path"])
                     and _valid_relative_file(root, event["result_path"])
-                    and _valid_relative_file(root, event["review_path"])
-                    and _load_yaml(root / event["result_path"], "result") == event["result"]
-                    and _load_yaml(root / event["review_path"], "review") == event["review"])
+                    and _load_yaml(root / event["result_path"], "result") == event["result"])
         except ValueError:
             return False
     return True
@@ -193,6 +224,7 @@ def checkpoint_valid(state, workspace_root):
     stage = checkpoint.get("stage")
     if (not checkpoint.get("saved_at") or stage not in CANONICAL_STAGES
             or stage not in state.get("completed_stages", [])
+            or state.get("status") not in VALID_STATE_STATUSES
             or not isinstance(state.get("completed_stages"), list)
             or any(item not in CANONICAL_STAGES for item in state["completed_stages"])):
         return False
@@ -206,16 +238,17 @@ def checkpoint_valid(state, workspace_root):
     if checkpoint.get("result", {}).get("artifact") != checkpoint.get("last_artifact"):
         return False
     root = Path(workspace_root).resolve()
+    expected_review_path = str(Path("runs") / state["run_id"] / "topics" / state["topic_id"] / "reviews" / f"cycle-{checkpoint['cycle']:02d}.yaml")
     if checkpoint.get("result_path") != _canonical_result_path(
         state["run_id"], state["topic_id"], stage, checkpoint["cycle"]
-    ) or not isinstance(checkpoint.get("review_path"), str):
+    ) or checkpoint.get("review_path") != expected_review_path:
         return False
     paths = checkpoint.get("paths")
     if paths != [checkpoint["last_artifact"], checkpoint["result_path"], checkpoint["review_path"]]:
         return False
     paths = [checkpoint["last_artifact"], *paths[1:]]
     for relative_path in paths:
-        if Path(relative_path).is_absolute():
+        if not _clean_relative_path(relative_path):
             return False
         candidate = (root / relative_path).resolve()
         if root not in candidate.parents or not candidate.is_file():
@@ -239,7 +272,8 @@ def checkpoint_valid(state, workspace_root):
         return False
     review_path_value = (root / checkpoint["review_path"]).resolve()
     try:
-        if _load_yaml(review_path_value, "review") != checkpoint.get("review"):
+        review = _load_yaml(review_path_value, "review")
+        if review != checkpoint.get("review") or not _review_passes(review, checkpoint["last_artifact"]):
             return False
     except ValueError:
         return False
@@ -301,10 +335,7 @@ def _canonical_result_path(run_id, topic_id, stage, cycle):
 
 
 def _valid_review(review, artifact_path):
-    return (
-        validate_review(review)["valid"]
-        and review["artifact"] == artifact_path
-    )
+    return _review_passes(review, artifact_path)
 
 
 def _update_metrics(manifest, events):
@@ -314,10 +345,8 @@ def _update_metrics(manifest, events):
     coverages = [review["coverage"] for review in reviews if isinstance(review.get("coverage"), (int, float))]
     metrics["reviewer_coverage"] = sum(coverages) / len(coverages) if coverages else 0.0
     human = [
-        event["review"]["coverage"] for event in events
-        if event.get("phase") == "commit"
-        and str(event.get("stage", "")).startswith("humanize_review_")
-        and isinstance(event.get("review"), dict)
+        event["review"]["coverage"] for event in valid_events
+        if str(event.get("stage", "")).startswith("humanize_review_")
         and isinstance(event["review"].get("coverage"), (int, float))
     ]
     metrics["human_writing_conformity"] = sum(human) / len(human) if human else 0.0
@@ -328,8 +357,8 @@ def _update_metrics(manifest, events):
     metrics["cycles_per_stage"] = {
         stage: max(
             event["cycle"]
-            for event in events
-            if event.get("phase") == "commit" and event.get("stage") == stage
+            for event in valid_events
+            if event.get("stage") == stage
         )
         for stage in committed_cycles
     }
@@ -430,8 +459,14 @@ def persist_stage(
         raise ValueError("run or topic id is invalid")
     if stage not in CANONICAL_STAGES:
         raise ValueError(f"unknown stage: {stage}")
-    if Path(artifact_path).is_absolute():
-        raise ValueError("artifact path must be relative")
+    if not _clean_relative_path(artifact_path):
+        raise ValueError("artifact path must be clean relative path")
+    if not _review_is_structural(review, artifact_path):
+        raise ValueError("review is invalid")
+    if not _review_passes(review, artifact_path):
+        raise ValueError("review quality gate failed")
+    if not isinstance(result, dict) or result.get("artifact") != artifact_path:
+        raise ValueError("result artifact is invalid")
     root = Path(workspace_root).resolve()
     artifact = (root / artifact_path).resolve()
     if root not in artifact.parents:
@@ -450,6 +485,8 @@ def persist_stage(
     if (state.get("contract_version") != "1" or state.get("run_id") != run_id
             or state.get("topic_id") != topic_id):
         raise ValueError("state ids are invalid")
+    if state.get("status") not in {None, *VALID_STATE_STATUSES}:
+        raise ValueError("state status is invalid")
     if state.get("status") in {"blocked", "completed"}:
         raise ValueError("terminal state cannot transition")
     events = event_path(runs_dir, run_id)
@@ -465,6 +502,13 @@ def persist_stage(
         (event for event in existing["events"] if event.get("idempotency_key") == key and event.get("phase") == "intent"),
         None,
     )
+    expected_intent = {
+        "idempotency_key": key, "stage": stage, "cycle": cycle,
+        "artifact_path": artifact_path, "result_path": result_relative,
+        "review_path": review_relative, "result": result, "review": review,
+    }
+    if pending_intent and any(pending_intent.get(name) != value for name, value in expected_intent.items()):
+        raise ValueError("intent path or payload is divergent")
     for event in existing["events"]:
         if event.get("idempotency_key") == key and event.get("phase") == "commit":
             expected_paths = {
@@ -488,13 +532,6 @@ def persist_stage(
         raise ValueError("stage does not match current_stage")
     if any(prerequisite not in state.get("completed_stages", []) for prerequisite in CANONICAL_STAGES[:CANONICAL_STAGES.index(stage)]):
         raise ValueError("stage prerequisites are incomplete")
-    if not _valid_review(review, artifact_path):
-        raise ValueError("review is invalid")
-    if (review.get("decision") != "approved" or review.get("coverage", 0) < 0.99
-            or any(score < 9 for score in review["criteria"].values())
-            or review.get("hard_failures") or review.get("feedback")):
-        raise ValueError("review quality gate failed")
-
     pending_paths = [artifact, result_file, review_file]
     if pending_intent and any(path.exists() for path in pending_paths):
         if (not all(path.is_file() for path in pending_paths)
@@ -507,7 +544,7 @@ def persist_stage(
         "event_id": f"evt_{len(existing['events']) + 1:04d}",
         "phase": "intent", "idempotency_key": key, "stage": stage, "cycle": cycle,
         "artifact_path": artifact_path, "result_path": result_relative,
-        "review_path": review_relative,
+        "review_path": review_relative, "result": result, "review": review,
     }
     if pending_intent is None:
         existing["events"].append(intent)

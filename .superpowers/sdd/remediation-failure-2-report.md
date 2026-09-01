@@ -29,6 +29,10 @@ Foram adicionados testes focados em `tests/test_batch_skill.py` para cada falha:
 - Eventos commit incompletos são rejeitados; métricas usam somente commits completos.
 - `persist_stage` aplica `approved`, cobertura mínima de `0.99`, critérios no mínimo `9`, zero hard failure e zero feedback aberto.
 
+## Rodada 2
+
+Os achados P1 foram reproduzidos antes das alterações com regressões de ausência de gravação, paths `..`, intent divergente, status desconhecido, evento incompleto e checkpoint sem gate. A correção valida result/review/gate antes de qualquer escrita, rejeita paths não canônicos, inclui payload no intent, valida `event_id`/timestamp/review e recalcula métricas exclusivamente com commits válidos. `checkpoint_valid` reaplica o gate editorial completo.
+
 ## Verificação Gauntlet
 
 - Gate: `coverage >= 0.99`.
