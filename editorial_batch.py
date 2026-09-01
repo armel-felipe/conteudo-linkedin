@@ -81,10 +81,7 @@ def load_and_select_topics(backlog_path, topics_dir, selection):
 def freeze_manifest(runs_dir, run_id, selection, topics):
     path = Path(runs_dir) / run_id / "manifest.yaml"
     if path.exists():
-        manifest = yaml.safe_load(path.read_text())
-        if not manifest.get("queue_frozen"):
-            raise ValueError("existing manifest is not frozen")
-        return manifest
+        return _load_manifest(path, run_id)
 
     manifest = {
         "contract_version": "1",
@@ -119,6 +116,8 @@ def checkpoint_valid(state, workspace_root):
         return False
     if not checkpoint.get("saved_at") or checkpoint.get("stage") not in state.get("completed_stages", []):
         return False
+    if checkpoint.get("result", {}).get("artifact") != checkpoint.get("last_artifact"):
+        return False
     root = Path(workspace_root).resolve()
     paths = [checkpoint["last_artifact"], *checkpoint.get("paths", [])]
     for relative_path in paths:
@@ -142,10 +141,62 @@ def idempotency_key(run_id, topic_id, stage, cycle):
     return run_id, topic_id, stage, cycle
 
 
-def continue_after_failure(queue, topic_id, error):
-    item = next(item for item in queue if item["topic_id"] == topic_id)
-    item.update(status="blocked", error=error)
-    return [item["topic_id"] for item in queue if item["status"] == "queued"]
+def _load_manifest(manifest_path, run_id):
+    manifest = yaml.safe_load(manifest_path.read_text())
+    if manifest.get("contract_version") != "1":
+        raise ValueError("manifest contract_version must be 1")
+    if manifest.get("run_id") != run_id or not manifest.get("queue_frozen"):
+        raise ValueError("manifest ids or frozen queue are invalid")
+    return manifest
+
+
+def _load_events(events_path):
+    if not events_path.exists():
+        return {"contract_version": "1", "events": []}
+    try:
+        events = yaml.safe_load(events_path.read_text())
+    except yaml.YAMLError as exc:
+        raise ValueError("events are corrupt") from exc
+    if not isinstance(events, dict) or events.get("contract_version") != "1" or not isinstance(events.get("events"), list):
+        raise ValueError("events are invalid")
+    return events
+
+
+def _valid_review(review, artifact_path):
+    required = {"decision", "coverage", "criteria", "hard_failures", "feedback", "artifact"}
+    return (
+        isinstance(review, dict)
+        and required <= set(review)
+        and review["decision"] in {"approved", "feedback"}
+        and isinstance(review["feedback"], list)
+        and review["artifact"] == artifact_path
+    )
+
+
+def continue_after_failure(runs_dir, workspace_root, run_id, topic_id, error):
+    manifest_path = Path(runs_dir) / run_id / "manifest.yaml"
+    manifest = _load_manifest(manifest_path, run_id)
+    item = next((item for item in manifest["queue"] if item["topic_id"] == topic_id), None)
+    if item is None:
+        raise ValueError("topic is not in manifest")
+    state_file = state_path(runs_dir, run_id, topic_id)
+    state = yaml.safe_load(state_file.read_text()) if state_file.exists() else {
+        "contract_version": "1", "run_id": run_id, "topic_id": topic_id,
+        "completed_stages": [],
+    }
+    if state.get("contract_version") != "1" or state.get("run_id") != run_id or state.get("topic_id") != topic_id:
+        raise ValueError("state ids are invalid")
+    state.update(status="blocked", current_stage=None, failure={"error": error})
+    _atomic_write(state_file, state)
+    events_path = event_path(runs_dir, run_id)
+    events = _load_events(events_path)
+    key = list(idempotency_key(run_id, topic_id, "blocked", 0))
+    if not any(event.get("idempotency_key") == key and event.get("phase") == "commit" for event in events["events"]):
+        events["events"].append({"event_id": f"evt_{len(events['events']) + 1:04d}", "type": "topic_blocked", "phase": "commit", "idempotency_key": key, "error": error})
+        _atomic_write(events_path, events)
+    item.update(status="blocked", current_stage=None, error=error)
+    _atomic_write(manifest_path, manifest)
+    return [entry["topic_id"] for entry in manifest["queue"] if entry["status"] == "queued"]
 
 
 def event_path(runs_dir, run_id):
@@ -181,18 +232,37 @@ def persist_stage(
     if root not in artifact.parents:
         raise ValueError("artifact path must stay inside workspace")
     manifest_path = Path(runs_dir) / run_id / "manifest.yaml"
-    manifest = yaml.safe_load(manifest_path.read_text())
-    if manifest.get("contract_version") != "1":
-        raise ValueError("manifest contract_version must be 1")
-    if manifest.get("run_id") != run_id or topic_id not in {item["topic_id"] for item in manifest.get("queue", [])}:
+    manifest = _load_manifest(manifest_path, run_id)
+    queue_item = next((item for item in manifest["queue"] if item["topic_id"] == topic_id), None)
+    if queue_item is None:
         raise ValueError("manifest ids do not match stage")
-
+    state_file = state_path(runs_dir, run_id, topic_id)
+    state = yaml.safe_load(state_file.read_text()) if state_file.exists() else {
+        "contract_version": "1", "run_id": run_id, "topic_id": topic_id,
+        "status": "running", "current_stage": queue_item.get("current_stage", "research-topic"),
+        "completed_stages": [],
+    }
+    if state.get("contract_version") != "1" or state.get("run_id") != run_id or state.get("topic_id") != topic_id:
+        raise ValueError("state ids are invalid")
     events = event_path(runs_dir, run_id)
-    existing = yaml.safe_load(events.read_text()) if events.exists() else {"contract_version": "1", "events": []}
+    existing = _load_events(events)
     key = list(idempotency_key(run_id, topic_id, stage, cycle))
+    pending_intent = next(
+        (event for event in existing["events"] if event.get("idempotency_key") == key and event.get("phase") == "intent"),
+        None,
+    )
     for event in existing["events"]:
-        if event["idempotency_key"] == key:
-            return yaml.safe_load((Path(runs_dir) / run_id / "manifest.yaml").read_text())
+        if event.get("idempotency_key") == key and event.get("phase") == "commit":
+            event_paths = [event.get("artifact_path"), event.get("result_path"), event.get("review_path")]
+            if all(path and not Path(path).is_absolute() and (root / path).is_file() for path in event_paths):
+                return yaml.safe_load(manifest_path.read_text())
+    expected_stage = state.get("current_stage", queue_item.get("current_stage"))
+    if stage != expected_stage:
+        raise ValueError("stage does not match current_stage")
+    if any(prerequisite not in state.get("completed_stages", []) for prerequisite in CANONICAL_STAGES[:CANONICAL_STAGES.index(stage)]):
+        raise ValueError("stage prerequisites are incomplete")
+    if not _valid_review(review, artifact_path):
+        raise ValueError("review is invalid")
 
     _atomic_write_bytes(artifact, str(artifact_content).encode())
     result_file = Path(runs_dir) / run_id / "topics" / topic_id / "results" / f"{stage}-cycle-{cycle:02d}.yaml"
@@ -201,15 +271,9 @@ def persist_stage(
     review_file = review_path(runs_dir, run_id, topic_id, cycle)
     result_relative = str(result_file.resolve().relative_to(root))
     review_relative = str(review_file.resolve().relative_to(root))
-    state_file = state_path(runs_dir, run_id, topic_id)
-    state = yaml.safe_load(state_file.read_text()) if state_file.exists() else {
-        "contract_version": "1", "run_id": run_id, "topic_id": topic_id,
-        "status": "running", "completed_stages": [],
-    }
-    if review is not None:
-        _atomic_write(review_file, review)
+    _atomic_write(review_file, review)
     state["completed_stages"] = [*state.get("completed_stages", []), stage]
-    state["current_stage"] = CANONICAL_STAGES[min(CANONICAL_STAGES.index(stage) + 1, len(CANONICAL_STAGES) - 1)]
+    state["current_stage"] = None if stage == "approval_humana" else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
     state["checkpoint"] = {
         "stage": stage, "cycle": cycle, "result": result,
         "last_artifact": artifact_path, "input_fingerprint": digest,
@@ -217,13 +281,20 @@ def persist_stage(
         "saved_at": datetime.now(timezone.utc).isoformat(),
     }
     _atomic_write(state_file, state)
-    event = {
+    intent = pending_intent or {
         "event_id": f"evt_{len(existing['events']) + 1:04d}",
-        "idempotency_key": key, "stage": stage, "cycle": cycle,
+        "phase": "intent", "idempotency_key": key, "stage": stage, "cycle": cycle,
         "artifact_path": artifact_path, "result_path": result_relative,
-        "review_path": review_relative if review is not None else None,
+        "review_path": review_relative,
     }
-    existing["events"].append(event)
+    if pending_intent is None:
+        existing["events"].append(intent)
+        _atomic_write(events, existing)
+    commit = dict(intent)
+    commit["event_id"] = f"evt_{len(existing['events']) + 1:04d}"
+    commit["phase"] = "commit"
+    commit.update({"artifact_path": artifact_path, "result_path": result_relative, "review_path": review_relative})
+    existing["events"].append(commit)
     _atomic_write(events, existing)
     manifest["persistence_order"] = PERSISTENCE_ORDER
     for item in manifest["queue"]:

@@ -23,6 +23,7 @@ def test_gauntlet_review_schema_has_required_keys_and_decision_enum():
         "artifact",
     }
     assert review["properties"]["decision"]["enum"] == ["approved", "feedback"]
+    assert review["properties"]["feedback"]["type"] == "array"
 
 
 def test_runtime_runs_are_ignored_but_keep_file_is_tracked():

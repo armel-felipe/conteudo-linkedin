@@ -115,6 +115,7 @@ runs/<run_id>/topics/<topic_id>/reviews/cycle-01.yaml
 contract_version: "1"
 events:
   - event_id: evt_0001
+    phase: commit
     idempotency_key: [run_20260901_001, topic_c, brief_review_gauntlet, 1]
     stage: brief_review_gauntlet
     cycle: 1
@@ -146,6 +147,8 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 
 Cada stage usa executor e revisor separados. Cada Gauntlet executa no máximo 5 ciclos, só aprova com `coverage >99%` e todos os critérios `>=9/10`; resposta inválida, artefato ausente ou falha de validação bloqueia o topic. `brief_review_gauntlet` exige duas fontes independentes quando disponíveis e conexão explícita com a experiência do autor. `critique-post` produz feedback; a correção acontece no `correction_gauntlet`. `humanize_pass_1` e `humanize_pass_2` são obrigatórios e cada um precisa de seu próprio review.
 
+O stage recebido deve ser igual ao `current_stage` persistido e todos os stages anteriores devem estar em `completed_stages`; execução fora de ordem é rejeitada. Depois de `approval_humana`, `current_stage` passa a `null` e o item passa a `completed`.
+
 Não publique nem agende posts nesta skill: nunca chame `publicar-linkedin`.
 
 ## Checkpoints, Retomada, Idempotência e Falhas
@@ -154,7 +157,7 @@ Depois de cada stage, persista exatamente nesta ordem: `artefato` → `resultado
 
 Uma escrita de checkpoint é válida somente quando o YAML parseia, `contract_version` é `"1"`, `run_id` e `topic_id` conferem com o caminho, o `result` existe, `last_artifact` e todos os `paths` são relativos ao workspace e existem, `input_fingerprint` é um SHA-256, a etapa está em `completed_stages` e `saved_at` está presente.
 
-Escreva primeiro em arquivo temporário no mesmo diretório e renomeie atomicamente para `manifest.yaml` ou `state.yaml`. O `manifest.yaml` é imutável depois de `queue_frozen: true`: `requested`, ordem, ids e scores não podem mudar. Ao reiniciar uma rodada, leia o manifesto e retome do último checkpoint válido; se o checkpoint não passar todas as validações, repita somente a etapa incompleta após corrigir o estado, sem recriar a fila.
+Escreva primeiro em arquivo temporário no mesmo diretório e renomeie atomicamente para cada artefato, resultado, `state.yaml`, `events.yaml`, review e `manifest.yaml`. O `manifest.yaml` é imutável depois de `queue_frozen: true`: `selection`, ordem, ids e scores não podem mudar. A gravação usa eventos `intent` e `commit`: se houver interrupção entre arquivos, um novo início detecta o `intent`, valida os arquivos existentes, completa somente o stage pendente e grava um único `commit` antes do manifesto. Ao reiniciar uma rodada, leia o manifesto e retome do último checkpoint válido; se o checkpoint não passar todas as validações, repita somente a etapa incompleta após corrigir o estado, sem recriar a fila.
 
 Cada stage/ciclo usa a chave idempotente `(run_id, topic_id, stage, cycle)`. Se essa chave já tiver artefato, resultado e review válidos, não execute o stage novamente; apenas avance a partir do checkpoint. Uma gravação repetida do mesmo resultado não cria evento, review ou arquivo duplicado nem altera a ordem da fila.
 

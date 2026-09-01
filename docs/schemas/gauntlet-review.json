@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Editorial Gauntlet Review",
+  "type": "object",
+  "required": [
+    "decision",
+    "coverage",
+    "criteria",
+    "hard_failures",
+    "feedback",
+    "artifact"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["approved", "feedback"]
+    },
+    "coverage": {
+      "type": "number"
+    },
+    "criteria": {
+      "type": "object"
+    },
+    "hard_failures": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "feedback": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "artifact": {
+      "type": "string"
+    }
+  }
+}

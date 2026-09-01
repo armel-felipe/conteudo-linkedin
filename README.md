@@ -286,6 +286,7 @@ Os estados dos topics ficam em `research/topics/topics_*.yaml`. Os arquivos de p
 - `content/published/` — posts publicados
 - `memory/` — experiência, opiniões e estilo
 - `.agents/skills/` — skills do pipeline
+- `editorial_batch.py` — contratos reutilizáveis de seleção e persistência do batch; não é uma CLI própria
 - `docs/roadmap.md` — ações futuras
 - `mapa.md` — guia de todas as skills
 - `AGENTS.md` — contrato de operação
