@@ -1,0 +1,94 @@
+---
+name: gauntlet-loop
+description: Use para executar uma tarefa nova em ciclos isolados de executor e revisor, com gates determinísticos, feedback persistente e bloqueio fail-closed.
+---
+
+# Loop Gauntlet
+
+## Objetivo
+
+Validar um artefato produzido por uma tarefa nova sem confiar no contexto ou no resultado do ciclo anterior. O Gauntlet consome um contrato de executor, um contrato de revisor, o caminho do artefato e o feedback disponível; produz um review por ciclo e um resultado terminal `approved` ou `blocked`.
+
+O caller decide se deve continuar a fila depois de um `blocked`. O Gauntlet nunca libera uma tarefa bloqueada por conta propria.
+
+## Contratos de entrada
+
+Antes de iniciar, confirme que existem:
+
+- contrato do executor, incluindo objetivo, entradas, saida esperada e caminho do artefato;
+- contrato do revisor, incluindo criterios, escala e formato JSON;
+- caminho relativo do artefato dentro do workspace;
+- feedback completo do ciclo anterior, quando houver.
+
+Ausencia, ambiguidade ou divergencia em qualquer entrada e falha de validacao. Nao improvise valores nem converta um caminho absoluto em relativo.
+
+## Ciclo obrigatorio
+
+O ciclo exato e:
+
+```text
+cycle-start → executor → deterministic checks → fresh reviewer
+→ structured result → approve or feedback → next cycle
+```
+
+Para cada ciclo:
+
+1. Registre `cycle-start` com o numero do ciclo, contrato e caminho do artefato.
+2. Faca uma chamada `task` nova e isolada para o `executor`. Nao reutilize a conversa, estado ou memoria de outro executor.
+3. Confirme deterministicamente que o executor respeitou o contrato, escreveu o artefato no caminho relativo esperado e nao produziu saida incompleta.
+4. Faca outra chamada `task` nova e isolada para o `revisor`, diferente do executor. Entregue somente o artefato, o contrato do revisor e o feedback necessario.
+5. Aceite o resultado apenas se ele for JSON valido, parseavel e conforme o contrato. O objeto deve conter `decision`, `coverage`, `criteria`, `hard_failures`, `feedback` e `artifact`.
+6. Persista `runs/<run_id>/topics/<topic_id>/reviews/cycle-<NN>.yaml` ou o caminho de review definido pelo caller antes de avancar.
+7. Aprove somente quando `decision` for `approved`, `coverage > 0.99` (coverage >99%, mais de 99%) e todos os criterios forem `>=9/10` (all criteria at least 9/10), sem `hard_failures`.
+8. Se a decisao for `feedback`, exija feedback completo e acionavel para cada criterio falho. O proximo executor recebe esse feedback e inicia um novo ciclo.
+
+## Validacao fail-closed
+
+Qualquer uma destas condicoes bloqueia imediatamente, sem aprovar e sem tentar mascarar o erro:
+
+- executor ou revisor ausente, nao isolado ou chamado sem `task` nova;
+- contrato ausente, entrada ambigua, missing artifact ou artefato ausente;
+- artefato fora do caminho esperado, vazio, incompleto ou nao verificavel;
+- saida do revisor que nao seja valid JSON, JSON valido, seja JSON truncado ou nao contenha todos os campos obrigatorios;
+- `decision` diferente de `approved` ou `feedback`;
+- `coverage` ausente, nao numerica ou igual/inferior a 99%;
+- criterio ausente, nao numerico, fora de 0-10 ou abaixo de 9/10;
+- `hard_failures` nao vazio;
+- feedback ausente ou incompleto quando houver retry; cada retry exige complete feedback;
+- falha em qualquer validacao deterministica (`failed validation`) ou erro de persistencia do review.
+
+Nao trate texto livre, JSON parcial ou uma aprovacao verbal como resultado estruturado. Em caso de duvida, o resultado e `blocked`.
+
+## Limite terminal
+
+Execute no maximo 5 rodadas (maximum of 5 rounds). Apos a quinta rodada sem um resultado que passe todos os gates, escreva um resultado terminal `blocked` contendo:
+
+```json
+{
+  "status": "blocked",
+  "failure_reasons": ["..."],
+  "failed_criteria": ["..."],
+  "last_artifact": "relative/path/to/artifact",
+  "cycle_count": 5
+}
+```
+
+Inclua tambem o ultimo review persistido e o feedback recebido. Nao abra uma sexta rodada, nao aprove por aproximacao e nao continue automaticamente a fila. O caller, nao o Gauntlet, decide se continua o batch queue.
+
+Os campos `failure reasons`, `failed criteria`, `last artifact` e `cycle count` sao obrigatorios no registro terminal, ainda que tambem sejam serializados nas chaves JSON com underscore.
+
+## Persistencia e idempotencia
+
+Cada ciclo deve deixar um arquivo de review identificavel pelo numero `cycle-01` ate `cycle-05`. Escreva de forma atomica e nao sobrescreva um review valido com resultado diferente para a mesma chave `(run_id, topic_id, gauntlet, cycle)`. Ao retomar, valide o review existente; se estiver invalido, bloqueie em vez de confiar nele.
+
+## Checklist
+
+- [ ] executor e revisor sao chamadas `task` novas e isoladas;
+- [ ] deterministic checks passaram;
+- [ ] artefato existe no caminho relativo esperado;
+- [ ] review e JSON valido e completo;
+- [ ] coverage e maior que 99%;
+- [ ] todos os criterios sao no minimo 9/10;
+- [ ] feedback e completo em cada retry;
+- [ ] limite de 5 rodadas foi respeitado;
+- [ ] resultado final e `approved` ou `blocked` e esta persistido.
