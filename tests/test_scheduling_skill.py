@@ -386,3 +386,34 @@ def test_receipt_rejects_unknown_evidence_status_and_completed_dry_run():
     receipt["confirmation"] = "pass"
     with pytest.raises(ValueError):
         validate_receipt(receipt)
+
+
+@pytest.mark.parametrize("field", ["confirmation", "scheduled_list", "timestamp_registered"])
+def test_dry_run_receipt_cannot_claim_completion_evidence(field):
+    receipt = {
+        "evidence_status": "simulated",
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "",
+        "displayed_timestamp": "",
+        "date_selected": "not_run",
+        "time_selected": "not_run",
+        "summary": "not_run",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
+        "duplicate_created": False,
+    }
+    receipt[field] = "pass"
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
+
+
+def test_round_five_report_preserves_existing_schedule_and_states_five_real_scenarios_as_gap():
+    report = (ROOT / ".superpowers" / "sdd" / "scheduling-task-3-report.md").read_text()
+    assert "## Rodada 5" in report
+    assert "agendamento existente" in report.lower()
+    assert "timestamp existente não foi alterado" in report.lower()
+    assert "cinco cenários reais" in report.lower()
+    assert report.lower().count("not_run") >= 5

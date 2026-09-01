@@ -2,7 +2,7 @@
 
 ## Status
 
-PASS para o contrato e o protocolo seguro da rodada 4. Nenhuma ação mutante foi executada no LinkedIn.
+PASS para o contrato e o protocolo seguro da rodada 5. Nenhuma ação foi executada no LinkedIn.
 
 ## Receipt estruturada
 
@@ -59,3 +59,14 @@ dois últimos.
 - `validate_receipt()` exige `evidence_status` em allowlist e impede receipts dry-run de alegarem confirmação, presença na lista ou timestamp registrado.
 - `validate_dry_run_events()` exige seleção de data, seleção de horário, resumo confirmado e `blocked_before_advance`; rejeita eventos mutantes ou de conclusão.
 - A rodada 4 não executou criação, publicação, agendamento, exclusão ou alteração de publicação por segurança. O caminho existente `... → Alterar agenda` também não foi confirmado.
+
+## Rodada 5
+
+- Nenhum dos cinco cenários tem evidência de execução real no browser nesta rodada; esse é o gap dos cinco cenários reais.
+- `new schedule with different date and time`: `not_run`.
+- `new schedule for today with explicit date and time`: `not_run`.
+- `reschedule existing post with same time and different date`: `not_run`; o agendamento existente foi preservado e o timestamp existente não foi alterado.
+- `wrong summary detected before Avançar`: `simulated`; contrato/teste, sem confirmação real.
+- `scheduled post missing from the scheduled list`: `simulated`; contrato/teste, sem confirmação real.
+- O dry-run termina em `blocked_before_advance` e não pode ser convertido em `confirmation`, `scheduled_list` ou `timestamp_registered`; esses campos permanecem `not_run`.
+- O receipt permanece honesto: somente evidência registrada pode usar estado real; cenários não executados permanecem `not_run`.

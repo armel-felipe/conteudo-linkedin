@@ -94,7 +94,7 @@ Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arqu
 - Se o arquivo já tiver um bloco `<!-- agendado: ... -->` anterior, substituir pelo novo.
 - Isso garante rastreabilidade de "o que está agendado para quando" sem depender de memória de conversa.
 
-## Protocolo browser dry-run (rodada 4)
+## Protocolo browser dry-run (rodadas 4 e 5)
 
 Quando a finalidade for produzir evidência sem mutar o LinkedIn, executar
 somente a sequência abaixo:
