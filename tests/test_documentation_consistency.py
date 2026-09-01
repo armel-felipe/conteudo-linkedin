@@ -77,16 +77,22 @@ def test_resume_rejects_divergent_artifact_result_review_or_fingerprint(tmp_path
 def test_corrupt_gauntlet_events_and_state_fail_closed(tmp_path):
     artifact = tmp_path / "draft.md"
     artifact.write_text("draft")
-    (tmp_path / "events.yaml").write_text("{broken")
-    with pytest.raises(ValueError, match="corrupt"):
-        run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
-                     artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+    events_path = tmp_path / "events.yaml"
+    events_path.write_text("{broken")
+    result = run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                          artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"] == ["persistence error: events.yaml is corrupt"]
+    assert events_path.read_text() == "{broken"
 
-    (tmp_path / "events.yaml").unlink()
-    (tmp_path / "state.yaml").write_text("{broken")
-    with pytest.raises(ValueError, match="corrupt"):
-        run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
-                     artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+    events_path.unlink()
+    state_path = tmp_path / "state.yaml"
+    state_path.write_text("{broken")
+    result = run_gauntlet(lambda feedback: "draft.md", lambda path, feedback: _review(path),
+                          artifact_path="draft.md", workspace_root=tmp_path, persistence_dir=tmp_path)
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"] == ["persistence error: state.yaml is corrupt"]
+    assert state_path.read_text() == "{broken"
 
 
 def test_resume_requires_matching_review_and_artifact_fingerprint(tmp_path):
