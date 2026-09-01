@@ -1,50 +1,54 @@
-from pathlib import Path
+from scheduling_contract import expected_schedule_events, reschedule_events, visual_route
 
 
-SKILL = Path(".agents/skills/publicar-linkedin/SKILL.md")
+EXPECTED_EVENTS = (
+    "approved_file",
+    "markdown_converted",
+    "playwright_attempt",
+    "screenshot_fallback_if_needed",
+    "visual_route",
+    "date_selected",
+    "time_selected",
+    "summary_confirmed",
+    "advance",
+    "final_preview_confirmed",
+    "schedule",
+    "confirmation",
+    "scheduled_list_confirmed",
+    "timestamp_registered",
+)
 
 
-def read_skill():
-    return SKILL.read_text()
+def test_scheduling_contract_emits_expected_event_sequence():
+    assert expected_schedule_events() == EXPECTED_EVENTS
 
 
-def test_native_vision_route_is_ordered_and_has_explicit_failure_reasons():
-    text = read_skill()
-    assert "Playwright → screenshot + visão nativa → image-analyzer(native_failed) → stop" in text
-
-    no_native = text[text.index("## Visão e rota de interação") :]
-    assert "não tiver visão nativa" in no_native
-    assert "reason: no_native_vision" in no_native
-    assert "sem tentar visão nativa" in no_native
-
-    native_failed = no_native.index("reason: native_failed")
-    stop = no_native.index("parar, relatar a limitação", native_failed)
-    assert native_failed < stop
+def test_rescheduling_uses_existing_post_and_never_a_new_composer():
+    assert reschedule_events() == (
+        "existing_post_menu",
+        "alter_schedule",
+        "date_selected",
+        "time_selected",
+    )
+    assert "new_composer" not in reschedule_events()
 
 
-def test_scheduling_has_visual_gates_before_advancing_and_agending():
-    text = read_skill()
-    scheduling = text[text.index("## Agendamento — detalhes") :]
-
-    assert 'resumo visual antes de "Avançar"' in scheduling
-    assert 'prévia final antes de "Agendar"' in scheduling
-    assert text.index("6. Verificar o agendamento") < text.index("7. Somente depois da verificação")
-
-
-def test_approved_text_needs_no_new_textual_approval_but_needs_visual_validation():
-    text = read_skill()
-
-    assert "NÃO pedir nova confirmação textual" in text
-    assert 'validação visual do resumo, da prévia final e da publicação em "Publicações agendadas" é obrigatória' in text
-    assert "sem pausa na skill e sem nova validação" not in text
-
-
-def test_existing_scheduled_post_is_changed_in_place_without_duplicate():
-    text = read_skill()
-    reschedule = text[text.index("### Reagendamento") : text.index("## Registro do agendamento")]
-
-    assert "publicação existente" in reschedule
-    assert "... → Alterar agenda" in reschedule
-    assert "Nunca criar duplicata" in reschedule
-    assert "Não abrir um compositor novo" not in reschedule
-    assert "nem abrir um compositor novo" in reschedule
+def test_visual_routes_cover_branches_and_stop_on_unreadable_image():
+    assert visual_route("playwright") == ("playwright_attempt", "visual_route")
+    assert visual_route("no_native_vision") == (
+        "playwright_attempt",
+        "image-analyzer:reason=no_native_vision",
+        "visual_route",
+    )
+    assert visual_route("native_failed") == (
+        "playwright_attempt",
+        "screenshot_fallback_if_needed",
+        "image-analyzer:reason=native_failed",
+        "visual_route",
+    )
+    assert visual_route("unreadable_image") == (
+        "playwright_attempt",
+        "screenshot_fallback_if_needed",
+        "image-analyzer:reason=unreadable_image",
+        "stop",
+    )
