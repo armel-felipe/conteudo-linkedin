@@ -17,7 +17,7 @@ O procedimento executavel esta em `gauntlet_loop.py` e expoe somente estas inter
 
 ```python
 validate_review(review) -> dict
-run_gauntlet(executor, reviewer, max_cycles=5) -> dict
+run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence_dir=None, run_id="run", workspace_root=None) -> dict
 ```
 
 `executor(feedback) -> artifact` e `reviewer(artifact, feedback) -> review` sao callbacks separados. Cada chamada recebe uma copia profunda de contexto novo e isolado; nenhum callback pode compartilhar ou mutar o estado interno de outro ciclo. `validate_review` faz a validacao estrutural estrita e identifica criterios abaixo do gate; `run_gauntlet` transforma falhas de qualidade em `feedback`, repete ate cinco rodadas e reserva `blocked` para falhas terminais ou esgotamento.

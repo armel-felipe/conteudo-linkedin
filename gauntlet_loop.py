@@ -90,8 +90,20 @@ def _blocked(cycle, reasons, artifact="", last_review=None, feedback=None, faile
 def _relative_artifact(value):
     if not isinstance(value, str) or not value.strip():
         return False
+    if "\\" in value or (len(value) > 1 and value[1] == ":"):
+        return False
     path = Path(value)
     return not path.is_absolute() and value not in {".", ".."} and ".." not in path.parts
+
+
+def _artifact_path_error(value):
+    if isinstance(value, str) and (
+        value.startswith(("/", "~")) or (len(value) > 1 and value[1] == ":") or ".." in Path(value).parts
+    ):
+        return "artifact path is outside root"
+    if isinstance(value, str) and "\\" in value:
+        return "artifact path must use POSIX separators"
+    return "artifact path must be relative"
 
 
 def _atomic_json(path, value):
@@ -129,48 +141,99 @@ def _terminal(directory, result):
     return result
 
 
-def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence_dir=None, run_id="run"):
+def _artifact_checks(root, expected, actual):
+    if not _relative_artifact(expected):
+        return [_artifact_path_error(expected)]
+    if not _relative_artifact(actual):
+        return [_artifact_path_error(actual)]
+    if actual != expected:
+        return ["artifact differs from expected path"]
+    expected_file = (root / expected).resolve()
+    if root not in expected_file.parents:
+        return ["artifact path is outside root"]
+    if not expected_file.exists():
+        return ["artifact missing"]
+    if not expected_file.is_file():
+        return ["artifact not regular"]
+    if expected_file.stat().st_size == 0:
+        return ["artifact empty"]
+    return []
+
+
+def _partial_review(directory, run_id, artifact, cycle):
+    if directory is None:
+        return None, []
+    path = directory / f"cycle-{cycle:02d}.yaml"
+    if not path.exists():
+        return None, []
+    payload = _load_json(path, None)
+    key = [run_id, artifact, cycle]
+    if not isinstance(payload, dict) or payload.get("idempotency_key") != key:
+        return None, ["partial cycle idempotency key divergent"]
+    review = payload.get("review")
+    validation = validate_review(review)
+    if not validation["valid"] or review.get("artifact") != artifact:
+        return None, ["partial cycle payload divergent"]
+    return review, []
+
+
+def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence_dir=None, run_id="run", workspace_root=None):
     """Run isolated executor/reviewer cycles and return approved or blocked."""
     if isinstance(max_cycles, bool) or not isinstance(max_cycles, int) or not 1 <= max_cycles <= 5:
         raise ValueError("max_cycles must be an integer between 1 and 5")
     if not _relative_artifact(artifact_path):
-        return _blocked(0, ["artifact path must be relative"])
+        return _blocked(0, [_artifact_path_error(artifact_path)])
+    if not callable(executor) or not callable(reviewer):
+        return _blocked(0, ["executor/reviewer unavailable"])
+    if executor is reviewer:
+        return _blocked(0, ["executor and reviewer must be distinct callbacks"])
+    root = Path.cwd().resolve() if workspace_root is None else Path(workspace_root).resolve()
     directory = Path(persistence_dir) if persistence_dir is not None else None
     if directory is not None:
         existing = _load_json(directory / "state.yaml", None)
         if isinstance(existing, dict) and existing.get("status") in {"approved", "blocked"}:
+            if existing.get("last_artifact") != artifact_path:
+                return _blocked(0, ["state artifact is divergent"])
+            if existing.get("status") == "blocked" and not {
+                "failed_criteria", "last_review", "feedback", "cycles"
+            } <= set(existing):
+                return _blocked(0, ["state payload is invalid"])
             return existing
-    if not callable(executor) or not callable(reviewer):
-        return _terminal(directory, _blocked(0, ["executor/reviewer unavailable"]))
-
     feedback = []
     last_artifact = ""
     last_review = None
     for cycle in range(1, max_cycles + 1):
         if directory is not None:
             _persist_event(directory, run_id, artifact_path, cycle, "cycle-start", {"cycle": cycle})
-        try:
-            last_artifact = executor(deepcopy(feedback))
-        except Exception as error:
-            return _terminal(directory, _blocked(cycle, [f"executor unavailable: {error}"], last_artifact))
-        checks = []
-        if not _relative_artifact(last_artifact):
-            checks.append("artifact must be relative")
-        elif last_artifact != artifact_path:
-            checks.append("artifact differs from expected path")
+        stored_review, partial_errors = _partial_review(directory, run_id, artifact_path, cycle)
+        if partial_errors:
+            return _terminal(directory, _blocked(cycle, partial_errors, artifact_path))
+        if stored_review is not None:
+            last_artifact = artifact_path
+            result = stored_review
+            checks = _artifact_checks(root, artifact_path, artifact_path)
+        else:
+            try:
+                last_artifact = executor(deepcopy(feedback))
+            except Exception as error:
+                return _terminal(directory, _blocked(cycle, [f"executor unavailable: {error}"], last_artifact))
+            checks = _artifact_checks(root, artifact_path, last_artifact)
         if directory is not None:
             _persist_event(directory, run_id, artifact_path, cycle, "deterministic-checks", {"checks": checks})
         if checks:
             return _terminal(directory, _blocked(cycle, checks, last_artifact))
 
-        try:
-            result = reviewer(last_artifact, deepcopy(feedback))
-        except Exception as error:
-            return _terminal(directory, _blocked(cycle, [f"reviewer unavailable: {error}"], last_artifact))
+        if stored_review is None:
+            try:
+                result = reviewer(last_artifact, deepcopy(feedback))
+            except Exception as error:
+                return _terminal(directory, _blocked(cycle, [f"reviewer unavailable: {error}"], last_artifact))
 
-        validation = validate_review(result)
-        if not validation["valid"]:
-            return _terminal(directory, _blocked(cycle, validation["errors"], last_artifact, result))
+            validation = validate_review(result)
+            if not validation["valid"]:
+                return _terminal(directory, _blocked(cycle, validation["errors"], last_artifact, result))
+        else:
+            validation = validate_review(result)
         if result["artifact"] != artifact_path:
             return _terminal(directory, _blocked(cycle, ["review artifact differs from expected path"], last_artifact, result))
         last_review = result

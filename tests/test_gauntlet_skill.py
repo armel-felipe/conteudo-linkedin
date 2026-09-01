@@ -1,6 +1,7 @@
 from pathlib import Path
 import math
 import json
+import inspect
 
 import pytest
 
@@ -83,14 +84,14 @@ def test_retry_limit_and_terminal_categories_are_explicitly_distinguished():
     assert "criteria <9/10" in text
 
 
-def review(*, coverage=1.0, criteria=None, decision="approved", hard_failures=None, feedback=None):
+def review(*, coverage=1.0, criteria=None, decision="approved", hard_failures=None, feedback=None, artifact="mapa.md"):
     return {
         "decision": decision,
         "coverage": coverage,
         "criteria": {"clarity": 10} if criteria is None else criteria,
         "hard_failures": [] if hard_failures is None else hard_failures,
         "feedback": [] if feedback is None else feedback,
-        "artifact": "draft.md",
+        "artifact": artifact,
     }
 
 
@@ -100,7 +101,7 @@ def test_run_gauntlet_retries_quality_feedback_five_times_without_sixth_call():
 
     def executor(feedback):
         executor_calls.append(feedback)
-        return "draft.md"
+        return "mapa.md"
 
     def reviewer(artifact, feedback):
         reviewer_calls.append((artifact, feedback))
@@ -111,7 +112,7 @@ def test_run_gauntlet_retries_quality_feedback_five_times_without_sixth_call():
             feedback=[{"criterion": "clarity", "message": "Make the opening specific."}],
         )
 
-    result = run_gauntlet(executor, reviewer, artifact_path="draft.md")
+    result = run_gauntlet(executor, reviewer, artifact_path="mapa.md")
 
     assert result["status"] == "blocked"
     assert result["cycle_count"] == 5
@@ -134,9 +135,9 @@ def test_run_gauntlet_approves_after_quality_retry_and_passes_feedback():
 
     def executor(feedback):
         seen_feedback.append(feedback)
-        return "draft.md"
+        return "mapa.md"
 
-    result = run_gauntlet(executor, lambda artifact, feedback: next(reviews), artifact_path="draft.md")
+    result = run_gauntlet(executor, lambda artifact, feedback: next(reviews), artifact_path="mapa.md")
 
     assert result["status"] == "approved"
     assert result["cycle_count"] == 2
@@ -148,13 +149,13 @@ def test_run_gauntlet_stops_on_hard_failure_without_retry():
 
     def executor(feedback):
         calls.append("executor")
-        return "draft.md"
+        return "mapa.md"
 
     def reviewer(artifact, feedback):
         calls.append("reviewer")
         return review(hard_failures=["evidence missing"])
 
-    result = run_gauntlet(executor, reviewer, artifact_path="draft.md")
+    result = run_gauntlet(executor, reviewer, artifact_path="mapa.md")
 
     assert result["status"] == "blocked"
     assert result["cycle_count"] == 1
@@ -214,8 +215,8 @@ def test_run_gauntlet_rejects_absolute_or_unexpected_artifacts_before_reviewer()
         reviewer_calls.append(artifact)
         return review()
 
-    absolute = run_gauntlet(lambda feedback: "/tmp/draft.md", reviewer, artifact_path="draft.md")
-    different = run_gauntlet(lambda feedback: "other.md", reviewer, artifact_path="draft.md")
+    absolute = run_gauntlet(lambda feedback: "/tmp/mapa.md", reviewer, artifact_path="mapa.md")
+    different = run_gauntlet(lambda feedback: "other.md", reviewer, artifact_path="mapa.md")
 
     assert absolute["status"] == different["status"] == "blocked"
     assert reviewer_calls == []
@@ -224,7 +225,7 @@ def test_run_gauntlet_rejects_absolute_or_unexpected_artifacts_before_reviewer()
 
 def test_blocked_after_five_cycles_contains_complete_terminal_payload():
     def executor(feedback):
-        return "draft.md"
+        return "mapa.md"
 
     def reviewer(artifact, feedback):
         return review(
@@ -233,14 +234,14 @@ def test_blocked_after_five_cycles_contains_complete_terminal_payload():
             feedback=[{"criterion": "clarity", "message": "Use a concrete example."}],
         )
 
-    result = run_gauntlet(executor, reviewer, artifact_path="draft.md")
+    result = run_gauntlet(executor, reviewer, artifact_path="mapa.md")
 
     assert result["status"] == "blocked"
     assert result["cycles"] == 5
     assert result["cycle_count"] == 5
     assert result["failed_criteria"] == ["clarity"]
-    assert result["last_artifact"] == "draft.md"
-    assert result["last_review"]["artifact"] == "draft.md"
+    assert result["last_artifact"] == "mapa.md"
+    assert result["last_review"]["artifact"] == "mapa.md"
     assert result["feedback"] == result["last_review"]["feedback"]
 
 
@@ -258,7 +259,7 @@ def test_run_gauntlet_persists_cycles_events_state_atomically_and_idempotently(t
 
     def executor(feedback):
         calls["executor"] += 1
-        return "draft.md"
+        return "mapa.md"
 
     def reviewer(artifact, feedback):
         calls["reviewer"] += 1
@@ -267,14 +268,14 @@ def test_run_gauntlet_persists_cycles_events_state_atomically_and_idempotently(t
     first = run_gauntlet(
         executor,
         reviewer,
-        artifact_path="draft.md",
+        artifact_path="mapa.md",
         persistence_dir=tmp_path,
         run_id="run-1",
     )
     second = run_gauntlet(
         executor,
         reviewer,
-        artifact_path="draft.md",
+        artifact_path="mapa.md",
         persistence_dir=tmp_path,
         run_id="run-1",
     )
@@ -307,13 +308,13 @@ def test_callbacks_receive_separate_contexts_and_checks_precede_reviewer():
     def executor(feedback):
         observations.append(("executor", id(feedback), list(feedback)))
         feedback.append({"criterion": "mutated", "message": "must not leak"})
-        return "draft.md"
+        return "mapa.md"
 
     def reviewer(artifact, feedback):
         observations.append(("reviewer", id(feedback), list(feedback)))
         return next(reviews)
 
-    run_gauntlet(executor, reviewer, artifact_path="draft.md")
+    run_gauntlet(executor, reviewer, artifact_path="mapa.md")
 
     assert observations[0][0] == "executor"
     assert observations[1] == ("reviewer", observations[1][1], [])
@@ -321,3 +322,101 @@ def test_callbacks_receive_separate_contexts_and_checks_precede_reviewer():
     assert observations[2][0] == "executor"
     assert observations[3][0] == "reviewer"
     assert observations[3][2] == [{"criterion": "clarity", "message": "Be specific."}]
+
+
+def test_deterministic_checks_require_existing_regular_nonempty_artifact(tmp_path):
+    reviewer_calls = []
+    empty = tmp_path / "empty.md"
+    empty.write_text("")
+
+    def reviewer(artifact, feedback):
+        reviewer_calls.append(artifact)
+        return review(artifact="draft.md")
+
+    missing = run_gauntlet(
+        lambda feedback: "missing.md", reviewer, artifact_path="missing.md", workspace_root=tmp_path
+    )
+    empty_result = run_gauntlet(
+        lambda feedback: "empty.md", reviewer, artifact_path="empty.md", workspace_root=tmp_path
+    )
+
+    assert missing["status"] == empty_result["status"] == "blocked"
+    assert missing["failure_reasons"] == ["artifact missing"]
+    assert empty_result["failure_reasons"] == ["artifact empty"]
+    assert reviewer_calls == []
+
+
+def test_artifact_must_be_inside_root_and_rejects_windows_paths(tmp_path):
+    (tmp_path / "draft.md").write_text("draft")
+    reviewer = lambda artifact, feedback: review(artifact="draft.md")
+
+    outside = run_gauntlet(
+        lambda feedback: "../draft.md", reviewer, artifact_path="../draft.md", workspace_root=tmp_path
+    )
+    windows = run_gauntlet(
+        lambda feedback: r"draft\file.md", reviewer, artifact_path=r"draft\file.md", workspace_root=tmp_path
+    )
+    drive = run_gauntlet(
+        lambda feedback: "C:/draft.md", reviewer, artifact_path="C:/draft.md", workspace_root=tmp_path
+    )
+
+    assert outside["status"] == windows["status"] == drive["status"] == "blocked"
+    assert "root" in outside["failure_reasons"][0]
+    assert "path" in windows["failure_reasons"][0]
+
+
+def test_executor_and_reviewer_must_be_distinct_callbacks():
+    def callback(*args):
+        return "mapa.md"
+
+    result = run_gauntlet(callback, callback, artifact_path="mapa.md")
+
+    assert result["status"] == "blocked"
+    assert "distinct" in result["failure_reasons"][0]
+
+
+def test_partial_cycle_with_divergent_payload_fails_without_overwriting(tmp_path):
+    original = {"idempotency_key": ["run-1", "mapa.md", 1], "review": {"old": True}}
+    cycle = tmp_path / "cycle-01.yaml"
+    cycle.write_text(json.dumps(original))
+
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        run_id="run-1",
+    )
+
+    assert result["status"] == "blocked"
+    assert "divergent" in result["failure_reasons"][0]
+    assert json.loads(cycle.read_text()) == original
+
+
+def test_divergent_existing_terminal_state_fails_closed_without_reusing_it(tmp_path):
+    state = {"status": "blocked", "cycles": 5, "last_artifact": "other.md"}
+    state_path = tmp_path / "state.yaml"
+    state_path.write_text(json.dumps(state))
+    calls = []
+
+    result = run_gauntlet(
+        lambda feedback: calls.append("executor") or "mapa.md",
+        lambda artifact, feedback: calls.append("reviewer") or review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        run_id="run-1",
+    )
+
+    assert result["status"] == "blocked"
+    assert "state" in result["failure_reasons"][0]
+    assert calls == []
+    assert json.loads(state_path.read_text()) == state
+
+
+def test_run_gauntlet_signature_exposes_artifact_persistence_and_run_identity():
+    parameters = inspect.signature(run_gauntlet).parameters
+
+    assert parameters["artifact_path"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert parameters["persistence_dir"].default is None
+    assert parameters["run_id"].default == "run"
+    assert parameters["workspace_root"].default is None

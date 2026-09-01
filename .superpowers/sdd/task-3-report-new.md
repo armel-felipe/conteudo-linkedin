@@ -76,3 +76,24 @@ TDD evidence:
 - Suite completa: 43 testes passaram; `git diff --check` e validacao JSON do schema passaram.
 
 Task 2 e qualquer agendamento permaneceram inalterados.
+
+## Rodada 5
+
+Status: PASS
+
+Achados corrigidos:
+
+- Checks deterministas agora exigem artifact relativo, dentro de `workspace_root`, existente, arquivo regular e nao vazio; o artifact do executor e do review precisam corresponder exatamente ao esperado.
+- `executor is reviewer` e rejeitado antes da execucao; a skill documenta callbacks como adaptadores para tarefas externas isoladas.
+- Reviews de ciclos parciais e `state.yaml` terminal sao carregados e validados; payload divergente ou estado com artifact divergente falha explicitamente sem sobrescrever.
+- Paths absolutos, `..`, separadores Windows e drives Windows sao rejeitados na implementacao e no schema.
+- A assinatura documentada inclui `artifact_path`, `persistence_dir`, `run_id` e `workspace_root`.
+- Regressions cobrem arquivo ausente/vazio, callback duplicado, estado/ciclo divergente, paths Windows, payload terminal e ordem de checks.
+
+TDD evidence:
+
+- RED: os testes novos falharam por `workspace_root` ausente, callback duplicado aceito, verificacao de arquivo ausente e ciclo divergente sobrescrito.
+- GREEN: `python3 -m pytest tests/test_gauntlet_skill.py -q` passou com 34 testes.
+- Suite completa, `compileall`, schema JSON e `git diff --check` foram executados com sucesso.
+
+Task 2 e qualquer agendamento permaneceram inalterados.
