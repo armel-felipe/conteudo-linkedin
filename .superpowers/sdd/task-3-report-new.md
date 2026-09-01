@@ -56,3 +56,23 @@ TDD evidence:
 - A cobertura funcional do threshold foi exercitada com valores de qualidade abaixo do gate e com review aprovado; nenhuma porcentagem de cobertura agregada de codigo e declarada.
 
 Task 2 e qualquer agendamento permaneceram inalterados.
+
+## Rodada 4
+
+Status: PASS
+
+Achados corrigidos:
+
+- `run_gauntlet` agora exige `artifact_path`, rejeita caminhos absolutos/travessia e exige igualdade exata entre o artefato do executor, o artefato do review e o caminho esperado.
+- O bloqueio apos cinco ciclos inclui `failed_criteria`, `last_artifact`, `last_review`, `feedback`, `cycles` e razoes da falha.
+- `persistence_dir` grava atomicamente cada review (`cycle-01.yaml` etc.), `events.yaml` e `state.yaml`; eventos usam chaves idempotentes por ciclo e nao duplicam em retomadas concluidas.
+- Checks deterministas ocorrem antes do reviewer e sao registrados; callbacks recebem copias profundas de contexto, mantendo executor e reviewer separados e isolados.
+- Testes de regressao cobrem artifact absoluto/diferente, payload blocked, persistencia, idempotencia, ordem e isolamento.
+
+TDD evidence:
+
+- RED: os testes de regressao falharam porque `run_gauntlet` ainda nao aceitava `artifact_path`.
+- GREEN: `python3 -m pytest tests/test_gauntlet_skill.py -q` passou com 28 testes.
+- Suite completa: 43 testes passaram; `git diff --check` e validacao JSON do schema passaram.
+
+Task 2 e qualquer agendamento permaneceram inalterados.

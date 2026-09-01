@@ -111,7 +111,7 @@ def test_run_gauntlet_retries_quality_feedback_five_times_without_sixth_call():
             feedback=[{"criterion": "clarity", "message": "Make the opening specific."}],
         )
 
-    result = run_gauntlet(executor, reviewer)
+    result = run_gauntlet(executor, reviewer, artifact_path="draft.md")
 
     assert result["status"] == "blocked"
     assert result["cycle_count"] == 5
@@ -136,7 +136,7 @@ def test_run_gauntlet_approves_after_quality_retry_and_passes_feedback():
         seen_feedback.append(feedback)
         return "draft.md"
 
-    result = run_gauntlet(executor, lambda artifact, feedback: next(reviews))
+    result = run_gauntlet(executor, lambda artifact, feedback: next(reviews), artifact_path="draft.md")
 
     assert result["status"] == "approved"
     assert result["cycle_count"] == 2
@@ -154,7 +154,7 @@ def test_run_gauntlet_stops_on_hard_failure_without_retry():
         calls.append("reviewer")
         return review(hard_failures=["evidence missing"])
 
-    result = run_gauntlet(executor, reviewer)
+    result = run_gauntlet(executor, reviewer, artifact_path="draft.md")
 
     assert result["status"] == "blocked"
     assert result["cycle_count"] == 1
@@ -205,3 +205,119 @@ def test_schema_is_strict_and_feedback_is_criterion_associated():
     assert schema["properties"]["criteria"]["minProperties"] == 1
     assert schema["properties"]["criteria"]["additionalProperties"]["type"] == "number"
     assert schema["properties"]["feedback"]["items"]["required"] == ["criterion", "message"]
+
+
+def test_run_gauntlet_rejects_absolute_or_unexpected_artifacts_before_reviewer():
+    reviewer_calls = []
+
+    def reviewer(artifact, feedback):
+        reviewer_calls.append(artifact)
+        return review()
+
+    absolute = run_gauntlet(lambda feedback: "/tmp/draft.md", reviewer, artifact_path="draft.md")
+    different = run_gauntlet(lambda feedback: "other.md", reviewer, artifact_path="draft.md")
+
+    assert absolute["status"] == different["status"] == "blocked"
+    assert reviewer_calls == []
+    assert all("artifact" in reason for result in (absolute, different) for reason in result["failure_reasons"])
+
+
+def test_blocked_after_five_cycles_contains_complete_terminal_payload():
+    def executor(feedback):
+        return "draft.md"
+
+    def reviewer(artifact, feedback):
+        return review(
+            coverage=0.99,
+            criteria={"clarity": 8},
+            feedback=[{"criterion": "clarity", "message": "Use a concrete example."}],
+        )
+
+    result = run_gauntlet(executor, reviewer, artifact_path="draft.md")
+
+    assert result["status"] == "blocked"
+    assert result["cycles"] == 5
+    assert result["cycle_count"] == 5
+    assert result["failed_criteria"] == ["clarity"]
+    assert result["last_artifact"] == "draft.md"
+    assert result["last_review"]["artifact"] == "draft.md"
+    assert result["feedback"] == result["last_review"]["feedback"]
+
+
+def test_run_gauntlet_persists_cycles_events_state_atomically_and_idempotently(tmp_path):
+    calls = {"executor": 0, "reviewer": 0}
+    reviews = iter([
+        review(
+            coverage=0.99,
+            criteria={"clarity": 8},
+            decision="feedback",
+            feedback=[{"criterion": "clarity", "message": "Add evidence."}],
+        ),
+        review(),
+    ])
+
+    def executor(feedback):
+        calls["executor"] += 1
+        return "draft.md"
+
+    def reviewer(artifact, feedback):
+        calls["reviewer"] += 1
+        return next(reviews)
+
+    first = run_gauntlet(
+        executor,
+        reviewer,
+        artifact_path="draft.md",
+        persistence_dir=tmp_path,
+        run_id="run-1",
+    )
+    second = run_gauntlet(
+        executor,
+        reviewer,
+        artifact_path="draft.md",
+        persistence_dir=tmp_path,
+        run_id="run-1",
+    )
+
+    assert first == second
+    assert calls == {"executor": 2, "reviewer": 2}
+    assert (tmp_path / "cycle-01.yaml").exists()
+    assert (tmp_path / "cycle-02.yaml").exists()
+    assert (tmp_path / "events.yaml").exists()
+    assert (tmp_path / "state.yaml").exists()
+    events = json.loads((tmp_path / "events.yaml").read_text())
+    assert [event["type"] for event in events] == [
+        "cycle-start", "deterministic-checks", "review",
+        "cycle-start", "deterministic-checks", "review",
+    ]
+    assert len({tuple(event["idempotency_key"]) for event in events}) == len(events)
+
+
+def test_callbacks_receive_separate_contexts_and_checks_precede_reviewer():
+    observations = []
+    reviews = iter([
+        review(
+            coverage=0.99,
+            criteria={"clarity": 8},
+            feedback=[{"criterion": "clarity", "message": "Be specific."}],
+        ),
+        review(),
+    ])
+
+    def executor(feedback):
+        observations.append(("executor", id(feedback), list(feedback)))
+        feedback.append({"criterion": "mutated", "message": "must not leak"})
+        return "draft.md"
+
+    def reviewer(artifact, feedback):
+        observations.append(("reviewer", id(feedback), list(feedback)))
+        return next(reviews)
+
+    run_gauntlet(executor, reviewer, artifact_path="draft.md")
+
+    assert observations[0][0] == "executor"
+    assert observations[1] == ("reviewer", observations[1][1], [])
+    assert observations[0][1] != observations[1][1]
+    assert observations[2][0] == "executor"
+    assert observations[3][0] == "reviewer"
+    assert observations[3][2] == [{"criterion": "clarity", "message": "Be specific."}]

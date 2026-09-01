@@ -20,7 +20,7 @@ validate_review(review) -> dict
 run_gauntlet(executor, reviewer, max_cycles=5) -> dict
 ```
 
-`executor(feedback) -> artifact` e `reviewer(artifact, feedback) -> review` sao callbacks independentes. `validate_review` faz a validacao estrutural estrita e identifica criterios abaixo do gate; `run_gauntlet` transforma falhas de qualidade em `feedback`, repete ate cinco rodadas e reserva `blocked` para falhas terminais ou esgotamento.
+`executor(feedback) -> artifact` e `reviewer(artifact, feedback) -> review` sao callbacks separados. Cada chamada recebe uma copia profunda de contexto novo e isolado; nenhum callback pode compartilhar ou mutar o estado interno de outro ciclo. `validate_review` faz a validacao estrutural estrita e identifica criterios abaixo do gate; `run_gauntlet` transforma falhas de qualidade em `feedback`, repete ate cinco rodadas e reserva `blocked` para falhas terminais ou esgotamento.
 
 ## Contratos de entrada
 
@@ -47,6 +47,7 @@ Para cada ciclo:
 1. Registre `cycle-start` com o numero do ciclo, contrato e caminho do artefato.
 2. Faca uma chamada `task` nova e isolada para o `executor`. Nao reutilize a conversa, estado ou memoria de outro executor.
 3. Confirme deterministicamente que o executor respeitou o contrato, escreveu o artefato no caminho relativo esperado e nao produziu saida incompleta.
+   Registre o resultado dos deterministic checks antes de chamar o revisor.
 4. Faca outra chamada `task` nova e isolada para o `revisor`, diferente do executor. Entregue somente o artefato, o contrato do revisor e o feedback necessario.
 5. Aceite o resultado apenas se ele for JSON valido, parseavel e conforme o contrato. O objeto deve conter `decision`, `coverage`, `criteria`, `hard_failures`, `feedback` e `artifact`.
 6. Persista `runs/<run_id>/topics/<topic_id>/reviews/cycle-<NN>.yaml` ou o caminho de review definido pelo caller antes de avancar.
@@ -104,6 +105,10 @@ Os campos `failure reasons`, `failed criteria`, `last artifact` e `cycle count` 
 ## Persistencia e idempotencia
 
 Cada ciclo deve deixar um arquivo de review identificavel pelo numero `cycle-01` ate `cycle-05`. Escreva de forma atomica e nao sobrescreva um review valido com resultado diferente para a mesma chave `(run_id, topic_id, gauntlet, cycle)`. Ao retomar, valide o review existente; se estiver invalido, bloqueie em vez de confiar nele.
+
+Quando `persistence_dir` for fornecido, grave atomicamente `cycle-01.yaml` ate `cycle-05.yaml`, `events.yaml` e `state.yaml`. O ciclo usa a chave `(run_id, artifact, cycle)`; uma repeticao do mesmo ciclo nao duplica review ou evento. `events.yaml` deve registrar `cycle-start`, `deterministic-checks` e `review` nessa ordem, e `state.yaml` deve conter o resultado terminal completo.
+
+O resultado `blocked` apos a quinta rodada deve conter `failed_criteria`, `last_artifact`, `last_review`, `feedback` completo, `cycles` igual a 5 e as razoes da falha. O resultado tambem pode expor `cycle_count` para compatibilidade com os checkpoints existentes.
 
 ## Checklist
 
