@@ -102,6 +102,13 @@ def test_validate_reschedule_events_accepts_existing_post_flow():
         "alter_schedule",
         "date_selected",
         "time_selected",
+        "summary_confirmed",
+        "advance",
+        "final_preview_confirmed",
+        "schedule",
+        "confirmation",
+        "scheduled_list_confirmed",
+        "timestamp_registered",
     ]
     assert validate_reschedule_events(events, "existing_post") is True
 
@@ -128,21 +135,22 @@ def test_behavioral_helper_blocks_divergent_summary_and_missing_confirmation_or_
 
 
 def test_reschedule_requires_existing_post_and_complete_new_selection():
-    assert validate_reschedule_events(
-        [
-            "existing_post_menu",
-            "alter_schedule",
-            "date_selected",
-            "time_selected",
-        ],
-        "existing_post",
-    ) is True
+    with pytest.raises(ValueError):
+        validate_reschedule_events(
+            [
+                "existing_post_menu",
+                "alter_schedule",
+                "date_selected",
+                "time_selected",
+            ],
+            "existing_post",
+        )
 
 
 def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
     receipt = {
-        "route": "browser",
-        "fallback": "CDP",
+        "route": "browser_cdp",
+        "fallback": "native",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -154,6 +162,94 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
         "duplicate_created": False,
     }
     assert validate_receipt(receipt) is True
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"displayed_timestamp": "02/09/2026 10:00"},
+        {"summary": "fail"},
+        {"date_selected": "fail"},
+        {"confirmation": "fail"},
+        {"scheduled_list": "fail"},
+    ],
+)
+def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
+    receipt = {
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "01/09/2026 10:00",
+        "displayed_timestamp": "01/09/2026 10:00",
+        "date_selected": "pass",
+        "time_selected": "pass",
+        "summary": "pass",
+        "preview": "pass",
+        "confirmation": "pass",
+        "scheduled_list": "pass",
+        "duplicate_created": False,
+    }
+    receipt.update(change)
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
+
+
+def test_validate_receipt_rejects_missing_field():
+    receipt = {
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "01/09/2026 10:00",
+        "displayed_timestamp": "01/09/2026 10:00",
+        "date_selected": "pass",
+        "time_selected": "pass",
+        "summary": "pass",
+        "preview": "pass",
+        "confirmation": "pass",
+        "scheduled_list": "pass",
+        "duplicate_created": False,
+    }
+    del receipt["preview"]
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
+
+
+@pytest.mark.parametrize("field", ["route", "fallback"])
+def test_validate_receipt_rejects_invalid_route_or_fallback(field):
+    receipt = {
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "01/09/2026 10:00",
+        "displayed_timestamp": "01/09/2026 10:00",
+        "date_selected": "pass",
+        "time_selected": "pass",
+        "summary": "pass",
+        "preview": "pass",
+        "confirmation": "pass",
+        "scheduled_list": "pass",
+        "duplicate_created": False,
+    }
+    receipt[field] = "invalid"
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
+
+
+@pytest.mark.parametrize("sensitive", ["cookies=abc", "token=abc", "senha", "email@test", "account_id=1", "identificador"])
+def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
+    receipt = {
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "01/09/2026 10:00",
+        "displayed_timestamp": "01/09/2026 10:00",
+        "date_selected": "pass",
+        "time_selected": "pass",
+        "summary": "pass",
+        "preview": "pass",
+        "confirmation": "pass",
+        "scheduled_list": "pass",
+        "duplicate_created": False,
+    }
+    receipt["summary"] = sensitive
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
 
 
 def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
@@ -176,8 +272,8 @@ def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
     assert "confirmation/list absence blocks registration" in roadmap
     assert "never duplicate" in roadmap
     receipt_fields = (
-        "route: browser",
-        "fallback: CDP",
+        "route: browser_cdp",
+        "fallback: native",
         'requested_timestamp: "01/09/2026 10:00"',
         'displayed_timestamp: "01/09/2026 10:00"',
         "date_selected: pass",

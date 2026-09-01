@@ -34,8 +34,8 @@ Regra adicional: never duplicate. Em qualquer falha de confirmação ou de prese
 ### Receipt estruturada
 
 ```yaml
-route: browser
-fallback: CDP
+route: browser_cdp
+fallback: native
 requested_timestamp: "01/09/2026 10:00"
 displayed_timestamp: "01/09/2026 10:00"
 date_selected: pass

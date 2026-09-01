@@ -7,8 +7,8 @@ PASS para a evidência real fornecida nesta sessão. A publicação existente fo
 ## Receipt estruturada
 
 ```yaml
-route: browser
-fallback: CDP
+route: browser_cdp
+fallback: native
 requested_timestamp: "01/09/2026 10:00"
 displayed_timestamp: "01/09/2026 10:00"
 date_selected: pass
@@ -41,3 +41,10 @@ Playwright não estava disponível no runtime. Browser/CDP foi a rota real usada
 
 - A matriz não sensível foi adicionada em `docs/roadmap.md`.
 - O teste puro de matriz/receipt foi adicionado em `tests/test_scheduling_skill.py`.
+
+## Rodada 3
+
+- `validate_receipt()` agora exige timestamps iguais, route/fallback em allowlist, gates `pass`, ausência de duplicata e rejeição de termos sensíveis em valores textuais.
+- `validate_reschedule_events()` agora exige a sequência completa até `timestamp_registered` e rejeita fluxo parcial, `new_composer` e duplicatas.
+- Foram adicionados testes para divergência, campo ausente, gate falho, route/fallback inválidos, dados sensíveis e sequência parcial.
+- Evidência manual permanece a mesma: reagendamento real da publicação existente; os demais casos continuam identificados como simulações não destrutivas.

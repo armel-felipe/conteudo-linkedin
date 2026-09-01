@@ -40,6 +40,21 @@ _RECEIPT_FIELDS = (
     "duplicate_created",
 )
 
+_RECEIPT_ROUTES = {"playwright", "browser_cdp"}
+_RECEIPT_FALLBACKS = {"none", "native", "no_native_vision", "native_failed"}
+_FORBIDDEN_RECEIPT_TERMS = (
+    "cookie",
+    "cookies",
+    "token",
+    "senha",
+    "password",
+    "email",
+    "account_id",
+    "account id",
+    "identificador",
+    "identificadores",
+)
+
 
 def _validate_exact(events, expected):
     observed = tuple(events)
@@ -76,6 +91,13 @@ def validate_reschedule_events(events, route):
             "alter_schedule",
             "date_selected",
             "time_selected",
+            "summary_confirmed",
+            "advance",
+            "final_preview_confirmed",
+            "schedule",
+            "confirmation",
+            "scheduled_list_confirmed",
+            "timestamp_registered",
         ),
     )
 
@@ -91,10 +113,19 @@ def can_register_timestamp(confirmation, scheduled_list):
 def validate_receipt(receipt):
     if set(receipt) != set(_RECEIPT_FIELDS):
         raise ValueError("incomplete receipt")
+    if receipt["route"] not in _RECEIPT_ROUTES:
+        raise ValueError("invalid receipt route")
+    if receipt["fallback"] not in _RECEIPT_FALLBACKS:
+        raise ValueError("invalid receipt fallback")
+    if receipt["requested_timestamp"] != receipt["displayed_timestamp"]:
+        raise ValueError("receipt timestamp mismatch")
     if any(receipt[field] != "pass" for field in _RECEIPT_FIELDS[4:-1]):
         raise ValueError("receipt gate failed")
     if receipt["duplicate_created"] is not False:
         raise ValueError("duplicate publication recorded")
     if not receipt["requested_timestamp"] or not receipt["displayed_timestamp"]:
         raise ValueError("receipt timestamp missing")
+    for value in receipt.values():
+        if isinstance(value, str) and any(term in value.lower() for term in _FORBIDDEN_RECEIPT_TERMS):
+            raise ValueError("sensitive receipt value")
     return True
