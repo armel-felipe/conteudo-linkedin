@@ -197,12 +197,19 @@ def _persist_terminal(directory, result):
 def _validate_terminal_state(state, artifact_path, root):
     required = {
         "status", "cycles", "cycle_count", "last_artifact", "last_review",
-        "feedback", "failed_criteria", "artifact_fingerprint",
+        "feedback", "failed_criteria", "failure_reasons", "artifact_fingerprint",
     }
     if not isinstance(state, dict) or not required <= set(state):
         raise ValueError("state payload is invalid")
     if state["status"] not in {"approved", "blocked"}:
         raise ValueError("state status is invalid")
+    failure_reasons = state["failure_reasons"]
+    if (
+        not isinstance(failure_reasons, list)
+        or not failure_reasons
+        or any(not isinstance(reason, str) or not reason.strip() for reason in failure_reasons)
+    ):
+        raise ValueError("state failure reasons are invalid")
     cycles = state["cycles"]
     cycle_count = state["cycle_count"]
     if (
@@ -256,14 +263,14 @@ def _validate_terminal_state(state, artifact_path, root):
         or feedback
     ):
         raise ValueError("approved state does not pass acceptance gates")
-    checks = _artifact_checks(root, artifact_path, artifact_path)
-    artifact_file = root / artifact_path
-    expected = None
     try:
-        if artifact_file.is_file():
+        checks = _artifact_checks(root, artifact_path, artifact_path)
+        artifact_file = root / artifact_path
+        expected = None
+        if artifact_file.exists() and artifact_file.is_file():
             expected = "sha256:" + sha256(artifact_file.read_bytes()).hexdigest()
     except (UnicodeDecodeError, OSError) as error:
-        raise ValueError(f"artifact read failed: {error}") from error
+        raise ValueError(f"artifact validation failed: {error}") from error
     fingerprint = state["artifact_fingerprint"]
     if (
         not isinstance(fingerprint, (str, type(None)))
@@ -443,7 +450,7 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
         return _terminal(directory, {
             "status": "approved", "cycle_count": cycle, "cycles": cycle,
             "last_artifact": last_artifact, "last_review": last_review,
-            "feedback": [], "failed_criteria": [],
+            "feedback": [], "failed_criteria": [], "failure_reasons": ["approved"],
             "artifact_fingerprint": "sha256:" + sha256((root / last_artifact).read_bytes()).hexdigest(),
         }, root)
 

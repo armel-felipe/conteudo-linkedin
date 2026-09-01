@@ -210,3 +210,50 @@ Documentation scan:
 ```text
 No files found for >0.99, > 0.99, >99%, > 99%, superior a 99, or maior que 99.
 ```
+
+## Remediation Round 5 (Final)
+
+### Scope
+
+Closed the final P1/P2 findings in the Gauntlet core and normalized the relevant acceptance wording to the single form `coverage >= 0.99`. Falha 2 and scheduling logic were not changed.
+
+### Root Cause
+
+Terminal artifact validation protected fingerprint reads but not the complete metadata sequence (`exists`, `is_file`, and `stat`). Terminal state validation also did not require `failure_reasons`, allowing an incomplete checkpoint to be reused as approved.
+
+### RED
+
+Added regressions for `OSError` from artifact `exists`, `is_file`, and `stat`, plus a terminal state with missing `failure_reasons`. Each regression verifies `blocked` and preserves the original `state.yaml`.
+
+Focused RED output:
+
+```text
+4 failed, 51 deselected
+```
+
+### GREEN
+
+- Wrapped the full artifact metadata and fingerprint validation sequence in fail-closed handling for `OSError`, `PermissionError`, and `UnicodeDecodeError`.
+- Required non-empty string `failure_reasons` in terminal state and persisted `failure_reasons: ["approved"]` for approved checkpoints.
+- Updated relevant Gauntlet, batch, research, writing, agent, roadmap, plan, and spec documentation to use `coverage >= 0.99`.
+- Updated the multi-criterion terminal-state fixture to include the required failure reason.
+
+Focused GREEN output:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py -k 'metadata_errors or without_failure_reasons'
+4 passed, 51 deselected
+```
+
+Final verification:
+
+```text
+PYTHONPATH=. pytest -q tests/test_gauntlet_skill.py
+55 passed in 0.11s
+
+PYTHONPATH=. pytest -q
+138 passed in 0.69s
+
+python3 -m compileall -q gauntlet_loop.py
+git diff --check
+```

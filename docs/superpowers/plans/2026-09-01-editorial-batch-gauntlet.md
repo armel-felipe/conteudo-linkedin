@@ -14,7 +14,7 @@
 - Selecionar de 1 a X topics, inclusive `all`, congelando a fila no início.
 - Loop Gauntlet independente com máximo de 5 rodadas.
 - Executor e revisor devem ser tarefas separadas e receber contexto isolado.
-- Aprovar somente com cobertura de pelo menos 99% (`coverage >=0.99`) dos requisitos e nenhum critério abaixo de 9/10.
+- Aprovar somente com cobertura de pelo menos 99% (`coverage >= 0.99`) dos requisitos e nenhum critério abaixo de 9/10.
 - Aplicar `escrita-humana` duas vezes, com revisor após cada passagem.
 - Exigir brief revisado, duas fontes independentes quando disponíveis e conexão autoral explícita.
 - Após falha terminal, marcar somente o topic atual como `blocked` e continuar.

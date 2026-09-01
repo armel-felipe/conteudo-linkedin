@@ -557,6 +557,7 @@ def test_terminal_state_accepts_failed_criteria_in_different_order(tmp_path):
         "last_review": last_review,
         "feedback": last_review["feedback"],
         "failed_criteria": ["originalidade", "clareza"],
+        "failure_reasons": ["quality gates not met"],
         "artifact_fingerprint": "sha256:" + sha256(artifact.read_bytes()).hexdigest(),
     }
     state_path = tmp_path / "state.yaml"
@@ -624,6 +625,68 @@ def test_terminal_resume_artifact_read_errors_block_without_overwriting(tmp_path
 
     assert result["status"] == "blocked"
     assert "artifact" in result["failure_reasons"][0]
+    assert state_path.read_text() == original
+
+
+@pytest.mark.parametrize("artifact_operation", ["exists", "is_file", "stat"])
+def test_terminal_resume_artifact_metadata_errors_block_without_overwriting(tmp_path, monkeypatch, artifact_operation):
+    artifact = tmp_path / "mapa.md"
+    artifact.write_text("artifact")
+    run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+    state_path = tmp_path / "state.yaml"
+    original = state_path.read_text()
+    original_operation = getattr(Path, artifact_operation)
+
+    def failing_operation(path, *args, **kwargs):
+        if path == artifact:
+            raise OSError("artifact metadata failed")
+        return original_operation(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, artifact_operation, failing_operation)
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert "artifact" in result["failure_reasons"][0]
+    assert state_path.read_text() == original
+
+
+def test_terminal_state_without_failure_reasons_is_rejected_without_overwriting(tmp_path):
+    artifact = tmp_path / "mapa.md"
+    artifact.write_text("artifact")
+    run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+    state_path = tmp_path / "state.yaml"
+    state = json.loads(state_path.read_text())
+    state.pop("failure_reasons", None)
+    state_path.write_text(json.dumps(state))
+    original = state_path.read_text()
+
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+        workspace_root=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
     assert state_path.read_text() == original
 
 

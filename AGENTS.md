@@ -15,7 +15,7 @@ Pipeline agentico manual de conteúdo para LinkedIn. Fluxo: frentes → sinais �
 7. **Nunca inventar dados** — todo fato do post tem origem no brief, com fonte/URL/data.
 8. **Todo post termina com `## Fontes`** — arquivos em `content/drafts/` e `content/approved/` devem terminar com uma seção `## Fontes` listando as fontes usadas (título, URL, data), herdadas do brief.
 9. **Entrada de lote** — para executar uma rodada de um ou mais topics, usar `run-editorial-batch`; ele seleciona e congela a fila de `ready_for_research`, processa um topic por vez e persiste checkpoints.
-10. **Política Gauntlet** — briefs e posts passam pelo Gauntlet, com `coverage >=0.99`, todos os critérios `>=9/10` e no máximo cinco ciclos; `hard_failures` sempre sobrepõem a aprovação agregada de 95%.
+10. **Política Gauntlet** — briefs e posts passam pelo Gauntlet, com `coverage >= 0.99`, todos os critérios `>=9/10` e no máximo cinco ciclos; `hard_failures` sempre sobrepõem a aprovação agregada de 95%.
 11. **Falha isolada** — se um topic falhar, marcar somente esse item como `blocked`, persistir o checkpoint e continuar para o próximo item da fila; nunca liberar um item bloqueado para a etapa seguinte.
 12. **Escrita humana obrigatória** — todo post deve passar por `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2`; cada revisor usa o contrato JSON compartilhado e `hard_failures` bloqueia a aprovação humana.
 

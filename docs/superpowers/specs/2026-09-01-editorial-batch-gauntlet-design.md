@@ -27,7 +27,7 @@ O agendamento/publicação no LinkedIn permanece fora deste fluxo e será tratad
 - Máquina de estados por topic.
 - Execução isolada de executor e revisor.
 - Loop Gauntlet independente, com até 5 rodadas.
-- Cobertura mínima de 99% dos requisitos (`coverage >=0.99`).
+- Cobertura mínima de 99% dos requisitos (`coverage >= 0.99`).
 - Dois ciclos obrigatórios de `escrita-humana` com revisor após cada ciclo.
 - Validação determinística antes de cada transição.
 - Revisão obrigatória do research brief.
@@ -143,7 +143,7 @@ Critérios do post, todos de 0 a 10:
 - tamanho editorial;
 - rastreabilidade das fontes.
 
-Gate: nenhum critério abaixo de 9/10 e cobertura de pelo menos 99% dos requisitos (`coverage >=0.99`).
+Gate: nenhum critério abaixo de 9/10 e cobertura de pelo menos 99% dos requisitos (`coverage >= 0.99`).
 
 ### Escrita humana
 
