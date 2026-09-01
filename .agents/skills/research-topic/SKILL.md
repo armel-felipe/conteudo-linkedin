@@ -42,6 +42,8 @@ Resumo:
 ## Argumentos contrários
 ## Pontos ainda incertos
 ## Conexão com experiência profissional
+## Research questions da frente
+## Limitações da pesquisa
 ## Possíveis ângulos
 1. 2. 3.
 ## Riscos de afirmações não verificadas
@@ -57,11 +59,17 @@ Resumo:
 6. Preencher o brief com TODAS as evidências rastreáveis (fonte, URL, data).
 7. Listar argumentos favoráveis e contrários, pontos incertos e riscos.
 8. Conectar com memory/professional_experience.md.
-9. Salvar em `research/briefs/<topic_id>.md` e atualizar o status do topic para `researched` no arquivo `research/topics/topics_*.yaml` correspondente.
+9. Responder todas as research questions definidas para a frente, registrando também quando uma pergunta não puder ser respondida.
+10. Salvar em `research/briefs/<topic_id>.md`, submeter o brief ao Gauntlet e só atualizar o status do topic para `researched` após aprovação no arquivo `research/topics/topics_*.yaml` correspondente.
 
 ## Regras
 
 - NUNCA inventar dados: toda evidência tem fonte/URL/data.
 - Separar fato de opinião e de tendência.
 - Registrar explicitamente o que NÃO foi verificado (riscos).
+- Usar duas fontes independentes quando disponíveis; não contar republicações da mesma apuração como fontes independentes.
+- Incluir ao menos uma fonte primária quando disponível. Se não houver, registrar no brief uma justificativa explícita para a ausência e a limitação resultante.
+- Responder todas as research questions da frente e registrar a conexão explícita com a experiência profissional do autor.
+- Incluir uma seção de limitações com lacunas de cobertura, conflitos entre fontes e grau de confiança.
+- O brief precisa da aprovação do Gauntlet antes de ser considerado `researched`; falha ou artefato incompleto mantém o topic bloqueado.
 - O brief é a ÚNICA fonte de referência do write-post.
