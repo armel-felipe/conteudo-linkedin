@@ -94,6 +94,32 @@ Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arqu
 - Se o arquivo já tiver um bloco `<!-- agendado: ... -->` anterior, substituir pelo novo.
 - Isso garante rastreabilidade de "o que está agendado para quando" sem depender de memória de conversa.
 
+## Protocolo browser dry-run (rodada 4)
+
+Quando a finalidade for produzir evidência sem mutar o LinkedIn, executar
+somente a sequência abaixo:
+
+1. Abrir o seletor de data/hora sem confirmar publicação ou alteração.
+2. Selecionar explicitamente a data solicitada.
+3. Selecionar novamente o horário solicitado.
+4. Confirmar visualmente o resumo exibido contra o pedido.
+5. Registrar `blocked_before_advance` e parar antes de `Avançar`.
+
+O dry-run não pode conter `advance`, `schedule`, `confirmation`,
+`scheduled_list_confirmed` ou `timestamp_registered`. Criação, publicação,
+agendamento, exclusão e alteração de publicação não foram executados por
+segurança. Para uma publicação existente, é permitido apenas inspecionar o
+caminho `... → Alterar agenda`; não confirmar uma segunda mudança.
+
+### Estados de evidência
+
+Cada cenário deve declarar exatamente um estado: `real_non_destructive`
+(browser observado sem mutação), `real_existing_post` (somente caminho da
+publicação existente), `simulated` (contrato/teste, sem alegação de browser) ou
+`not_run` (não executado por segurança ou indisponibilidade). Um receipt de
+dry-run não pode declarar confirmação, presença na lista ou timestamp
+registrado.
+
 ## Verificação pós-agendamento
 
 Após clicar em "Agendar", o LinkedIn mostra uma confirmação. Verificar:

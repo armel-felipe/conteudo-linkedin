@@ -4,6 +4,7 @@ from pathlib import Path
 from scheduling_contract import (
     can_advance_schedule,
     can_register_timestamp,
+    validate_dry_run_events,
     validate_receipt,
     validate_reschedule_events,
     validate_schedule_events,
@@ -149,6 +150,7 @@ def test_reschedule_requires_existing_post_and_complete_new_selection():
 
 def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
     receipt = {
+        "evidence_status": "real_non_destructive",
         "route": "browser_cdp",
         "fallback": "native",
         "requested_timestamp": "01/09/2026 10:00",
@@ -156,9 +158,10 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
         "date_selected": "pass",
         "time_selected": "pass",
         "summary": "pass",
-        "preview": "pass",
-        "confirmation": "pass",
-        "scheduled_list": "pass",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
         "duplicate_created": False,
     }
     assert validate_receipt(receipt) is True
@@ -176,6 +179,7 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
 )
 def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
     receipt = {
+        "evidence_status": "real_non_destructive",
         "route": "browser_cdp",
         "fallback": "native",
         "requested_timestamp": "01/09/2026 10:00",
@@ -183,9 +187,10 @@ def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
         "date_selected": "pass",
         "time_selected": "pass",
         "summary": "pass",
-        "preview": "pass",
-        "confirmation": "pass",
-        "scheduled_list": "pass",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
         "duplicate_created": False,
     }
     receipt.update(change)
@@ -195,6 +200,7 @@ def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
 
 def test_validate_receipt_rejects_missing_field():
     receipt = {
+        "evidence_status": "real_non_destructive",
         "route": "browser_cdp",
         "fallback": "native",
         "requested_timestamp": "01/09/2026 10:00",
@@ -202,9 +208,10 @@ def test_validate_receipt_rejects_missing_field():
         "date_selected": "pass",
         "time_selected": "pass",
         "summary": "pass",
-        "preview": "pass",
-        "confirmation": "pass",
-        "scheduled_list": "pass",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
         "duplicate_created": False,
     }
     del receipt["preview"]
@@ -215,6 +222,7 @@ def test_validate_receipt_rejects_missing_field():
 @pytest.mark.parametrize("field", ["route", "fallback"])
 def test_validate_receipt_rejects_invalid_route_or_fallback(field):
     receipt = {
+        "evidence_status": "real_non_destructive",
         "route": "browser_cdp",
         "fallback": "native",
         "requested_timestamp": "01/09/2026 10:00",
@@ -222,9 +230,10 @@ def test_validate_receipt_rejects_invalid_route_or_fallback(field):
         "date_selected": "pass",
         "time_selected": "pass",
         "summary": "pass",
-        "preview": "pass",
-        "confirmation": "pass",
-        "scheduled_list": "pass",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
         "duplicate_created": False,
     }
     receipt[field] = "invalid"
@@ -235,6 +244,7 @@ def test_validate_receipt_rejects_invalid_route_or_fallback(field):
 @pytest.mark.parametrize("sensitive", ["cookies=abc", "token=abc", "senha", "email@test", "account_id=1", "identificador"])
 def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
     receipt = {
+        "evidence_status": "real_non_destructive",
         "route": "browser_cdp",
         "fallback": "native",
         "requested_timestamp": "01/09/2026 10:00",
@@ -242,9 +252,10 @@ def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
         "date_selected": "pass",
         "time_selected": "pass",
         "summary": "pass",
-        "preview": "pass",
-        "confirmation": "pass",
-        "scheduled_list": "pass",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
         "duplicate_created": False,
     }
     receipt["summary"] = sensitive
@@ -266,22 +277,23 @@ def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
     for case in expected_cases:
         assert case in roadmap
 
-    assert "executado: real" in roadmap
-    assert "simulado: não destrutivo" in roadmap
+    assert "not_run: criação não executada por segurança" in roadmap
+    assert "simulated: contrato/teste" in roadmap
     assert "summary divergence blocks Avançar" in roadmap
     assert "confirmation/list absence blocks registration" in roadmap
     assert "never duplicate" in roadmap
     receipt_fields = (
+        "evidence_status: simulated",
         "route: browser_cdp",
-        "fallback: native",
-        'requested_timestamp: "01/09/2026 10:00"',
-        'displayed_timestamp: "01/09/2026 10:00"',
-        "date_selected: pass",
-        "time_selected: pass",
-        "summary: pass",
-        "preview: pass",
-        "confirmation: pass",
-        "scheduled_list: pass",
+        'requested_timestamp: ""',
+        'displayed_timestamp: ""',
+        "date_selected: not_run",
+        "time_selected: not_run",
+        "summary: not_run",
+        "preview: not_run",
+        "confirmation: not_run",
+        "scheduled_list: not_run",
+        "timestamp_registered: not_run",
         "duplicate_created: false",
     )
     for field in receipt_fields:
@@ -290,3 +302,87 @@ def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
 
     sensitive_terms = ("screenshot", "cookie", "account identifier", "private page content")
     assert not any(term in report.lower() for term in sensitive_terms)
+
+
+def test_round_four_documents_truthful_evidence_and_safe_dry_run_protocol():
+    skill = (ROOT / ".agents" / "skills" / "publicar-linkedin" / "SKILL.md").read_text()
+    report = (ROOT / ".superpowers" / "sdd" / "scheduling-task-3-report.md").read_text()
+    for text in (skill, report):
+        for status in ("real_non_destructive", "real_existing_post", "simulated", "not_run"):
+            assert status in text
+        assert "blocked_before_advance" in text
+        assert "não foram executados" in text.lower()
+    assert "não confirmar" in report.lower()
+
+
+def test_dry_run_stops_before_advance():
+    assert validate_dry_run_events(
+        COMMON_EVENTS
+        + [
+            "visual_route",
+            "date_selected",
+            "time_selected",
+            "summary_confirmed",
+            "blocked_before_advance",
+        ]
+    ) is True
+
+
+@pytest.mark.parametrize(
+    "event",
+    ["advance", "schedule", "confirmation", "scheduled_list_confirmed", "timestamp_registered"],
+)
+def test_dry_run_rejects_mutating_or_completion_event(event):
+    with pytest.raises(ValueError):
+        validate_dry_run_events(
+            COMMON_EVENTS
+            + ["visual_route", "date_selected", "time_selected", "summary_confirmed", event]
+        )
+
+
+@pytest.mark.parametrize(
+    "status",
+    ["real_non_destructive", "real_existing_post", "simulated", "not_run"],
+)
+def test_receipt_accepts_each_explicit_evidence_status(status):
+    receipt = {
+        "evidence_status": status,
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
+        "displayed_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
+        "date_selected": "not_run" if status in {"simulated", "not_run"} else "pass",
+        "time_selected": "not_run" if status in {"simulated", "not_run"} else "pass",
+        "summary": "not_run" if status in {"simulated", "not_run"} else "pass",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
+        "duplicate_created": False,
+    }
+    assert validate_receipt(receipt) is True
+
+
+def test_receipt_rejects_unknown_evidence_status_and_completed_dry_run():
+    receipt = {
+        "evidence_status": "browser_realish",
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "",
+        "displayed_timestamp": "",
+        "date_selected": "not_run",
+        "time_selected": "not_run",
+        "summary": "not_run",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
+        "duplicate_created": False,
+    }
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
+
+    receipt["evidence_status"] = "real_non_destructive"
+    receipt["confirmation"] = "pass"
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)

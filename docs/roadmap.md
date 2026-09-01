@@ -19,30 +19,39 @@ O agendamento não faz parte deste fluxo documental. Ele permanece separado no p
 
 ## Verificação manual de agendamento
 
-Matriz não sensível da Task 3. O reagendamento foi executado realmente nesta sessão; os demais casos foram simulados de forma não destrutiva.
+Matriz não sensível da Task 3. Na rodada 4, nenhum cenário mutante foi executado no browser.
 
 | Caso | Resultado esperado | Status |
 | --- | --- | --- |
-| new schedule with different date and time | data e horário explícitos aparecem no resumo antes de Avançar | cenário |
-| new schedule for today with explicit date and time | data de hoje e horário explícitos aparecem no resumo | cenário |
-| reschedule existing post with same time and different date | re-selecionar data e horário, confirmar prévia e lista | executado: real |
-| wrong summary detected before Avançar | summary divergence blocks Avançar; não agendar | simulado: não destrutivo |
-| scheduled post missing from the scheduled list | confirmation/list absence blocks registration; não registrar timestamp | simulado: não destrutivo |
+| new schedule with different date and time | data e horário explícitos aparecem no resumo antes de Avançar | not_run: criação não executada por segurança |
+| new schedule for today with explicit date and time | data de hoje e horário explícitos aparecem no resumo | not_run: agendamento não executado por segurança |
+| reschedule existing post with same time and different date | inspecionar `... → Alterar agenda`, sem confirmar segunda mudança | not_run: alteração não executada por segurança |
+| wrong summary detected before Avançar | summary divergence blocks Avançar; não agendar | simulated: contrato/teste |
+| scheduled post missing from the scheduled list | confirmation/list absence blocks registration; não registrar timestamp | simulated: contrato/teste |
 
 Regra adicional: never duplicate. Em qualquer falha de confirmação ou de presença na lista, interromper o fluxo e não criar uma segunda publicação.
 
 ### Receipt estruturada
 
 ```yaml
+evidence_status: simulated
 route: browser_cdp
 fallback: native
-requested_timestamp: "01/09/2026 10:00"
-displayed_timestamp: "01/09/2026 10:00"
-date_selected: pass
-time_selected: pass
-summary: pass
-preview: pass
-confirmation: pass
-scheduled_list: pass
+requested_timestamp: ""
+displayed_timestamp: ""
+date_selected: not_run
+time_selected: not_run
+summary: not_run
+preview: not_run
+confirmation: not_run
+scheduled_list: not_run
+timestamp_registered: not_run
 duplicate_created: false
 ```
+
+## Rodada 4
+
+- `evidence_status` agora separa rigorosamente `real_non_destructive`, `real_existing_post`, `simulated` e `not_run`.
+- O protocolo browser dry-run seleciona data, seleciona novamente o horário, confirma o resumo e bloqueia antes de `Avançar`.
+- Os cinco cenários acima foram classificados sem alegar evidência browser-real; criação, publicação, agendamento, exclusão e alteração não foram executados por segurança.
+- O caminho da publicação existente `... → Alterar agenda` não foi confirmado para preservar o agendamento correto.

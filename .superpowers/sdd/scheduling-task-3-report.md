@@ -2,33 +2,38 @@
 
 ## Status
 
-PASS para a evidência real fornecida nesta sessão. A publicação existente foi reagendada pelo caminho `... → Alterar agenda`, com re-seleção explícita de data e horário.
+PASS para o contrato e o protocolo seguro da rodada 4. Nenhuma ação mutante foi executada no LinkedIn.
 
 ## Receipt estruturada
 
 ```yaml
+evidence_status: simulated
 route: browser_cdp
 fallback: native
-requested_timestamp: "01/09/2026 10:00"
-displayed_timestamp: "01/09/2026 10:00"
-date_selected: pass
-time_selected: pass
-summary: pass
-preview: pass
-confirmation: pass
-scheduled_list: pass
+requested_timestamp: ""
+displayed_timestamp: ""
+date_selected: not_run
+time_selected: not_run
+summary: not_run
+preview: not_run
+confirmation: not_run
+scheduled_list: not_run
+timestamp_registered: not_run
 duplicate_created: false
 ```
 
-Playwright não estava disponível no runtime. Browser/CDP foi a rota real usada, com visão nativa bem-sucedida. Nenhuma publicação nova foi criada, publicada ou agendada.
+O receipt acima é de contrato/teste (`simulated`), não de browser-real.
+Os estados permitidos e distintos são `real_non_destructive`,
+`real_existing_post`, `simulated` e `not_run`; esta rodada usou somente os
+dois últimos.
 
 ## Casos executados
 
-- `reschedule existing post with same time and different date`: executado realmente; a publicação existente seguiu `... → Alterar agenda`.
-- `new schedule with different date and time`: simulado de forma não destrutiva.
-- `new schedule for today with explicit date and time`: simulado de forma não destrutiva.
-- `wrong summary detected before Avançar`: simulado de forma não destrutiva; bloqueia Avançar.
-- `scheduled post missing from the scheduled list`: simulado de forma não destrutiva; bloqueia o registro.
+- `reschedule existing post with same time and different date`: `not_run`; não confirmar `... → Alterar agenda` para preservar a agenda correta.
+- `new schedule with different date and time`: `not_run`; criação/agendamento não foram executados por segurança.
+- `new schedule for today with explicit date and time`: `not_run`; criação/agendamento não foram executados por segurança.
+- `wrong summary detected before Avançar`: `simulated`; o contrato bloqueia `Avançar`.
+- `scheduled post missing from the scheduled list`: `simulated`; o contrato bloqueia o registro.
 
 ## Failure gates
 
@@ -48,3 +53,9 @@ Playwright não estava disponível no runtime. Browser/CDP foi a rota real usada
 - `validate_reschedule_events()` agora exige a sequência completa até `timestamp_registered` e rejeita fluxo parcial, `new_composer` e duplicatas.
 - Foram adicionados testes para divergência, campo ausente, gate falho, route/fallback inválidos, dados sensíveis e sequência parcial.
 - Evidência manual permanece a mesma: reagendamento real da publicação existente; os demais casos continuam identificados como simulações não destrutivas.
+
+## Rodada 4
+
+- `validate_receipt()` exige `evidence_status` em allowlist e impede receipts dry-run de alegarem confirmação, presença na lista ou timestamp registrado.
+- `validate_dry_run_events()` exige seleção de data, seleção de horário, resumo confirmado e `blocked_before_advance`; rejeita eventos mutantes ou de conclusão.
+- A rodada 4 não executou criação, publicação, agendamento, exclusão ou alteração de publicação por segurança. O caminho existente `... → Alterar agenda` também não foi confirmado.
