@@ -255,7 +255,7 @@ A imagem continua sendo anexada manualmente quando necessário. A aprovação ed
 
 Na publicação pelo browser, a primeira tentativa é sempre Playwright. Para confirmações visuais, use `screenshot + visão nativa`; se não houver visão nativa, use `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa; se a visão nativa falhar, use `image-analyzer` com `reason: native_failed`; se nenhuma rota funcionar, pare. O fallback não substitui evidência visual. O agendamento exige seleção explícita de data e horário, nova seleção do horário após trocar a data, resumo visual antes de `Avançar`, prévia final antes de `Agendar` e confirmação em `Publicações agendadas`. Para qualquer divergência pós-agendamento, use a publicação existente e `... → Alterar agenda`, nunca crie duplicata. O timestamp só é registrado no arquivo aprovado depois da confirmação na lista, sem nova aprovação textual.
 
-O contrato executável dessa sequência está em `scheduling_contract.py`; imagem ilegível encerra o fluxo sem registrar timestamp e o reagendamento nunca usa `new_composer`.
+O validador puro dos eventos observados está em `scheduling_contract.py`; o fallback de screenshot é condicional, imagem ilegível encerra o fluxo sem registrar timestamp e o reagendamento nunca usa `new_composer`.
 
 ## Sequência resumida
 

@@ -1,8 +1,10 @@
-SCHEDULE_EVENTS = (
+_COMMON = (
     "approved_file",
     "markdown_converted",
     "playwright_attempt",
-    "screenshot_fallback_if_needed",
+)
+
+_SUCCESS = (
     "visual_route",
     "date_selected",
     "time_selected",
@@ -15,39 +17,50 @@ SCHEDULE_EVENTS = (
     "timestamp_registered",
 )
 
-
-def expected_schedule_events():
-    return SCHEDULE_EVENTS
-
-
-def reschedule_events():
-    return (
-        "existing_post_menu",
-        "alter_schedule",
-        "date_selected",
-        "time_selected",
-    )
+_VISUAL_BRANCHES = {
+    "playwright": (),
+    "no_native_vision": ("image-analyzer:reason=no_native_vision",),
+    "native_failed": (
+        "screenshot_fallback_if_needed",
+        "image-analyzer:reason=native_failed",
+    ),
+}
 
 
-def visual_route(branch):
-    routes = {
-        "playwright": ("playwright_attempt", "visual_route"),
-        "no_native_vision": (
-            "playwright_attempt",
-            "image-analyzer:reason=no_native_vision",
-            "visual_route",
-        ),
-        "native_failed": (
-            "playwright_attempt",
-            "screenshot_fallback_if_needed",
-            "image-analyzer:reason=native_failed",
-            "visual_route",
-        ),
-        "unreadable_image": (
-            "playwright_attempt",
+def _validate_exact(events, expected):
+    observed = tuple(events)
+    if len(observed) != len(set(observed)):
+        raise ValueError("duplicate event")
+    if observed != expected:
+        raise ValueError(f"invalid event sequence: {observed!r}")
+    return True
+
+
+def validate_schedule_events(events, route):
+    if route == "unreadable_image":
+        expected = _COMMON + (
             "screenshot_fallback_if_needed",
             "image-analyzer:reason=unreadable_image",
             "stop",
+        )
+    else:
+        try:
+            branch = _VISUAL_BRANCHES[route]
+        except KeyError as error:
+            raise ValueError(f"unknown route: {route}") from error
+        expected = _COMMON + branch + _SUCCESS
+    return _validate_exact(events, expected)
+
+
+def validate_reschedule_events(events, route):
+    if route != "existing_post":
+        raise ValueError(f"unknown reschedule route: {route}")
+    return _validate_exact(
+        events,
+        (
+            "existing_post_menu",
+            "alter_schedule",
+            "date_selected",
+            "time_selected",
         ),
-    }
-    return routes[branch]
+    )

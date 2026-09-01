@@ -104,13 +104,13 @@ A confirmação final deve ocorrer em **Publicações agendadas**, com o post e 
 
 ## Visão e rota de interação
 
-Use esta ordem exata, sem tratar fallback como substituto de evidência visual:
+Use esta ordem de decisão, sem tratar fallback como substituto de evidência visual:
 
 ```text
 Playwright → screenshot + visão nativa → image-analyzer(native_failed) → stop
 ```
 
-1. Tentar primeiro Playwright para localizar e interagir com os elementos acessíveis.
+1. Tentar primeiro Playwright para localizar e interagir com os elementos acessíveis. Se o Playwright for bem-sucedido, não é necessário executar fallback de screenshot.
 2. Se o modelo tiver visão nativa e a interação exigir confirmação visual, capturar screenshot e usar visão nativa para produzir um resumo visual do estado: conteúdo, data, hora, botões e prévia.
 3. Se o modelo não tiver visão nativa, delegar diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa.
 4. Se a visão nativa falhar, delegar ao `image-analyzer` com `reason: native_failed`, passando o screenshot. Isso é um fallback de leitura visual, não uma substituição por inferência.
@@ -120,13 +120,13 @@ Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar
 
 ### Contrato comportamental
 
-Uma execução válida percorre exatamente:
+Uma execução válida usa estes eventos na ordem indicada; `screenshot_fallback_if_needed` só aparece nos branches que precisam de screenshot:
 
 ```text
 approved_file → markdown_converted → playwright_attempt → screenshot_fallback_if_needed → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
 ```
 
-O evento `screenshot_fallback_if_needed` representa a confirmação visual quando necessária; não autoriza inferência sem evidência. Os branches visuais são `playwright`, `no_native_vision`, `native_failed` e `unreadable_image`. O branch `no_native_vision` usa `image-analyzer` com `reason: no_native_vision` sem tentar visão nativa; `native_failed` usa `reason: native_failed`; `unreadable_image` encerra em `stop`.
+O evento `screenshot_fallback_if_needed` representa a confirmação visual quando necessária; não autoriza inferência sem evidência. No branch `playwright`, ele é omitido quando a tentativa tem sucesso. Os branches visuais são `playwright`, `no_native_vision`, `native_failed` e `unreadable_image`. O branch `no_native_vision` vai diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa; `native_failed` usa screenshot e `reason: native_failed`; `unreadable_image` encerra em `stop`.
 
 Para reagendamento, a sequência é `existing_post_menu → alter_schedule → date_selected → time_selected`. O fluxo não contém `new_composer`: divergências usam a publicação existente.
 
