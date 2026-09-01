@@ -46,7 +46,7 @@ def test_gauntlet_documents_fail_closed_inputs_feedback_and_terminal_block():
 
 def test_quality_gate_returns_feedback_and_retries_instead_of_blocking():
     text = SKILL.read_text().lower()
-    assert "coverage <=99%" in text
+    assert "coverage <99%" in text
     assert "criteria <9/10" in text
     assert "feedback" in text
     assert "nao bloqueia" in text
@@ -80,7 +80,7 @@ def test_retry_limit_and_terminal_categories_are_explicitly_distinguished():
     assert "json invalido" in text
     assert "executor/revisor indisponivel" in text
     assert "artifact ausente" in text
-    assert "coverage <=99%" in text
+    assert "coverage <99%" in text
     assert "criteria <9/10" in text
 
 
@@ -121,7 +121,7 @@ def test_run_gauntlet_retries_quality_feedback_five_times_without_sixth_call():
     def reviewer(artifact, feedback):
         reviewer_calls.append((artifact, feedback))
         return review(
-            coverage=0.99,
+            coverage=0.98,
             criteria={"clarity": 8},
             decision="approved",
             feedback=[{"criterion": "clarity", "message": "Make the opening specific."}],
@@ -140,7 +140,7 @@ def test_run_gauntlet_approves_after_quality_retry_and_passes_feedback():
     seen_feedback = []
     reviews = iter([
         review(
-            coverage=0.99,
+            coverage=0.98,
             criteria={"clarity": 8},
             decision="feedback",
             feedback=[{"criterion": "clarity", "message": "Use one concrete example."}],
@@ -205,7 +205,7 @@ def test_validate_review_rejects_invalid_json_root_types_values_and_extra_fields
 def test_validate_review_accepts_strict_review_and_quality_failure_is_not_terminal():
     quality = validate_review(
         review(
-            coverage=0.99,
+            coverage=0.98,
             criteria={"clarity": 8},
             feedback=[{"criterion": "clarity", "message": "Add a concrete example."}],
         )
@@ -244,7 +244,7 @@ def test_blocked_after_five_cycles_contains_complete_terminal_payload():
 
     def reviewer(artifact, feedback):
         return review(
-            coverage=0.99,
+            coverage=0.98,
             criteria={"clarity": 8},
             feedback=[{"criterion": "clarity", "message": "Use a concrete example."}],
         )
@@ -264,7 +264,7 @@ def test_run_gauntlet_persists_cycles_events_state_atomically_and_idempotently(t
     calls = {"executor": 0, "reviewer": 0}
     reviews = iter([
         review(
-            coverage=0.99,
+            coverage=0.98,
             criteria={"clarity": 8},
             decision="feedback",
             feedback=[{"criterion": "clarity", "message": "Add evidence."}],
@@ -313,7 +313,7 @@ def test_callbacks_receive_separate_contexts_and_checks_precede_reviewer():
     observations = []
     reviews = iter([
         review(
-            coverage=0.99,
+            coverage=0.98,
             criteria={"clarity": 8},
             feedback=[{"criterion": "clarity", "message": "Be specific."}],
         ),
@@ -426,6 +426,62 @@ def test_divergent_existing_terminal_state_fails_closed_without_reusing_it(tmp_p
     assert "state" in result["failure_reasons"][0]
     assert calls == []
     assert json.loads(state_path.read_text()) == state
+
+
+def test_invalid_persistence_dir_returns_blocked_instead_of_raising(tmp_path):
+    persistence_file = tmp_path / "persistence"
+    persistence_file.write_text("not a directory")
+
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=persistence_file,
+    )
+
+    assert result["status"] == "blocked"
+    assert "persistence" in result["failure_reasons"][0]
+
+
+def test_malformed_terminal_state_is_rejected_fail_closed_without_raising(tmp_path):
+    state_path = tmp_path / "state.yaml"
+    state = {"status": "blocked", "cycles": "five"}
+    state_path.write_text(json.dumps(state))
+
+    result = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(),
+        artifact_path="mapa.md",
+        persistence_dir=tmp_path,
+    )
+
+    assert result["status"] == "blocked"
+    assert "state" in result["failure_reasons"][0]
+    assert json.loads(state_path.read_text()) == state
+
+
+def test_accepts_099_coverage_but_hard_failures_and_critical_questions_block(tmp_path):
+    (tmp_path / "mapa.md").write_text("artifact")
+
+    approved = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(coverage=0.99),
+        artifact_path="mapa.md",
+        workspace_root=tmp_path,
+    )
+    blocked = run_gauntlet(
+        lambda feedback: "mapa.md",
+        lambda artifact, feedback: review(
+            coverage=1.0,
+            hard_failures=["critical question remains unanswered"],
+        ),
+        artifact_path="mapa.md",
+        workspace_root=tmp_path,
+    )
+
+    assert approved["status"] == "approved"
+    assert blocked["status"] == "blocked"
+    assert blocked["failure_reasons"] == ["critical question remains unanswered"]
 
 
 def test_run_gauntlet_signature_exposes_artifact_persistence_and_run_identity():

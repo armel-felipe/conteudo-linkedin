@@ -236,18 +236,23 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
     root = Path.cwd().resolve() if workspace_root is None else Path(workspace_root).resolve()
     directory = Path(persistence_dir) if persistence_dir is not None else None
     if directory is not None:
-        existing = _load_json(directory / "state.yaml", None)
+        if directory.exists() and not directory.is_dir():
+            return _blocked(0, ["persistence directory is not a directory"])
         state_path = directory / "state.yaml"
+        try:
+            existing = _load_json(state_path, None)
+        except OSError as error:
+            return _blocked(0, [f"persistence error: {error}"])
         if state_path.exists():
             if not isinstance(existing, dict):
-                raise ValueError("state payload is invalid")
+                return _blocked(0, ["state payload is invalid"])
             if existing.get("status") in {"approved", "blocked"}:
                 try:
                     _validate_terminal_state(existing, artifact_path, root)
                 except ValueError as error:
                     return _blocked(0, [str(error)])
                 return existing
-            raise ValueError("state payload is invalid")
+            return _blocked(0, ["state payload is invalid"])
     feedback = []
     last_artifact = ""
     last_review = None
@@ -294,9 +299,9 @@ def run_gauntlet(executor, reviewer, max_cycles=5, *, artifact_path, persistence
 
         failed_criteria = set(validation["quality_feedback"])
         provided_criteria = {item["criterion"] for item in result["feedback"]}
-        quality_failed = bool(failed_criteria) or result["coverage"] <= 0.99
+        quality_failed = bool(failed_criteria) or result["coverage"] < 0.99
         if quality_failed:
-            if result["coverage"] <= 0.99 and not result["feedback"]:
+            if result["coverage"] < 0.99 and not result["feedback"]:
                 return _terminal(directory, _blocked(cycle, ["feedback missing for coverage gate"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)))
             if not failed_criteria <= provided_criteria:
                 return _terminal(directory, _blocked(cycle, ["feedback missing for failed criterion"], last_artifact, last_review, result["feedback"], sorted(failed_criteria)))

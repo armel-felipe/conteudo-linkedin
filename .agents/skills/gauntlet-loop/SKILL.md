@@ -51,8 +51,8 @@ Para cada ciclo:
 4. Faca outra chamada `task` nova e isolada para o `revisor`, diferente do executor. Entregue somente o artefato, o contrato do revisor e o feedback necessario.
 5. Aceite o resultado apenas se ele for JSON valido, parseavel e conforme o contrato. O objeto deve conter `decision`, `coverage`, `criteria`, `hard_failures`, `feedback` e `artifact`.
 6. Persista `runs/<run_id>/topics/<topic_id>/reviews/cycle-<NN>.yaml` ou o caminho de review definido pelo caller antes de avancar.
-7. Aprove somente quando `decision` for `approved`, `coverage > 0.99` (coverage >99%, mais de 99%) e todos os criterios forem `>=9/10` (all criteria at least 9/10), sem `hard_failures`.
-8. Se o JSON for valido, mas `coverage <=99%` ou algum `criteria <9/10`, o resultado e `feedback`, nao bloqueia. Exija feedback completo e acionavel associado a cada criterio falho; para coverage abaixo do gate, exija feedback acionavel. O proximo executor recebe esse feedback e consome uma nova rodada.
+7. Aprove somente quando `decision` for `approved`, `coverage >= 0.99` (coverage de pelo menos 99%) e todos os criterios forem `>=9/10` (all criteria at least 9/10), sem `hard_failures` ou questoes criticas pendentes.
+8. Se o JSON for valido, mas `coverage <99%` ou algum `criteria <9/10`, o resultado e `feedback`, nao bloqueia. Exija feedback completo e acionavel associado a cada criterio falho; para coverage abaixo do gate, exija feedback acionavel. O proximo executor recebe esse feedback e consome uma nova rodada.
 9. Se a decisao for `feedback`, exija feedback completo e acionavel para cada criterio falho. O proximo executor recebe esse feedback e inicia um novo ciclo.
 
 ## Contrato JSON estrito
@@ -78,11 +78,11 @@ Qualquer uma destas condicoes bloqueia imediatamente, sem aprovar e sem tentar m
 - artefato fora do caminho esperado, vazio, incompleto ou nao verificavel (artifact ausente);
 - saida do revisor que nao seja valid JSON, seja JSON truncado ou nao contenha todos os campos obrigatorios;
 - falha estrutural no objeto JSON, incluindo `decision` fora do enum, tipos incorretos, coverage nao finito ou fora de 0-1;
-- `hard_failures` nao vazio (hard failure);
+- `hard_failures` nao vazio (hard failure ou questao critica);
 - feedback ausente ou incompleto quando houver retry; cada retry exige complete feedback associado ao criterio;
 - falha em qualquer validacao deterministica (`failed validation`) ou erro de persistencia do review.
 
-`coverage <=99%` e `criteria <9/10` nao sao falhas terminais quando o JSON, o artefato e os participantes sao validos: produzem `feedback` por criterio e nova rodada. Nao trate texto livre, JSON parcial ou uma aprovacao verbal como resultado estruturado. Em caso de duvida estrutural, o resultado e `blocked`.
+`coverage <99%` e `criteria <9/10` nao sao falhas terminais quando o JSON, o artefato e os participantes sao validos: produzem `feedback` por criterio e nova rodada. Nao trate texto livre, JSON parcial ou uma aprovacao verbal como resultado estruturado. Em caso de duvida estrutural, o resultado e `blocked`.
 
 ## Limite terminal
 
@@ -120,7 +120,7 @@ O resultado `blocked` apos a quinta rodada deve conter `failed_criteria`, `last_
 - [ ] deterministic checks passaram;
 - [ ] artefato existe no caminho relativo esperado;
 - [ ] review e JSON valido e completo;
-- [ ] coverage maior que 99% e todos os criterios no minimo 9/10, ou feedback foi gerado para cada falha de qualidade;
+- [ ] coverage de pelo menos 99% e todos os criterios no minimo 9/10, ou feedback foi gerado para cada falha de qualidade;
 - [ ] feedback e completo em cada retry;
 - [ ] limite de 5 rodadas foi respeitado;
 - [ ] resultado final e `approved` ou `blocked` e esta persistido.

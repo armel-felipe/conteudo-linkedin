@@ -19,7 +19,8 @@
     "coverage": {
       "type": "number",
       "minimum": 0,
-      "maximum": 1
+      "maximum": 1,
+      "description": "Acceptance gate passes at coverage >= 0.99."
     },
     "criteria": {
       "type": "object",
@@ -51,6 +52,7 @@
     },
     "hard_failures": {
       "type": "array",
+      "description": "Any hard failure or unresolved critical question blocks approval.",
       "items": {"type": "string"}
     },
     "feedback": {
