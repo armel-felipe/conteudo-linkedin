@@ -34,6 +34,7 @@ function screenshotPathFromEnvironment(value = process.env.OPENWORK_BROWSER_SCRE
 }
 
 async function inspectPage(page) {
+  selectLinkedInPage([page]);
   const report = {
     url: page.url(),
     title: await page.title(),

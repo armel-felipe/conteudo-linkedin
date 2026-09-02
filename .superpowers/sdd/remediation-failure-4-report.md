@@ -2,8 +2,9 @@
 
 ## Status
 
-Approved by the requested quality gates: coverage >= 0.99, all applicable
-criteria >= 9/10, and zero open hard, critical, or important findings.
+Approved by the requested quality gates: coverage >= 0.99 for the artifact
+review gate, all applicable criteria >= 9/10, and zero open hard, critical, or
+important findings. Code coverage is reported separately below.
 
 ## Scope
 
@@ -45,6 +46,52 @@ This reproduced the structural failure before implementation.
   `OPENWORK_BROWSER_SCREENSHOT_PATH` inside the temporary directory.
 - Updated `publicar-linkedin` to run the script/Playwright route first, then
   screenshot/native vision, then `image-analyzer(native_failed)`.
+- `inspectPage` now validates its Page as a LinkedIn target before reading
+  title/state or taking a screenshot.
+
+## Remediation Round 2
+
+### RED
+
+Added real Page fixtures with call recording. The focused RED run was:
+
+```text
+8 passed, 1 failed
+```
+
+The failing regression showed that `inspectPage` accepted an `about:blank`
+fixture instead of failing closed.
+
+### GREEN
+
+- `inspectPage` now calls `selectLinkedInPage` before any Page inspection.
+- Tests prove no `click`, `fill`, or `goto` call occurs.
+- Tests prove screenshots are absent by default and occur only when an
+  explicit temporary path is supplied.
+- The fallback order is asserted from both the executable contract and the
+  skill documentation, without invoking an external analyzer.
+
+## Coverage
+
+The repository does not configure a JavaScript coverage tool. No code-coverage
+percentage is claimed. The project gate `coverage >= 0.99` applies to Gauntlet
+artifact reviews, not to code coverage.
+
+## Verification
+
+```text
+node --test tests/linkedin_browser_check.test.js
+9 passed, 0 failed
+
+npm test
+9 passed, 0 failed
+
+PYTHONPATH=. pytest -q
+172 passed in 0.99s
+
+python3 -m compileall -q gauntlet_loop.py tests
+git diff --check
+```
 
 ## Gauntlet
 
@@ -67,5 +114,4 @@ was attempted.
 
 - A real CDP smoke test was not run because it would require an available
   browser session; the script's connection failure remains non-mutating.
-- Screenshot output is intentionally limited to explicit temporary paths and
-  is not covered by a real browser test.
+- Screenshot behavior is covered by a local Page fixture, not a real browser.
