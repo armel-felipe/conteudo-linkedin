@@ -24,13 +24,14 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 
 1. Localizar arquivo em content/approved/ (valida existência; se não existir, parar e informar).
 2. Ler o arquivo Markdown e converter para texto LinkedIn (opção B): remover `# ` de título, converter/remover `**`/`__`/`*` sem vazar literal, manter quebras de linha, emojis e hashtags (`#palavra` preservadas).
-3. Abrir o browser do OpenWork já logado (openwork_execute browser.open_url → linkedin.com/feed) e navegar até "Começar publicação".
-4. Colar o conteúdo no campo de texto.
-5. Aplicar agendamento:
+3. Observar primeiro a rota do browser, sem mutação: executar `npm run linkedin:check` (ou `node scripts/linkedin_browser_check.js`) com `OPENWORK_BROWSER_CDP_URL` quando necessário. O script usa `chromium.connectOverCDP`, seleciona somente um target `linkedin.com`, reporta URL/título/estado visual e falha fechado em `about:blank` ou ausência de target; não clica nem publica. Screenshot só pode ser solicitado com `OPENWORK_BROWSER_SCREENSHOT_PATH` apontando explicitamente para um caminho temporário.
+4. Abrir o browser do OpenWork já logado (openwork_execute browser.open_url → linkedin.com/feed) e navegar até "Começar publicação".
+5. Colar o conteúdo no campo de texto.
+6. Aplicar agendamento:
    - Envio "agora": colar conteúdo, PAUSAR antes do clique final, informar que a pessoa pode anexar imagem manualmente, e aguardar o comando para concluir.
    - Agendado: abrir o seletor de agendamento e preencher data/hora conforme o caso (ver "Agendamento — detalhes").
-6. Verificar o agendamento (ver "Verificação pós-agendamento").
-7. Somente depois da verificação, registrar o agendamento no arquivo (ver "Registro do agendamento").
+7. Verificar o agendamento (ver "Verificação pós-agendamento").
+8. Somente depois da verificação, registrar o agendamento no arquivo (ver "Registro do agendamento").
 
 ## Conversão Markdown → texto LinkedIn (OBRIGATÓRIA, antes da colagem)
 
@@ -138,7 +139,7 @@ Use esta ordem de decisão, sem tratar fallback como substituto de evidência vi
 Playwright → screenshot + visão nativa → image-analyzer(native_failed) → stop
 ```
 
-1. Tentar primeiro Playwright para localizar e interagir com os elementos acessíveis. Se o Playwright for bem-sucedido, não é necessário executar fallback de screenshot.
+1. Tentar primeiro o script Playwright/observação CDP (`npm run linkedin:check`) para localizar o target e, na interação, os elementos acessíveis. Se o Playwright for bem-sucedido, não é necessário executar fallback de screenshot.
 2. Se o modelo tiver visão nativa e a interação exigir confirmação visual, capturar screenshot e usar visão nativa para produzir um resumo visual do estado: conteúdo, data, hora, botões e prévia.
 3. Se o modelo não tiver visão nativa, delegar diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa.
 4. Se a visão nativa falhar, delegar ao `image-analyzer` com `reason: native_failed`, passando o screenshot. Isso é um fallback de leitura visual, não uma substituição por inferência.

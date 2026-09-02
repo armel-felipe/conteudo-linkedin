@@ -1,0 +1,11 @@
+{
+  "name": "conteudo-linkedin-browser-observer",
+  "private": true,
+  "scripts": {
+    "linkedin:check": "node scripts/linkedin_browser_check.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}
