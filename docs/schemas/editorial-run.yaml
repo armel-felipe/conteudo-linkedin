@@ -1,6 +1,6 @@
 run_id: run_YYYYMMDD_NNN
 created_at: ISO-8601
-selection: "1 | N | all | comma-separated topic ids"
+selection: "1 | N | all | comma-separated topic ids" # immutable after queue_frozen: true
 queue_frozen: true
 queue_fingerprint: sha256:<64 lowercase hex characters>
 queue:
@@ -8,6 +8,8 @@ queue:
     position: 1
     status: queued
     current_stage: research-topic
+# An existing frozen manifest accepts only the identical selection and immutable queue
+# projection (topic_id, position, and score); divergent requests fail closed.
 topics: {}
 metrics:
   queue_size: 0

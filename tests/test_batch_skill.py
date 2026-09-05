@@ -141,7 +141,6 @@ def test_manifest_freezes_root_selection_and_queue_and_is_idempotent(tmp_path):
         tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics", "2"
     )
     first = freeze_manifest(tmp_path / "runs", "run_001", "2", topics)
-    topics[0]["score"] = 1
     second = freeze_manifest(tmp_path / "runs", "run_001", "2", topics)
 
     assert first == second
@@ -149,6 +148,60 @@ def test_manifest_freezes_root_selection_and_queue_and_is_idempotent(tmp_path):
     assert [item["topic_id"] for item in first["queue"]] == ["topic_c", "topic_d"]
     assert first["queue_frozen"] is True
     assert (tmp_path / "runs" / "run_001" / "manifest.yaml").exists()
+
+
+def test_existing_manifest_accepts_the_same_selection_and_queue(tmp_path):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "2")
+    first = freeze_manifest(tmp_path / "runs", "run_001", "2", topics)
+
+    assert freeze_manifest(tmp_path / "runs", "run_001", "2", topics) == first
+
+
+@pytest.mark.parametrize(
+    ("selection", "topics_factory", "message"),
+    [
+        ("all", lambda topics: topics, "selection is frozen"),
+        ("2", lambda topics: list(reversed(topics)), "queue is frozen"),
+        ("2", lambda topics: [{**topics[0], "score": topics[0]["score"] + 1}, topics[1]], "queue is frozen"),
+    ],
+)
+def test_existing_manifest_rejects_divergent_selection_or_queue_without_overwrite(
+    tmp_path, selection, topics_factory, message
+):
+    write_fixture(tmp_path)
+    original_topics = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "2")
+    freeze_manifest(tmp_path / "runs", "run_001", "2", original_topics)
+    manifest_path = tmp_path / "runs/run_001/manifest.yaml"
+    before = manifest_path.read_bytes()
+
+    with pytest.raises(ValueError, match=message):
+        freeze_manifest(tmp_path / "runs", "run_001", selection, topics_factory(original_topics))
+
+    assert manifest_path.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("queue_fingerprint", "sha256:" + "0" * 64, "frozen queue"),
+        ("queue_frozen", False, "frozen queue"),
+    ],
+)
+def test_existing_manifest_rejects_invalid_freeze_metadata_without_overwrite(tmp_path, field, value, message):
+    write_fixture(tmp_path)
+    topics = load_and_select_topics(tmp_path / "content/backlog.md", tmp_path / "research/topics", "2")
+    freeze_manifest(tmp_path / "runs", "run_001", "2", topics)
+    manifest_path = tmp_path / "runs/run_001/manifest.yaml"
+    manifest = yaml.safe_load(manifest_path.read_text())
+    manifest[field] = value
+    manifest_path.write_text(yaml.safe_dump(manifest))
+    before = manifest_path.read_bytes()
+
+    with pytest.raises(ValueError, match=message):
+        freeze_manifest(tmp_path / "runs", "run_001", "2", topics)
+
+    assert manifest_path.read_bytes() == before
 
 
 def test_checkpoint_requires_result_artifact_fingerprint_paths_and_validates_resume(tmp_path):

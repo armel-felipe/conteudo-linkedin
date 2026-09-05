@@ -192,7 +192,22 @@ def load_and_select_topics(backlog_path, topics_dir, selection):
 def freeze_manifest(runs_dir, run_id, selection, topics):
     path = Path(runs_dir) / run_id / "manifest.yaml"
     if path.exists():
-        return _load_manifest(path, run_id)
+        manifest = _load_manifest(path, run_id)
+        if manifest.get("selection") != selection:
+            raise ValueError("manifest selection is frozen and does not match requested selection")
+        expected_queue = [
+            {
+                "topic_id": topic["topic_id"],
+                "position": position,
+                "status": "queued",
+                "current_stage": "research-topic",
+                "score": topic["score"],
+            }
+            for position, topic in enumerate(topics, start=1)
+        ]
+        if _queue_fingerprint(manifest["queue"]) != _queue_fingerprint(expected_queue):
+            raise ValueError("manifest queue is frozen and does not match requested queue")
+        return manifest
 
     manifest = {
         "contract_version": "1",
