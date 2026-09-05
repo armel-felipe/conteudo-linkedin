@@ -30,7 +30,7 @@ Cada item só começa depois da aprovação do anterior pelo Loop Gauntlet. O ga
    - [x] recuperar ou bloquear intents parciais sem sobrescrever estado;
     - [x] manter `completed` inconsistente em falha fechada;
     - [x] rejeitar valores semânticos de falha no registro de timestamp;
-   - tratar estado terminal sem stages restantes sem `StopIteration`.
+    - [x] tratar estado terminal sem stages restantes sem `StopIteration`.
    - validar o tipo raiz de `receipt` antes de usar operações de conjunto, evitando `TypeError` com entrada malformada.
 
 O item 5 é o próximo passo. O agendamento só será considerado operacionalmente concluído depois da validação da publicação existente e dos cenários não mutantes restantes.

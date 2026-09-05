@@ -192,6 +192,8 @@ Cada stage usa executor e revisor separados. Cada Gauntlet executa no máximo 5 
 
 O stage recebido deve ser igual ao `current_stage` persistido e todos os stages anteriores devem estar em `completed_stages`; execução fora de ordem é rejeitada. Depois de `approval_humana`, `state.yaml` e o item da fila passam a `completed`, `current_stage` passa a `null`.
 
+Se todos os stages de um topic já estiverem terminalizados com estado consistente, a retomada retorna o resultado estruturado `already_complete` e não executa callback, grava evento duplicado nem altera manifesto ou métricas. Quando a fila congelada não contém itens pendentes, o lote retorna `completed` estruturado. Estado `completed` incompleto ou divergente continua fail-closed como `completed_state_integrity`.
+
 Não publique nem agende posts nesta skill: nunca chame `publicar-linkedin`.
 
 ## Checkpoints, Retomada, Idempotência e Falhas

@@ -20,6 +20,8 @@ from editorial_batch import (
     state_path,
     _update_metrics,
     _valid_commit_event,
+    batch_terminal_result,
+    TerminalIntegrityError,
 )
 from gauntlet_loop import NORMATIVE_CRITERIA
 
@@ -238,6 +240,96 @@ def test_checkpoint_requires_result_artifact_fingerprint_paths_and_validates_res
     assert resume_stage(state) == "write-post"
     state["checkpoint"]["stage"] = "write-post"
     assert checkpoint_valid(state, tmp_path) is False
+
+
+def test_empty_queue_returns_structured_completed_result_without_side_effects():
+    queue = []
+
+    first = batch_terminal_result(queue)
+    second = batch_terminal_result(queue)
+
+    assert first == {"status": "completed", "result": "completed", "queue_size": 0}
+    assert second == first
+    assert queue == []
+
+
+def test_completed_topic_returns_structured_already_complete_result_idempotently():
+    state = {
+        "run_id": "run_001",
+        "topic_id": "topic_c",
+        "status": "completed",
+        "current_stage": None,
+        "completed_stages": list(CANONICAL_STAGES),
+    }
+
+    first = resume_stage(state)
+    second = resume_stage(state)
+
+    assert first == {
+        "status": "already_complete",
+        "result": "already_complete",
+        "run_id": "run_001",
+        "topic_id": "topic_c",
+    }
+    assert second == first
+    assert state["completed_stages"] == CANONICAL_STAGES
+
+
+def test_repeated_terminal_resume_preserves_completed_batch_files_and_metrics(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    for cycle, stage in enumerate(CANONICAL_STAGES, start=1):
+        artifact = f"content/{stage}.md"
+        persist_stage(
+            tmp_path / "runs", tmp_path, "run_001", "topic_c", stage, cycle,
+            artifact, stage, {"stage": stage, "artifact": artifact}, valid_review(artifact),
+        )
+
+    state_file = state_path(tmp_path / "runs", "run_001", "topic_c")
+    manifest_file = tmp_path / "runs/run_001/manifest.yaml"
+    events_file = event_path(tmp_path / "runs", "run_001")
+    state = yaml.safe_load(state_file.read_text())
+    manifest = yaml.safe_load(manifest_file.read_text())
+    state_before, manifest_before, events_before = (
+        state_file.read_bytes(), manifest_file.read_bytes(), events_file.read_bytes()
+    )
+
+    assert resume_stage(state)["status"] == "already_complete"
+    assert resume_stage(state)["result"] == "already_complete"
+    assert batch_terminal_result(manifest["queue"])["status"] == "completed"
+    assert state_file.read_bytes() == state_before
+    assert manifest_file.read_bytes() == manifest_before
+    assert events_file.read_bytes() == events_before
+    assert yaml.safe_load(manifest_file.read_text())["metrics"] == manifest["metrics"]
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        {
+            "run_id": "run_001",
+            "topic_id": "topic_c",
+            "status": "completed",
+            "current_stage": None,
+            "completed_stages": CANONICAL_STAGES[:-1],
+        },
+        {
+            "run_id": "run_001",
+            "topic_id": "topic_c",
+            "status": "completed",
+            "current_stage": "approval_humana",
+            "completed_stages": CANONICAL_STAGES,
+        },
+    ],
+)
+def test_inconsistent_completed_stage_state_fails_closed(state):
+    with pytest.raises(TerminalIntegrityError) as caught:
+        resume_stage(state)
+
+    assert caught.value.code == "completed_state_integrity"
+    assert caught.value.as_dict()["state_status"] == "completed"
 
 
 def test_checkpoint_without_result_path_is_invalid(tmp_path):

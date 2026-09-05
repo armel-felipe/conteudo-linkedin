@@ -385,8 +385,50 @@ def _raise_for_completed_state(state, queue_item, workspace_root, events):
 
 
 def resume_stage(state):
-    completed = set(state.get("completed_stages", []))
-    return next(stage for stage in CANONICAL_STAGES if stage not in completed)
+    completed_stages = state.get("completed_stages", [])
+    completed = set(completed_stages)
+    remaining = [stage for stage in CANONICAL_STAGES if stage not in completed]
+
+    if state.get("status") == "completed" and remaining:
+        raise TerminalIntegrityError("completed_state_integrity", [{
+            "code": "completed_stages_incomplete",
+            "message": "completed state still has stages remaining",
+            "paths": [],
+        }])
+
+    if not remaining:
+        if (
+            state.get("status") != "completed"
+            or state.get("current_stage") is not None
+            or completed_stages != CANONICAL_STAGES
+        ):
+            raise TerminalIntegrityError("completed_state_integrity", [{
+                "code": "completed_terminal_state_invalid",
+                "message": "all stages are terminalized but completed state is inconsistent",
+                "paths": [],
+            }])
+        return {
+            "status": "already_complete",
+            "result": "already_complete",
+            "run_id": state.get("run_id"),
+            "topic_id": state.get("topic_id"),
+        }
+
+    return remaining[0]
+
+
+def batch_terminal_result(queue):
+    """Return a side-effect-free terminal result when the frozen queue is done."""
+    if not isinstance(queue, list):
+        raise ValueError("queue must be a list")
+    if not queue or all(
+        isinstance(item, dict)
+        and item.get("status") == "completed"
+        and item.get("current_stage") is None
+        for item in queue
+    ):
+        return {"status": "completed", "result": "completed", "queue_size": len(queue)}
+    return None
 
 
 def idempotency_key(run_id, topic_id, stage, cycle):
