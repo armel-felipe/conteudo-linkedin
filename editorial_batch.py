@@ -37,6 +37,23 @@ DEFAULT_METRICS = {
 VALID_STATE_STATUSES = {"running", "blocked", "completed"}
 
 
+class TerminalIntegrityError(ValueError):
+    """A completed topic is immutable, including when its evidence is corrupt."""
+
+    def __init__(self, code, failure_reasons):
+        self.code = code
+        self.failure_reasons = failure_reasons
+        super().__init__(f"{code}: terminal state cannot transition")
+
+    def as_dict(self):
+        return {
+            "status": "terminal_integrity_error",
+            "state_status": "completed",
+            "code": self.code,
+            "failure_reasons": self.failure_reasons,
+        }
+
+
 def _valid_id(value, prefix):
     separator = "[-_]" if prefix in {"run_", "topic_"} else "_"
     stem = prefix.rstrip("_-")
@@ -309,6 +326,64 @@ def checkpoint_valid(state, workspace_root):
     return True
 
 
+def _completed_integrity_reasons(state, queue_item, workspace_root, events):
+    reasons = []
+    root = Path(workspace_root).resolve()
+    checkpoint = state.get("checkpoint") if isinstance(state, dict) else None
+
+    if not isinstance(checkpoint, dict) or not checkpoint_valid(state, root):
+        reasons.append({
+            "code": "completed_checkpoint_invalid",
+            "message": "completed state checkpoint is missing or divergent",
+            "paths": checkpoint.get("paths", []) if isinstance(checkpoint, dict) else [],
+        })
+    if not isinstance(queue_item, dict) or queue_item.get("status") != "completed" or queue_item.get("current_stage") is not None:
+        reasons.append({
+            "code": "completed_manifest_divergence",
+            "message": "completed state does not match the terminal manifest entry",
+            "paths": [],
+        })
+
+    if isinstance(checkpoint, dict):
+        key = list(idempotency_key(
+            state.get("run_id"), state.get("topic_id"),
+            checkpoint.get("stage"), checkpoint.get("cycle"),
+        ))
+        matching = [
+            event for event in events
+            if isinstance(event, dict) and event.get("phase") == "commit"
+            and event.get("idempotency_key") == key
+        ]
+        if len(matching) != 1 or not _valid_commit_event(matching[0], root):
+            reasons.append({
+                "code": "completed_commit_invalid",
+                "message": "completed state has no single valid canonical commit",
+                "paths": [checkpoint.get("result_path"), checkpoint.get("review_path")],
+            })
+        elif (matching[0].get("result") != checkpoint.get("result")
+              or matching[0].get("review") != checkpoint.get("review")
+              or matching[0].get("artifact_path") != checkpoint.get("last_artifact")
+              or matching[0].get("result_path") != checkpoint.get("result_path")
+              or matching[0].get("review_path") != checkpoint.get("review_path")):
+            reasons.append({
+                "code": "completed_commit_divergence",
+                "message": "completed commit does not match the checkpoint payload",
+                "paths": [checkpoint.get("last_artifact"), checkpoint.get("result_path"), checkpoint.get("review_path")],
+            })
+    return reasons
+
+
+def _raise_for_completed_state(state, queue_item, workspace_root, events):
+    reasons = _completed_integrity_reasons(state, queue_item, workspace_root, events)
+    if reasons:
+        raise TerminalIntegrityError("completed_state_integrity", reasons)
+    raise TerminalIntegrityError("terminal_state", [{
+        "code": "terminal_state",
+        "message": "terminal state cannot transition",
+        "paths": [],
+    }])
+
+
 def resume_stage(state):
     completed = set(state.get("completed_stages", []))
     return next(stage for stage in CANONICAL_STAGES if stage not in completed)
@@ -418,7 +493,13 @@ def continue_after_failure(
         "completed_stages": [],
     }
     if state.get("status") == "completed":
-        raise ValueError("terminal state cannot transition")
+        try:
+            events = _load_events(event_path(runs_dir, run_id))["events"]
+        except ValueError as exc:
+            raise TerminalIntegrityError("completed_state_integrity", [{
+                "code": "completed_events_invalid", "message": str(exc), "paths": [str(event_path(runs_dir, run_id))],
+            }]) from exc
+        _raise_for_completed_state(state, item, workspace_root, events)
     if (state.get("contract_version") != "1" or state.get("run_id") != run_id
             or state.get("topic_id") != topic_id):
         raise ValueError("state ids are invalid")
@@ -539,9 +620,11 @@ def persist_stage(
         raise ValueError("state ids are invalid")
     if state.get("status") not in {None, *VALID_STATE_STATUSES}:
         raise ValueError("state status is invalid")
-    if state.get("status") in {"blocked", "completed"}:
-        raise ValueError("terminal state cannot transition")
     events = event_path(runs_dir, run_id)
+    if state.get("status") == "completed":
+        _raise_for_completed_state(state, queue_item, root, _load_events(events)["events"])
+    if state.get("status") == "blocked":
+        raise ValueError("terminal state cannot transition")
     existing = _load_events(events)
     if any(event.get("phase") == "commit" and not _valid_commit_event(event) for event in existing["events"]):
         raise ValueError("event commit is invalid")
@@ -654,7 +737,7 @@ def persist_stage(
         existing["events"].append(intent)
         _atomic_write(events, existing)
 
-    state["status"] = "running"
+    state["status"] = "completed" if stage == "approval_humana" else "running"
     if not artifact.exists():
         _atomic_write_bytes(artifact, str(artifact_content).encode())
     if not result_file.exists():

@@ -27,6 +27,10 @@ metrics:
 # review_path in reviews/cycle-<NN>.yaml, and paths in artifact/result/review order,
 # relative paths inside the workspace, and a passing review gate (coverage >= 0.99,
 # 14 criteria >= 9, no hard failures, and no unresolved feedback).
+# After approval_humana, state.yaml and the manifest queue entry are both completed
+# with current_stage null. Any missing or divergent terminal evidence raises a
+# structured completed_state_integrity error; state, manifest, events and metrics
+# remain unchanged and the topic is never reclassified as blocked.
 # Commit events require exactly the canonical event fields, evt_NNNN, an ISO-8601 timestamp, canonical paths,
 # result.artifact equal to artifact_path, and a passing complete review.
 # Intent recovery requires artifact_fingerprint: sha256:<64 lowercase hex characters>.

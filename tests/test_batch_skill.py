@@ -584,6 +584,7 @@ def test_approval_stage_sets_terminal_current_stage(tmp_path):
     state = yaml.safe_load((tmp_path / "runs/run_001/topics/topic_c/state.yaml").read_text())
     manifest = yaml.safe_load((tmp_path / "runs/run_001/manifest.yaml").read_text())
     assert state["current_stage"] is None
+    assert state["status"] == "completed"
     assert manifest["queue"][0]["current_stage"] is None
     assert manifest["queue"][0]["status"] == "completed"
     assert manifest["metrics"]["reviewer_coverage"] == 0.999
@@ -656,6 +657,102 @@ def test_blocked_or_terminal_state_cannot_transition_and_blocked_stage_is_canoni
     }))
     with pytest.raises(ValueError, match="terminal"):
         continue_after_failure(tmp_path / "runs", tmp_path, "run_001", "topic_c", "failed")
+
+
+def test_inconsistent_completed_state_fails_closed_without_mutating_state_manifest_or_metrics(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    for cycle, stage in enumerate(CANONICAL_STAGES, start=1):
+        artifact = f"content/{stage}.md"
+        persist_stage(
+            tmp_path / "runs", tmp_path, "run_001", "topic_c", stage, cycle,
+            artifact, stage, {"stage": stage, "artifact": artifact}, valid_review(artifact),
+        )
+
+    state_file = state_path(tmp_path / "runs", "run_001", "topic_c")
+    manifest_file = tmp_path / "runs/run_001/manifest.yaml"
+    state = yaml.safe_load(state_file.read_text())
+    state["status"] = "completed"
+    state["current_stage"] = None
+    state["checkpoint"]["paths"] = state["checkpoint"]["paths"][:2]
+    state_file.write_text(yaml.safe_dump(state))
+    state_before = state_file.read_bytes()
+    manifest_before = manifest_file.read_bytes()
+    metrics_before = yaml.safe_load(manifest_file.read_text())["metrics"]
+
+    with pytest.raises(ValueError) as caught:
+        continue_after_failure(tmp_path / "runs", tmp_path, "run_001", "topic_c", "late failure")
+
+    assert caught.value.code == "completed_state_integrity"
+    assert caught.value.failure_reasons
+    assert caught.value.as_dict()["status"] == "terminal_integrity_error"
+    assert caught.value.as_dict()["state_status"] == "completed"
+    assert state_file.read_bytes() == state_before
+    assert manifest_file.read_bytes() == manifest_before
+    assert yaml.safe_load(manifest_file.read_text())["metrics"] == metrics_before
+    assert yaml.safe_load(state_file.read_text())["status"] == "completed"
+
+
+@pytest.mark.parametrize("tamper", [
+    "checkpoint_result", "review_file", "commit_event", "fingerprint", "paths", "result_file",
+])
+def test_completed_integrity_tampering_is_structured_and_never_reclassified(tmp_path, tamper):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    for cycle, stage in enumerate(CANONICAL_STAGES, start=1):
+        artifact = f"content/{stage}.md"
+        persist_stage(
+            tmp_path / "runs", tmp_path, "run_001", "topic_c", stage, cycle,
+            artifact, stage, {"stage": stage, "artifact": artifact}, valid_review(artifact),
+        )
+
+    state_file = state_path(tmp_path / "runs", "run_001", "topic_c")
+    manifest_file = tmp_path / "runs/run_001/manifest.yaml"
+    events_file = event_path(tmp_path / "runs", "run_001")
+    state = yaml.safe_load(state_file.read_text())
+    state["status"] = "completed"
+    state["current_stage"] = None
+    checkpoint = state["checkpoint"]
+    if tamper == "checkpoint_result":
+        checkpoint["result"] = {"artifact": "content/other.md"}
+        state_file.write_text(yaml.safe_dump(state))
+    elif tamper == "review_file":
+        review_file = tmp_path / checkpoint["review_path"]
+        review = yaml.safe_load(review_file.read_text())
+        review["coverage"] = 0.98
+        review_file.write_text(yaml.safe_dump(review))
+        state_file.write_text(yaml.safe_dump(state))
+    elif tamper == "commit_event":
+        events = yaml.safe_load(events_file.read_text())
+        events["events"][-1]["artifact_path"] = "content/other.md"
+        events_file.write_text(yaml.safe_dump(events))
+        state_file.write_text(yaml.safe_dump(state))
+    elif tamper == "fingerprint":
+        checkpoint["input_fingerprint"] = "sha256:" + "0" * 64
+        state_file.write_text(yaml.safe_dump(state))
+    elif tamper == "paths":
+        checkpoint["paths"] = []
+        state_file.write_text(yaml.safe_dump(state))
+    else:
+        (tmp_path / checkpoint["result_path"]).unlink()
+        state_file.write_text(yaml.safe_dump(state))
+
+    state_before = state_file.read_bytes()
+    manifest_before = manifest_file.read_bytes()
+    events_before = events_file.read_bytes()
+
+    with pytest.raises(ValueError) as caught:
+        continue_after_failure(tmp_path / "runs", tmp_path, "run_001", "topic_c", "late failure")
+
+    assert caught.value.code == "completed_state_integrity"
+    assert caught.value.as_dict()["state_status"] == "completed"
+    assert state_file.read_bytes() == state_before
+    assert manifest_file.read_bytes() == manifest_before
+    assert events_file.read_bytes() == events_before
 
 
 def test_checkpoint_and_event_paths_and_ids_must_match_canonical_locations(tmp_path):
