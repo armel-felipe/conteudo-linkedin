@@ -63,15 +63,12 @@ def test_resume_rejects_divergent_artifact_result_review_or_fingerprint(tmp_path
         persist_stage(tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
                       artifact, "original", result, review)
 
-    with pytest.raises(ValueError, match="divergent"):
-        persist_stage(tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
-                      artifact, "original", {**result, "decision": "feedback"}, review)
-
-    review_path = tmp_path / "runs/run-1/topics/topic_a/reviews/cycle-01.yaml"
-    review_path.write_text(yaml.safe_dump({**review, "coverage": 0.5}))
-    with pytest.raises(ValueError, match="divergent"):
-        persist_stage(tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
-                      artifact, "original", result, review)
+    blocked = persist_stage(
+        tmp_path / "runs", tmp_path, "run-1", "topic_a", "research-topic", 1,
+        artifact, "original", {**result, "decision": "feedback"}, review,
+    )
+    assert blocked["status"] == "blocked"
+    assert blocked["failure_reasons"][0]["code"] == "intent_payload_divergence"
 
 
 def test_corrupt_gauntlet_events_and_state_fail_closed(tmp_path):

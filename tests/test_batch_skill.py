@@ -605,9 +605,12 @@ def test_idempotency_rejects_adultered_review_even_when_file_exists(tmp_path):
     adultered = dict(review)
     adultered["coverage"] = 0.99
     (tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml").write_text(yaml.safe_dump(adultered))
-    with pytest.raises(ValueError, match="payload|event"):
-        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
-                      artifact, "changed", result, adultered)
+    blocked = persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        artifact, "changed", result, adultered,
+    )
+    assert blocked["status"] == "blocked"
+    assert blocked["failure_reasons"][0]["code"] == "intent_payload_divergence"
 
 
 def test_partial_recovery_rejects_existing_files_that_do_not_match_intent(tmp_path):
@@ -625,9 +628,12 @@ def test_partial_recovery_rejects_existing_files_that_do_not_match_intent(tmp_pa
     }]}))
     (tmp_path / "content/draft.md").parent.mkdir(exist_ok=True)
     (tmp_path / "content/draft.md").write_text("old")
-    with pytest.raises(ValueError, match="partial|intent"):
-        persist_stage(tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
-                      "content/draft.md", "new", valid_result("content/draft.md"), valid_review("content/draft.md"))
+    blocked = persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        "content/draft.md", "new", valid_result("content/draft.md"), valid_review("content/draft.md")
+    )
+    assert blocked["status"] == "blocked"
+    assert blocked["failure_reasons"][0]["code"] == "intent_incomplete"
 
 
 def test_blocked_or_terminal_state_cannot_transition_and_blocked_stage_is_canonical(tmp_path):
@@ -992,3 +998,156 @@ def test_checkpoint_result_non_dict_returns_false_and_preserves_state(tmp_path):
         state["checkpoint"]["result"] = result
         assert checkpoint_valid(state, tmp_path) is False
         assert state_file.read_bytes() == original
+
+
+def test_partial_intent_with_only_artifact_returns_structured_blocked_without_overwrite(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    events_file = event_path(tmp_path / "runs", "run_001")
+    events_file.write_text(yaml.safe_dump({"contract_version": "1", "events": [{
+        "event_id": "evt_0001", "phase": "intent",
+        "idempotency_key": ["run_001", "topic_c", "research-topic", 1],
+        "stage": "research-topic", "cycle": 1,
+        "artifact_path": "content/draft.md",
+        "result_path": "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml",
+        "review_path": "runs/run_001/topics/topic_c/reviews/cycle-01.yaml",
+        "result": {"artifact": "content/draft.md"},
+        "review": valid_review("content/draft.md"),
+    }]}))
+    artifact = tmp_path / "content/draft.md"
+    artifact.write_text("valid artifact")
+    before = artifact.read_bytes()
+
+    result = persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        "content/draft.md", "valid artifact", valid_result("content/draft.md"),
+        valid_review("content/draft.md"),
+    )
+
+    assert result["status"] == "blocked"
+    assert result["failure_reasons"][0]["code"] == "partial_cycle_files"
+    assert artifact.read_bytes() == before
+
+
+@pytest.mark.parametrize("existing_file", ["result", "review"])
+def test_orphan_cycle_file_returns_blocked_without_creating_missing_payload(tmp_path, existing_file):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    artifact_path = "content/draft.md"
+    result = valid_result(artifact_path)
+    review = valid_review(artifact_path)
+    if existing_file == "result":
+        path = tmp_path / "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml"
+        value = result
+    else:
+        path = tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml"
+        value = review
+    path.parent.mkdir(parents=True)
+    path.write_text(yaml.safe_dump(value))
+
+    blocked = persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        artifact_path, "draft", result, review,
+    )
+
+    assert blocked["status"] == "blocked"
+    assert blocked["failure_reasons"][0]["code"] == "orphan_cycle_files"
+    assert not (tmp_path / artifact_path).exists()
+
+
+def test_complete_intent_recovers_without_rewriting_valid_payload_files(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    artifact_path = "content/draft.md"
+    result = valid_result(artifact_path)
+    review = valid_review(artifact_path)
+    result_path = tmp_path / "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml"
+    review_file = tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml"
+    artifact = tmp_path / artifact_path
+    artifact.parent.mkdir(parents=True, exist_ok=True)
+    result_path.parent.mkdir(parents=True)
+    review_file.parent.mkdir(parents=True)
+    artifact.write_text("draft")
+    result_path.write_text(yaml.safe_dump(result))
+    review_file.write_text(yaml.safe_dump(review))
+    events_file = event_path(tmp_path / "runs", "run_001")
+    events_file.write_text(yaml.safe_dump({"contract_version": "1", "events": [{
+        "event_id": "evt_0001", "phase": "intent",
+        "idempotency_key": ["run_001", "topic_c", "research-topic", 1],
+        "stage": "research-topic", "cycle": 1,
+        "artifact_path": artifact_path,
+        "result_path": "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml",
+        "review_path": "runs/run_001/topics/topic_c/reviews/cycle-01.yaml",
+        "result": result, "review": review,
+        "artifact_fingerprint": "sha256:" + hashlib.sha256(b"draft").hexdigest(),
+    }]}))
+    payloads = {path: path.read_bytes() for path in (artifact, result_path, review_file)}
+
+    manifest = persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        artifact_path, "changed input", result, review,
+    )
+
+    assert manifest["queue"][0]["status"] == "running"
+    assert {path: path.read_bytes() for path in (artifact, result_path, review_file)} == payloads
+    assert yaml.safe_load(events_file.read_text())["events"][-1]["phase"] == "commit"
+
+
+def test_commit_without_intent_blocks_without_overwriting_committed_payload(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    artifact_path = "content/draft.md"
+    result = valid_result(artifact_path)
+    review = valid_review(artifact_path)
+    persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        artifact_path, "draft", result, review,
+    )
+    events_file = event_path(tmp_path / "runs", "run_001")
+    events = yaml.safe_load(events_file.read_text())
+    events["events"] = [event for event in events["events"] if event["phase"] == "commit"]
+    events_file.write_text(yaml.safe_dump(events))
+    payloads = {
+        tmp_path / artifact_path: (tmp_path / artifact_path).read_bytes(),
+        tmp_path / "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml":
+            (tmp_path / "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml").read_bytes(),
+        tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml":
+            (tmp_path / "runs/run_001/topics/topic_c/reviews/cycle-01.yaml").read_bytes(),
+    }
+
+    blocked = persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        artifact_path, "changed", result, review,
+    )
+
+    assert blocked["status"] == "blocked"
+    assert blocked["failure_reasons"][0]["code"] == "commit_without_intent"
+    assert {path: path.read_bytes() for path in payloads} == payloads
+
+
+def test_temporary_cycle_file_blocks_and_is_preserved(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    temporary = tmp_path / "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml.tmp"
+    temporary.parent.mkdir(parents=True)
+    temporary.write_text("interrupted")
+
+    blocked = persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        "content/draft.md", "draft", valid_result("content/draft.md"),
+        valid_review("content/draft.md"),
+    )
+
+    assert blocked["status"] == "blocked"
+    assert blocked["failure_reasons"][0]["code"] == "temporary_file_present"
+    assert temporary.read_text() == "interrupted"

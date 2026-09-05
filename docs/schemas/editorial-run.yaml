@@ -29,3 +29,6 @@ metrics:
 # 14 criteria >= 9, no hard failures, and no unresolved feedback).
 # Commit events require exactly the canonical event fields, evt_NNNN, an ISO-8601 timestamp, canonical paths,
 # result.artifact equal to artifact_path, and a passing complete review.
+# Intent recovery requires artifact_fingerprint: sha256:<64 lowercase hex characters>.
+# Partial intents, orphan payloads, commits without intents, and temporary files
+# fail closed as blocked with structured failure_reasons; existing files are never deleted or overwritten.

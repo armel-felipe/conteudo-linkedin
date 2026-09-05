@@ -405,6 +405,7 @@ def _update_metrics(manifest, events, root):
 def continue_after_failure(
     runs_dir, workspace_root, run_id, topic_id, error, *,
     artifact_fingerprint=None, review=None, feedback=None, cycle_count=0,
+    failure_reasons=None,
 ):
     manifest_path = Path(runs_dir) / run_id / "manifest.yaml"
     manifest = _load_manifest(manifest_path, run_id)
@@ -427,7 +428,7 @@ def continue_after_failure(
     state.update(
         status="blocked",
         current_stage=state.get("current_stage") or checkpoint.get("stage") or item.get("current_stage"),
-        failure={"error": error},
+        failure={"error": error, "failure_reasons": failure_reasons or [{"code": "stage_failure", "message": error}]},
         artifact_fingerprint=artifact_fingerprint or checkpoint.get("input_fingerprint"),
         last_review=review if review is not None else state.get("last_review"),
         feedback=feedback if feedback is not None else state.get("feedback", []),
@@ -445,6 +446,7 @@ def continue_after_failure(
             "type": "topic_blocked", "phase": "commit", "idempotency_key": key,
             "error": error, "artifact_fingerprint": state.get("artifact_fingerprint"),
             "last_review": state.get("last_review"), "feedback": state.get("feedback", []),
+            "failure_reasons": state["failure"].get("failure_reasons", []),
             "cycle_count": state.get("cycle_count", 0),
             "stage": state.get("current_stage") or checkpoint.get("stage") or item.get("current_stage"),
             "current_stage": state.get("current_stage") or checkpoint.get("stage") or item.get("current_stage"),
@@ -470,6 +472,27 @@ def state_path(runs_dir, run_id, topic_id):
 
 def review_path(runs_dir, run_id, topic_id, cycle):
     return Path(runs_dir) / run_id / "topics" / topic_id / "reviews" / f"cycle-{cycle:02d}.yaml"
+
+
+def _blocked_partial_cycle(
+    runs_dir, workspace_root, run_id, topic_id, stage, cycle, reasons,
+):
+    continue_after_failure(
+        runs_dir,
+        workspace_root,
+        run_id,
+        topic_id,
+        "partial cycle recovery is unsafe",
+        feedback=[],
+        cycle_count=cycle,
+        failure_reasons=reasons,
+    )
+    return {
+        "status": "blocked",
+        "failure_reasons": reasons,
+        "last_artifact": None,
+        "cycle_count": cycle,
+    }
 
 
 def persist_stage(
@@ -535,11 +558,46 @@ def persist_stage(
         "idempotency_key": key, "stage": stage, "cycle": cycle,
         "artifact_path": artifact_path, "result_path": result_relative,
         "review_path": review_relative, "result": result, "review": review,
+        "artifact_fingerprint": "sha256:" + sha256(str(artifact_content).encode()).hexdigest(),
     }
-    if pending_intent and any(pending_intent.get(name) != value for name, value in expected_intent.items()):
-        raise ValueError("intent path or payload is divergent")
+    if pending_intent:
+        intent_paths = ("idempotency_key", "stage", "cycle", "artifact_path", "result_path", "review_path")
+        if pending_intent.get("artifact_path") not in {None, artifact_path}:
+            raise ValueError("intent path or payload is divergent")
+        if any(name not in pending_intent for name in intent_paths):
+            return _blocked_partial_cycle(
+                runs_dir, root, run_id, topic_id, stage, cycle,
+                [{"code": "intent_incomplete", "message": "intent is missing canonical cycle fields",
+                  "paths": []}],
+            )
+        if any(pending_intent.get(name) != expected_intent[name] for name in intent_paths):
+            raise ValueError("intent path or payload is divergent")
+        if any(pending_intent.get(name) != expected_intent[name] for name in ("result", "review")):
+            return _blocked_partial_cycle(
+                runs_dir, root, run_id, topic_id, stage, cycle,
+                [{"code": "intent_payload_divergence", "message": "intent payload differs from the requested cycle",
+                  "paths": [result_relative, review_relative]}],
+            )
+    pending_paths = [artifact, result_file, review_file]
+    temporary_paths = sorted({
+        path
+        for parent in {path.parent for path in pending_paths}
+        for path in parent.glob("*.tmp")
+        if path.is_file()
+    })
+    if temporary_paths:
+        return _blocked_partial_cycle(
+            runs_dir, root, run_id, topic_id, stage, cycle,
+            [{"code": "temporary_file_present", "message": "temporary checkpoint file requires manual inspection",
+              "paths": [str(path.relative_to(root)) for path in temporary_paths]}],
+        )
     for event in existing["events"]:
         if event.get("idempotency_key") == key and event.get("phase") == "commit":
+            if pending_intent is None:
+                return _blocked_partial_cycle(
+                    runs_dir, root, run_id, topic_id, stage, cycle,
+                    [{"code": "commit_without_intent", "message": "commit event has no matching intent", "paths": []}],
+                )
             expected_paths = {
                 "artifact_path": artifact_path,
                 "result_path": result_relative,
@@ -561,29 +619,49 @@ def persist_stage(
         raise ValueError("stage does not match current_stage")
     if any(prerequisite not in state.get("completed_stages", []) for prerequisite in CANONICAL_STAGES[:CANONICAL_STAGES.index(stage)]):
         raise ValueError("stage prerequisites are incomplete")
-    pending_paths = [artifact, result_file, review_file]
-    if pending_intent and any(path.exists() for path in pending_paths):
-        if (not all(path.is_file() for path in pending_paths)
-                or artifact.read_bytes() != str(artifact_content).encode()
-                or _load_yaml(result_file, "result") != result
-                or _load_yaml(review_file, "review") != review):
-            raise ValueError("partial recovery payload is divergent")
+    existing_paths = [path for path in pending_paths if path.exists()]
+    if existing_paths:
+        if pending_intent is None:
+            return _blocked_partial_cycle(
+                runs_dir, root, run_id, topic_id, stage, cycle,
+                [{"code": "orphan_cycle_files", "message": "cycle files exist without intent or commit",
+                  "paths": [str(path.relative_to(root)) for path in existing_paths]}],
+            )
+        try:
+            complete_payload = (
+                all(path.is_file() for path in pending_paths)
+                and pending_intent.get("artifact_fingerprint", "") == "sha256:" + sha256(artifact.read_bytes()).hexdigest()
+                and _load_yaml(result_file, "result") == result
+                and _load_yaml(review_file, "review") == review
+            )
+        except (OSError, UnicodeDecodeError, ValueError):
+            complete_payload = False
+        if not complete_payload:
+            return _blocked_partial_cycle(
+                runs_dir, root, run_id, topic_id, stage, cycle,
+                [{"code": "partial_cycle_files", "message": "existing cycle files do not prove the complete requested payload",
+                  "paths": [str(path.relative_to(root)) for path in existing_paths]}],
+            )
 
     intent = pending_intent or {
         "event_id": f"evt_{len(existing['events']) + 1:04d}",
         "phase": "intent", "idempotency_key": key, "stage": stage, "cycle": cycle,
         "artifact_path": artifact_path, "result_path": result_relative,
         "review_path": review_relative, "result": result, "review": review,
+        "artifact_fingerprint": "sha256:" + sha256(str(artifact_content).encode()).hexdigest(),
     }
     if pending_intent is None:
         existing["events"].append(intent)
         _atomic_write(events, existing)
 
     state["status"] = "running"
-    _atomic_write_bytes(artifact, str(artifact_content).encode())
-    _atomic_write(result_file, result)
+    if not artifact.exists():
+        _atomic_write_bytes(artifact, str(artifact_content).encode())
+    if not result_file.exists():
+        _atomic_write(result_file, result)
     digest = "sha256:" + sha256(artifact.read_bytes()).hexdigest()
-    _atomic_write(review_file, review)
+    if not review_file.exists():
+        _atomic_write(review_file, review)
     state["completed_stages"] = [*state.get("completed_stages", []), stage]
     state["current_stage"] = None if stage == "approval_humana" else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
     state["checkpoint"] = {
@@ -595,7 +673,10 @@ def persist_stage(
         "saved_at": datetime.now(timezone.utc).isoformat(),
     }
     _atomic_write(state_file, state)
-    commit = dict(intent)
+    commit = {name: intent[name] for name in (
+        "event_id", "idempotency_key", "stage", "cycle", "artifact_path",
+        "result_path", "review_path", "result", "review",
+    )}
     commit["event_id"] = f"evt_{len(existing['events']) + 1:04d}"
     commit["phase"] = "commit"
     commit.update({"artifact_path": artifact_path, "result_path": result_relative, "review_path": review_relative})
