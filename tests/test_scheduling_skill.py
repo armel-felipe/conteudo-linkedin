@@ -288,6 +288,36 @@ def test_validate_receipt_rejects_missing_field():
         validate_receipt(receipt)
 
 
+@pytest.mark.parametrize("receipt", [None, [], "receipt", 42, True])
+def test_validate_receipt_rejects_non_object_root_with_structured_error(receipt):
+    with pytest.raises(ValueError, match="receipt must be an object"):
+        validate_receipt(receipt)
+
+
+def test_validate_receipt_rejects_empty_object_as_incomplete():
+    with pytest.raises(ValueError, match="incomplete receipt"):
+        validate_receipt({})
+
+
+def test_validate_receipt_accepts_object_root_after_type_boundary():
+    receipt = {
+        "evidence_status": "real_non_destructive",
+        "route": "browser_cdp",
+        "fallback": "native",
+        "requested_timestamp": "01/09/2026 10:00",
+        "displayed_timestamp": "01/09/2026 10:00",
+        "date_selected": "pass",
+        "time_selected": "pass",
+        "summary": "pass",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
+        "duplicate_created": False,
+    }
+    assert validate_receipt(receipt) is True
+
+
 @pytest.mark.parametrize("field", ["route", "fallback"])
 def test_validate_receipt_rejects_invalid_route_or_fallback(field):
     receipt = {

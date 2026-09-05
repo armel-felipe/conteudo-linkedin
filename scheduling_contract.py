@@ -186,6 +186,8 @@ def validate_dry_run_events(events):
 
 
 def validate_receipt(receipt):
+    if not isinstance(receipt, dict):
+        raise ValueError("receipt must be an object")
     if set(receipt) != set(_RECEIPT_FIELDS):
         raise ValueError("incomplete receipt")
     if receipt["evidence_status"] not in _EVIDENCE_STATUSES:
