@@ -135,6 +135,75 @@ def test_behavioral_helper_blocks_divergent_summary_and_missing_confirmation_or_
     assert can_register_timestamp(True, False) is False
 
 
+@pytest.mark.parametrize(
+    "confirmation,scheduled_list",
+    [
+        ("fail", "fail"),
+        ("pass", "pass"),
+        ("true", "true"),
+        (1, 1),
+        ([], []),
+        (None, None),
+    ],
+)
+def test_can_register_timestamp_rejects_truthy_failure_values_and_invalid_types(
+    confirmation, scheduled_list
+):
+    assert can_register_timestamp(confirmation, scheduled_list) is False
+
+
+def valid_registration_gate(**overrides):
+    gate = {
+        "confirmation": True,
+        "scheduled_list": True,
+        "receipt": {
+            "evidence_status": "real_non_destructive",
+            "route": "browser_cdp",
+            "fallback": "native",
+            "requested_timestamp": "01/09/2026 10:00",
+            "displayed_timestamp": "01/09/2026 10:00",
+            "date_selected": "pass",
+            "time_selected": "pass",
+            "summary": "pass",
+            "preview": "not_run",
+            "confirmation": "not_run",
+            "scheduled_list": "not_run",
+            "timestamp_registered": "not_run",
+            "duplicate_created": False,
+        },
+        "summary": "pass",
+        "requested_timestamp": "01/09/2026 10:00",
+        "displayed_timestamp": "01/09/2026 10:00",
+        "timestamp_registered": True,
+        "failure_state": None,
+    }
+    gate.update(overrides)
+    return gate
+
+
+def test_can_register_timestamp_requires_the_complete_explicit_gate():
+    gate = valid_registration_gate()
+    assert can_register_timestamp(**gate) is True
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"receipt": {}},
+        {"summary": "fail"},
+        {"confirmation": "pass"},
+        {"scheduled_list": "pass"},
+        {"requested_timestamp": "01/09/2026 11:00"},
+        {"displayed_timestamp": "02/09/2026 10:00"},
+        {"failure_state": "blocked"},
+        {"failure_state": "not_run"},
+        {"receipt": {"evidence_status": "simulated"}},
+    ],
+)
+def test_can_register_timestamp_blocks_inconsistent_or_failed_gate(change):
+    assert can_register_timestamp(**valid_registration_gate(**change)) is False
+
+
 def test_reschedule_requires_existing_post_and_complete_new_selection():
     with pytest.raises(ValueError):
         validate_reschedule_events(

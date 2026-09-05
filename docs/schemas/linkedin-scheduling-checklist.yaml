@@ -3,7 +3,13 @@ content_converted: false
 browser_route: playwright
 fallback_used: none
 date_time_confirmed: false
+summary_confirmed: false
 final_preview_confirmed: false
+confirmation_received: false
 scheduled_list_confirmed: false
 reschedule_existing_post: false
 timestamp_registered: false
+receipt_valid: false
+requested_timestamp: ""
+displayed_timestamp: ""
+failure_state: null

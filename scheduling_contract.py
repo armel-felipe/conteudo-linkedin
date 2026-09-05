@@ -114,8 +114,59 @@ def can_advance_schedule(requested_timestamp, displayed_timestamp):
     return requested_timestamp == displayed_timestamp
 
 
-def can_register_timestamp(confirmation, scheduled_list):
-    return bool(confirmation and scheduled_list)
+def can_register_timestamp(
+    confirmation,
+    scheduled_list,
+    *,
+    receipt=None,
+    summary=None,
+    requested_timestamp=None,
+    displayed_timestamp=None,
+    timestamp_registered=None,
+    failure_state=None,
+):
+    """Allow timestamp registration only after every explicit gate passes."""
+    if type(confirmation) is not bool or confirmation is not True:
+        return False
+    if type(scheduled_list) is not bool or scheduled_list is not True:
+        return False
+
+    # Preserve the small behavioral helper while keeping all supplied evidence strict.
+    if all(
+        value is None
+        for value in (
+            receipt,
+            summary,
+            requested_timestamp,
+            displayed_timestamp,
+            timestamp_registered,
+            failure_state,
+        )
+    ):
+        return True
+
+    if not isinstance(receipt, dict):
+        return False
+    try:
+        if not validate_receipt(receipt):
+            return False
+    except (TypeError, ValueError):
+        return False
+    if receipt["evidence_status"] not in {"real_non_destructive", "real_existing_post"}:
+        return False
+    if summary != "pass":
+        return False
+    if type(timestamp_registered) is not bool or timestamp_registered is not True:
+        return False
+    if type(requested_timestamp) is not str or not requested_timestamp:
+        return False
+    if type(displayed_timestamp) is not str or not displayed_timestamp:
+        return False
+    if requested_timestamp != displayed_timestamp:
+        return False
+    if failure_state is not None:
+        return False
+    return True
 
 
 def validate_dry_run_events(events):

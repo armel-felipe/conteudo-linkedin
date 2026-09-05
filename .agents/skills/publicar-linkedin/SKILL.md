@@ -83,7 +83,7 @@ Para uma divergência pós-agendamento, localizar a publicação existente na li
 
 ## Registro do agendamento
 
-Antes de registrar, preencher `docs/schemas/linkedin-scheduling-checklist.yaml`. É proibido definir `timestamp_registered: true` sem `scheduled_list_confirmed: true`; se a confirmação na lista falhar, não registrar o timestamp.
+Antes de registrar, preencher `docs/schemas/linkedin-scheduling-checklist.yaml`. O gate é literal e fail-closed: `scheduled_list_confirmed` e `timestamp_registered` devem ser booleanos `true`, nunca strings truthy como `"pass"` ou `"fail"`. O receipt deve ser válido, `summary_confirmed` e `confirmation_received` devem estar confirmados, `requested_timestamp` e `displayed_timestamp` devem ser não vazios e exatamente iguais, e `failure_state` deve ser `null`. Se qualquer estado for `not_run`, `simulated`, `blocked` ou falho, não registrar o timestamp.
 
 Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arquivo>.md`) um bloco no final:
 
