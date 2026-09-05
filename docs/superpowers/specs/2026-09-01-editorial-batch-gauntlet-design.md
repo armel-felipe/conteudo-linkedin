@@ -63,6 +63,8 @@ O sistema deve:
 5. Congelar a lista em um manifesto de execução.
 6. Processar os itens na ordem congelada.
 
+Seleções numéricas zero ou negativas, seleções que resultem em fila vazia e listas explícitas com IDs duplicados após remover espaços devem ser rejeitadas. Uma seleção numérica maior que a quantidade elegível seleciona todos os elegíveis.
+
 ## Estados
 
 ```text

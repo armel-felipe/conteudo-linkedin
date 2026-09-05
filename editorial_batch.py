@@ -167,10 +167,14 @@ def load_and_select_topics(backlog_path, topics_dir, selection):
         chosen_ids = sorted(eligible, key=lambda topic_id: (-eligible[topic_id]["score"], topic_id))
     elif selection.isdigit():
         count = int(selection)
+        if count == 0:
+            raise ValueError("numeric selection must be positive")
         ordered = sorted(eligible, key=lambda topic_id: (-eligible[topic_id]["score"], topic_id))
         chosen_ids = ordered[:count]
     else:
         chosen_ids = [topic_id.strip() for topic_id in selection.split(",") if topic_id.strip()]
+        if len(chosen_ids) != len(set(chosen_ids)):
+            raise ValueError("explicit selection contains duplicate topic ids")
         invalid = [
             topic_id
             for topic_id in chosen_ids
@@ -178,6 +182,9 @@ def load_and_select_topics(backlog_path, topics_dir, selection):
         ]
         if invalid:
             raise ValueError(f"invalid or non-ready topic ids: {', '.join(invalid)}")
+
+    if not chosen_ids:
+        raise ValueError("selection must not be empty")
 
     return [dict(eligible[topic_id]) for topic_id in chosen_ids]
 

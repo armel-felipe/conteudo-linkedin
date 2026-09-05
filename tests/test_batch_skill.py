@@ -87,6 +87,54 @@ def test_explicit_selection_rejects_missing_or_non_ready_ids(tmp_path):
         load_and_select_topics(*source, "topic_missing")
 
 
+@pytest.mark.parametrize("selection", ["0", "00"])
+def test_numeric_zero_selection_is_rejected(tmp_path, selection):
+    write_fixture(tmp_path)
+    source = (tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics")
+
+    with pytest.raises(ValueError, match="positive|zero"):
+        load_and_select_topics(*source, selection)
+
+
+@pytest.mark.parametrize("selection", ["", "   "])
+def test_empty_selection_is_rejected(tmp_path, selection):
+    write_fixture(tmp_path)
+    source = (tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics")
+
+    with pytest.raises(ValueError, match="empty|selection"):
+        load_and_select_topics(*source, selection)
+
+
+def test_numeric_selection_larger_than_eligible_count_keeps_all_eligible_topics(tmp_path):
+    write_fixture(tmp_path)
+    source = (tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics")
+
+    assert [topic["topic_id"] for topic in load_and_select_topics(*source, "99")] == [
+        "topic_c",
+        "topic_d",
+        "topic_a",
+    ]
+
+
+@pytest.mark.parametrize("selection", ["topic_a,topic_a", "topic_a, topic_a", "topic_a , topic_a"])
+def test_explicit_selection_rejects_duplicate_ids_after_trimming(tmp_path, selection):
+    write_fixture(tmp_path)
+    source = (tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics")
+
+    with pytest.raises(ValueError, match="duplicate"):
+        load_and_select_topics(*source, selection)
+
+
+def test_all_selection_is_rejected_when_no_topics_are_eligible(tmp_path):
+    write_fixture(tmp_path)
+    backlog = tmp_path / "content" / "backlog.md"
+    backlog.write_text("| topic_b | 99 | candidate |\n")
+    source = (backlog, tmp_path / "research" / "topics")
+
+    with pytest.raises(ValueError, match="eligible|empty"):
+        load_and_select_topics(*source, "all")
+
+
 def test_manifest_freezes_root_selection_and_queue_and_is_idempotent(tmp_path):
     write_fixture(tmp_path)
     topics = load_and_select_topics(

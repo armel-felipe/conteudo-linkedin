@@ -26,6 +26,7 @@ Aceite exatamente uma forma de seleção:
 - A lista separada por vírgulas seleciona somente os ids informados, na ordem explícita.
 
 Considere somente topics com status `ready_for_research`. Para seleção numérica ou `all`, ordene por score decrescente e use um desempate determinístico pelo `topic_id`. Para ids explícitos, valide que cada id existe e está `ready_for_research`; não substitua ids inválidos por outros topics.
+Rejeite seleções numéricas zero ou negativas, seleções que resultem em fila vazia e listas explícitas com IDs duplicados após remover espaços. Uma seleção numérica maior que a quantidade elegível continua válida e seleciona todos os elegíveis.
 
 Exemplo de resolução para uma seleção numérica:
 
