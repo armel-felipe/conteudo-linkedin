@@ -181,7 +181,7 @@ def can_register_timestamp(
             return False
     except (TypeError, ValueError):
         return False
-    if receipt["evidence_status"] not in {"real_non_destructive", "real_existing_post"}:
+    if receipt["evidence_status"] != "real_existing_post":
         return False
     if receipt.get("mcp_attempted") is not True:
         return False
@@ -198,6 +198,10 @@ def can_register_timestamp(
     if type(displayed_timestamp) is not str or not displayed_timestamp:
         return False
     if requested_timestamp != displayed_timestamp:
+        return False
+    if requested_timestamp != receipt["requested_timestamp"]:
+        return False
+    if displayed_timestamp != receipt["displayed_timestamp"]:
         return False
     if not all(receipt[field] == "pass" for field in ("preview", "confirmation", "scheduled_list", "timestamp_registered")):
         return False
@@ -346,7 +350,18 @@ def validate_receipt(receipt):
         not receipt["requested_timestamp"] or not receipt["displayed_timestamp"]
     ):
         raise ValueError("receipt timestamp missing")
-    for value in receipt.values():
-        if isinstance(value, str) and any(term in value.lower() for term in _FORBIDDEN_RECEIPT_TERMS):
-            raise ValueError("sensitive receipt value")
+    def contains_sensitive_value(value):
+        if isinstance(value, str):
+            return any(term in value.lower() for term in _FORBIDDEN_RECEIPT_TERMS)
+        if isinstance(value, dict):
+            return any(
+                contains_sensitive_value(key) or contains_sensitive_value(item)
+                for key, item in value.items()
+            )
+        if isinstance(value, (list, tuple, set)):
+            return any(contains_sensitive_value(item) for item in value)
+        return False
+
+    if contains_sensitive_value(receipt):
+        raise ValueError("sensitive receipt value")
     return True

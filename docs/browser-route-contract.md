@@ -89,7 +89,9 @@ Cada execução deve preservar:
 
 `scheduled_list_confirmed` deve estar confirmado antes de registrar o
 `timestamp_registered` e o `timestamp`, e ambos devem ser validados antes da
-persistência local.
+persistência local. Somente evidência `real_existing_post` pode liberar esse
+registro; `real_non_destructive`, `simulated` e `not_run` são sempre dry-run ou
+observação sem mutação e devem ser rejeitados pelo gate.
 
 Skills e scripts que não conseguirem produzir esse registro devem parar antes
 de executar uma mutação.

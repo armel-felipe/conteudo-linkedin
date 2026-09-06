@@ -70,3 +70,20 @@ def test_docs_retain_critical_linkedin_safety_rules():
     assert "Alterar agenda" in text
     assert "Publicações agendadas" in text
     assert "novo composer" in text
+
+
+def test_mutation_docs_define_fail_closed_boundary_as_behavior():
+    text = Path("docs/browser-route-contract.md").read_text(encoding="utf-8")
+    mutation_section = text[text.index("## Publicar") : text.index("## Registro mínimo")]
+    assert "ambiguous_mutation" in mutation_section
+    assert "não repetir" in mutation_section
+    assert "não avançar" in mutation_section
+    assert "não criar uma duplicata" in mutation_section
+    assert mutation_section.index("após o envio") < mutation_section.index("ambiguous_mutation")
+
+
+def test_docs_make_timestamp_gate_exclude_non_mutating_evidence():
+    text = Path("docs/browser-route-contract.md").read_text(encoding="utf-8")
+    assert "Somente evidência `real_existing_post`" in text
+    assert "`real_non_destructive`, `simulated` e `not_run`" in text
+    assert "devem ser rejeitados pelo gate" in text

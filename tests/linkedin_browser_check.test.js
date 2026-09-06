@@ -7,6 +7,7 @@ const path = require('node:path');
 const {
   browserRouteOrder,
   inspectPage,
+  main,
   runBrowserCheck,
   resolveBrowserRoute,
   selectLinkedInPage,
@@ -155,6 +156,84 @@ test('stops and preserves ambiguous state when Playwright adapter throws', async
   assert.equal(result.reason, 'ambiguous_mutation');
   assert.equal(result.mutation_confirmed, true);
   assert.deepEqual(result.observed_state, error.observed_state);
+});
+
+test('fails closed on an ambiguous MCP exception without constructing Playwright', async () => {
+  let playwrightConstructed = false;
+  const error = Object.assign(new Error('MCP disconnected after action'), {
+    ambiguous: true,
+    observed_state: { mutation: 'possibly_sent' },
+  });
+  const result = await runBrowserCheck({
+    mcpAdapter: { inspect: async () => { throw error; } },
+    playwrightAdapterFactory: async () => {
+      playwrightConstructed = true;
+      throw new Error('must not construct Playwright');
+    },
+  });
+
+  assert.equal(playwrightConstructed, false);
+  assert.equal(result.effective_route, 'stop');
+  assert.equal(result.reason, 'ambiguous_mutation');
+  assert.equal(result.mutation_confirmed, true);
+  assert.deepEqual(result.observed_state, error.observed_state);
+});
+
+test('fails closed on an ambiguous MCP return without constructing Playwright', async () => {
+  let playwrightConstructed = false;
+  const result = await runBrowserCheck({
+    mcpAdapter: {
+      inspect: async () => ({
+        ok: false,
+        ambiguous: true,
+        reason: 'mcp_result_ambiguous',
+        observed_state: { mutation: 'unknown' },
+      }),
+    },
+    playwrightAdapterFactory: async () => {
+      playwrightConstructed = true;
+      return { inspect: async () => ({ ok: true }) };
+    },
+  });
+
+  assert.equal(playwrightConstructed, false);
+  assert.equal(result.reason, 'ambiguous_mutation');
+  assert.deepEqual(result.observed_state, { mutation: 'unknown' });
+});
+
+test('main accepts an injected MCP adapter through the operational entrypoint', async () => {
+  const previousLog = console.log;
+  const logs = [];
+  console.log = (value) => logs.push(JSON.parse(value));
+  try {
+    const result = await main({
+      mcpAdapter: {
+        inspect: async () => ({ ok: true, report: { visual_state: { ready_state: 'complete' } } }),
+      },
+      playwrightAdapterFactory: async () => {
+        throw new Error('must not construct Playwright');
+      },
+    });
+    assert.equal(result.effective_route, 'mcp_chrome_devtools');
+    assert.deepEqual(logs, [result]);
+  } finally {
+    console.log = previousLog;
+  }
+});
+
+test('main accepts an injected MCP adapter factory through the operational entrypoint', async () => {
+  let factoryCalls = 0;
+  const result = await main({
+    mcpAdapterFactory: async () => {
+      factoryCalls += 1;
+      return { inspect: async () => ({ ok: true }) };
+    },
+    playwrightAdapterFactory: async () => {
+      throw new Error('must not construct Playwright');
+    },
+  });
+  assert.equal(factoryCalls, 1);
+  assert.equal(result.effective_route, 'mcp_chrome_devtools');
 });
 
 function fixturePage(url) {

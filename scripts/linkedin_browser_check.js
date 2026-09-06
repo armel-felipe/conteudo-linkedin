@@ -29,7 +29,7 @@ function resolveBrowserRoute({
 }) {
   const attemptedRoutes = ['mcp_chrome_devtools'];
   const mcp = mcpAttempt || {};
-  if (mcp.mutation_confirmed) {
+  if (mcp.mutation_confirmed || mcp.ambiguous === true) {
     return {
       attempted_routes: attemptedRoutes,
       effective_route: 'stop',
@@ -146,6 +146,10 @@ function defaultMcpAdapter() {
   };
 }
 
+function defaultMcpAdapterFactory() {
+  return defaultMcpAdapter();
+}
+
 async function defaultPlaywrightAdapterFactory() {
   const { chromium } = require('playwright');
   const browser = await chromium.connectOverCDP(
@@ -170,14 +174,24 @@ async function defaultPlaywrightAdapterFactory() {
  * credentials or a remote MCP connection.
  */
 async function runBrowserCheck({
-  mcpAdapter = defaultMcpAdapter(),
+  mcpAdapter,
+  mcpAdapterFactory = defaultMcpAdapterFactory,
   playwrightAdapterFactory = defaultPlaywrightAdapterFactory,
 } = {}) {
   let mcpAttempt;
   try {
-    mcpAttempt = await mcpAdapter.inspect();
+    const adapter = mcpAdapter || await mcpAdapterFactory();
+    mcpAttempt = await adapter.inspect();
   } catch (error) {
-    mcpAttempt = { ok: false, reason: error.message, mutation_confirmed: false };
+    mcpAttempt = {
+      ok: false,
+      reason: error.ambiguous || error.mutation_confirmed
+        ? 'ambiguous_mutation'
+        : error.message,
+      ambiguous: error.ambiguous === true,
+      mutation_confirmed: error.mutation_confirmed === true || error.ambiguous === true,
+      observed_state: error.observed_state || null,
+    };
   }
   if (mcpAttempt.ok === true) {
     return {
@@ -185,7 +199,7 @@ async function runBrowserCheck({
       report: mcpAttempt.report,
     };
   }
-  if (mcpAttempt.mutation_confirmed) {
+  if (mcpAttempt.mutation_confirmed || mcpAttempt.ambiguous === true) {
     return resolveBrowserRoute({ mcpAttempt });
   }
 
@@ -212,12 +226,13 @@ async function runBrowserCheck({
   return result;
 }
 
-async function main() {
-  const result = await runBrowserCheck();
+async function main(options = {}) {
+  const result = await runBrowserCheck(options);
   console.log(JSON.stringify(result));
   if (result.effective_route === 'stop') {
     throw new Error(`browser route stopped: ${result.reason}`);
   }
+  return result;
 }
 
 if (require.main === module) {
@@ -231,6 +246,7 @@ module.exports = {
   browserRouteOrder,
   inspectPage,
   runBrowserCheck,
+  main,
   resolveBrowserRoute,
   screenshotPathFromEnvironment,
   selectLinkedInPage,

@@ -230,7 +230,7 @@ def valid_registration_gate(**overrides):
         "confirmation": True,
         "scheduled_list": True,
         "receipt": {
-            "evidence_status": "real_non_destructive",
+            "evidence_status": "real_existing_post",
             "route": "mcp_chrome_devtools",
             "fallback": "none",
         "route_attempted": ["mcp_chrome_devtools"],
@@ -281,6 +281,36 @@ def test_can_register_timestamp_requires_the_complete_explicit_gate():
 )
 def test_can_register_timestamp_blocks_inconsistent_or_failed_gate(change):
     assert can_register_timestamp(**valid_registration_gate(**change)) is False
+
+
+@pytest.mark.parametrize("status", ["real_non_destructive", "simulated", "not_run"])
+def test_can_register_timestamp_rejects_non_mutating_or_dry_run_evidence(status):
+    gate = valid_registration_gate()
+    gate["receipt"]["evidence_status"] = status
+    if status != "real_non_destructive":
+        gate["receipt"].update({
+            "requested_timestamp": "",
+            "displayed_timestamp": "",
+            "date_selected": "not_run",
+            "time_selected": "not_run",
+            "summary": "not_run",
+            "preview": "not_run",
+            "confirmation": "not_run",
+            "scheduled_list": "not_run",
+            "timestamp_registered": "not_run",
+            "post_action_confirmation": "not_run",
+        })
+    assert can_register_timestamp(**gate) is False
+
+
+def test_can_register_timestamp_requires_external_timestamps_to_match_receipt():
+    gate = valid_registration_gate()
+    gate["receipt"]["requested_timestamp"] = "02/09/2026 10:00"
+    assert can_register_timestamp(**gate) is False
+
+    gate = valid_registration_gate()
+    gate["receipt"]["displayed_timestamp"] = "02/09/2026 10:00"
+    assert can_register_timestamp(**gate) is False
 
 
 def test_reschedule_requires_existing_post_and_complete_new_selection():
@@ -575,6 +605,20 @@ def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
     }
     receipt["summary"] = sensitive
     with pytest.raises(ValueError):
+        validate_receipt(receipt)
+
+
+def test_validate_receipt_rejects_sensitive_text_nested_in_structures():
+    receipt = valid_registration_gate()["receipt"]
+    receipt["observed_state"] = {
+        "browser": {"details": ["safe", {"header": "token=secret"}]}
+    }
+    with pytest.raises(ValueError, match="sensitive receipt value"):
+        validate_receipt(receipt)
+
+    receipt = valid_registration_gate()["receipt"]
+    receipt["observed_state"] = {"nested": [{"token": "redacted"}]}
+    with pytest.raises(ValueError, match="sensitive receipt value"):
         validate_receipt(receipt)
 
 
