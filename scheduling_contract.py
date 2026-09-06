@@ -244,10 +244,13 @@ def validate_dry_run_events(events):
         "summary_confirmed",
         "blocked_before_advance",
     )
-    try:
-        return _validate_exact(events, base + suffix)
-    except ValueError:
-        return _validate_exact(events, base + ("playwright_attempt",) + suffix)
+    if playwright_indexes:
+        if "playwright_fallback" not in observed:
+            raise ValueError("playwright_fallback required before playwright_attempt")
+        return _validate_exact(
+            events, base + ("playwright_fallback", "playwright_attempt") + suffix
+        )
+    return _validate_exact(events, base + suffix)
 
 
 def validate_receipt(receipt):

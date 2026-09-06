@@ -731,6 +731,21 @@ def test_dry_run_rejects_playwright_only_sequence():
         )
 
 
+def test_dry_run_rejects_playwright_attempt_without_fallback():
+    with pytest.raises(ValueError, match="playwright_fallback"):
+        validate_dry_run_events(
+            COMMON_EVENTS
+            + [
+                "playwright_attempt",
+                "visual_route",
+                "date_selected",
+                "time_selected",
+                "summary_confirmed",
+                "blocked_before_advance",
+            ]
+        )
+
+
 @pytest.mark.parametrize(
     "event",
     ["advance", "schedule", "confirmation", "scheduled_list_confirmed", "timestamp_registered"],

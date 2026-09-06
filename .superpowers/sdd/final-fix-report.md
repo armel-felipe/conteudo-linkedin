@@ -42,12 +42,15 @@
   listas, tuplas e conjuntos.
 - A cobertura documental verifica regras comportamentais de mutação, incluindo
   `fail_closed`, não repetição, não avanço e ausência de duplicata.
+- `validate_dry_run_events()` mantém o fluxo MCP-only válido e exige
+  `playwright_fallback` antes de `playwright_attempt` quando o branch Playwright
+  é usado.
 
 ## Verificação desta correção
 
-- `npm test`: 21 passed.
-- `python3 -m pytest tests/test_scheduling_skill.py tests/test_browser_route_contract.py tests/test_browser_route_documentation.py -q`: 105 passed.
-- `python3 -m pytest tests -q`: 265 passed, 1 failed em
+- `npm test`: 22 passed.
+- `python3 -m pytest tests/test_scheduling_skill.py tests/test_browser_route_contract.py tests/test_browser_route_documentation.py -q`: 114 passed.
+- `python3 -m pytest tests -q`: 273 passed, 1 failed baseline em
   `tests/test_run_contracts.py::test_runtime_runs_are_ignored_but_keep_file_is_tracked`,
   que exige `runs/*` em `.gitignore`; `.gitignore` foi preservado.
 - `git diff --check`: passou.
