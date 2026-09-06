@@ -47,6 +47,17 @@ Only source names and stable status/tier values are recorded:
 
 X has stable status `unconfigured` and no actionable backend was reported. Stop P1-A here; do not run a misleading research pass.
 
+## Execution Status
+
+```text
+status: blocked
+route: read_only
+mutations: none
+engine_receipt: not_produced
+```
+
+O doctor foi executado ao vivo, mas o engine foi deliberadamente não executado porque X estava `unconfigured`; não houve receipt de pesquisa.
+
 ## Next step
 
 Configure an actionable X source and repeat the doctor before attempting P1-A again.
