@@ -132,6 +132,7 @@ def test_unreadable_image_stops_before_schedule():
 
 def test_validate_reschedule_events_accepts_existing_post_flow():
     events = [
+        "mcp_chrome_devtools_attempt",
         "existing_post_menu",
         "alter_schedule",
         "date_selected",
@@ -144,7 +145,45 @@ def test_validate_reschedule_events_accepts_existing_post_flow():
         "scheduled_list_confirmed",
         "timestamp_registered",
     ]
-    assert validate_reschedule_events(events, "existing_post") is True
+    assert validate_reschedule_events(
+        events,
+        "existing_post",
+        effective_route="mcp_chrome_devtools",
+        fallback="none",
+    ) is True
+
+
+def test_validate_reschedule_events_requires_mcp_and_effective_fallback_route():
+    events = [
+        "mcp_chrome_devtools_attempt",
+        "playwright_fallback",
+        "playwright_attempt",
+        "existing_post_menu",
+        "alter_schedule",
+        "date_selected",
+        "time_selected",
+        "summary_confirmed",
+        "advance",
+        "final_preview_confirmed",
+        "schedule",
+        "confirmation",
+        "scheduled_list_confirmed",
+        "timestamp_registered",
+    ]
+    assert validate_reschedule_events(
+        events,
+        "existing_post",
+        effective_route="playwright_fallback",
+        fallback="playwright_fallback",
+    ) is True
+    with pytest.raises(ValueError):
+        validate_reschedule_events(
+            events[1:], "existing_post", effective_route="playwright_fallback", fallback="playwright_fallback"
+        )
+    with pytest.raises(ValueError):
+        validate_reschedule_events(
+            events, "existing_post", effective_route="mcp_chrome_devtools", fallback="none"
+        )
 
 
 @pytest.mark.parametrize(
@@ -163,7 +202,7 @@ def test_validate_reschedule_events_rejects_duplicate_or_invalid_existing_post_f
 def test_behavioral_helper_blocks_divergent_summary_and_missing_confirmation_or_list():
     assert can_advance_schedule("01/09/2026 10:00", "01/09/2026 10:00") is True
     assert can_advance_schedule("01/09/2026 10:00", "02/09/2026 10:00") is False
-    assert can_register_timestamp(True, True) is True
+    assert can_register_timestamp(True, True) is False
     assert can_register_timestamp(False, True) is False
     assert can_register_timestamp(True, False) is False
 
@@ -193,15 +232,18 @@ def valid_registration_gate(**overrides):
             "evidence_status": "real_non_destructive",
             "route": "mcp_chrome_devtools",
             "fallback": "none",
+            "route_attempted": ["mcp_chrome_devtools"],
+            "mcp_attempted": True,
+            "verification_evidence": "scheduled list confirmed after MCP action",
             "requested_timestamp": "01/09/2026 10:00",
             "displayed_timestamp": "01/09/2026 10:00",
             "date_selected": "pass",
             "time_selected": "pass",
             "summary": "pass",
-            "preview": "not_run",
-            "confirmation": "not_run",
-            "scheduled_list": "not_run",
-            "timestamp_registered": "not_run",
+            "preview": "pass",
+            "confirmation": "pass",
+            "scheduled_list": "pass",
+            "timestamp_registered": "pass",
             "duplicate_created": False,
         },
         "summary": "pass",
@@ -269,6 +311,31 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
         "duplicate_created": False,
     }
     assert validate_receipt(receipt) is True
+
+
+def test_stop_receipt_requires_mcp_attempt_and_verification_evidence():
+    receipt = valid_registration_gate()["receipt"]
+    receipt.update({
+        "evidence_status": "simulated",
+        "route": "stop",
+        "fallback": "none",
+        "requested_timestamp": "",
+        "displayed_timestamp": "",
+        "date_selected": "not_run",
+        "time_selected": "not_run",
+        "summary": "not_run",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
+        "route_attempted": ["mcp_chrome_devtools"],
+        "mcp_attempted": True,
+        "verification_evidence": "MCP attempt failed before mutation",
+    })
+    assert validate_receipt(receipt) is True
+    receipt.pop("verification_evidence")
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
 
 
 def test_receipt_requires_mcp_failure_and_reason_for_playwright_fallback():
@@ -495,13 +562,19 @@ def test_dry_run_stops_before_advance():
     assert validate_dry_run_events(
         COMMON_EVENTS
         + [
-            "playwright_attempt",
             "visual_route",
             "date_selected",
             "time_selected",
             "summary_confirmed",
             "blocked_before_advance",
         ]
+    ) is True
+
+
+def test_dry_run_accepts_mcp_only_without_playwright():
+    assert validate_dry_run_events(
+        COMMON_EVENTS
+        + ["visual_route", "date_selected", "time_selected", "summary_confirmed", "blocked_before_advance"]
     ) is True
 
 

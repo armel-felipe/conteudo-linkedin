@@ -7,6 +7,7 @@ const path = require('node:path');
 const {
   browserRouteOrder,
   inspectPage,
+  runBrowserCheck,
   resolveBrowserRoute,
   selectLinkedInPage,
   visualFallbackOrder,
@@ -24,37 +25,98 @@ test('declares MCP Chrome DevTools before Playwright', () => {
 
 test('uses Playwright fallback when MCP is unavailable before mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
-    mcpAvailable: false,
-    capabilityAvailable: false,
-    mutationConfirmed: false,
-    errorBeforeMutation: true,
+    mcpAttempt: { ok: false, reason: 'mcp_unavailable' },
+    playwrightAttempt: { ok: true, report: { visual_state: {} } },
   }), {
-    route: 'playwright_fallback',
+    attempted_routes: ['mcp_chrome_devtools', 'playwright_fallback'],
+    effective_route: 'playwright_fallback',
     reason: 'mcp_unavailable',
+    route_reasons: {
+      mcp_chrome_devtools: 'mcp_unavailable',
+      playwright_fallback: 'playwright_success',
+    },
+    observed_state: {},
   });
 });
 
 test('stops after an ambiguous possible mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
-    mcpAvailable: true,
-    capabilityAvailable: true,
-    mutationConfirmed: false,
-    errorBeforeMutation: false,
+    mcpAttempt: { ok: false, reason: 'mcp_failed' },
   }), {
-    route: 'stop',
-    reason: 'ambiguous_mutation',
+    attempted_routes: ['mcp_chrome_devtools'],
+    effective_route: 'stop',
+    reason: 'mcp_failed',
+    route_reasons: { mcp_chrome_devtools: 'mcp_failed' },
+    observed_state: null,
   });
 });
 
 test('does not permit fallback after a confirmed mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
-    mcpAvailable: true,
-    capabilityAvailable: true,
-    mutationConfirmed: true,
-    errorBeforeMutation: false,
+    mcpAttempt: { ok: false, reason: 'mcp_failed', mutation_confirmed: true },
   }), {
-    route: 'stop',
+    attempted_routes: ['mcp_chrome_devtools'],
+    effective_route: 'stop',
     reason: 'ambiguous_mutation',
+    route_reasons: { mcp_chrome_devtools: 'ambiguous_mutation' },
+    observed_state: null,
+  });
+});
+
+test('runs an injected MCP adapter before the Playwright fallback', async () => {
+  const calls = [];
+  const report = { url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
+  const result = await runBrowserCheck({
+    mcpAdapter: {
+      inspect: async () => {
+        calls.push('mcp');
+        return { ok: true, report };
+      },
+    },
+    playwrightAdapterFactory: async () => {
+      calls.push('playwright-factory');
+      throw new Error('Playwright must not be constructed');
+    },
+  });
+
+  assert.deepEqual(calls, ['mcp']);
+  assert.deepEqual(result, {
+    attempted_routes: ['mcp_chrome_devtools'],
+    effective_route: 'mcp_chrome_devtools',
+    reason: 'mcp_success',
+    route_reasons: { mcp_chrome_devtools: 'mcp_success' },
+    observed_state: report.visual_state,
+    report,
+  });
+});
+
+test('uses a controlled Playwright fallback only after an injected MCP failure', async () => {
+  const calls = [];
+  const report = { url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
+  const result = await runBrowserCheck({
+    mcpAdapter: {
+      inspect: async () => {
+        calls.push('mcp');
+        return { ok: false, reason: 'mcp_unavailable', mutation_confirmed: false };
+      },
+    },
+    playwrightAdapterFactory: async () => {
+      calls.push('playwright-factory');
+      return { inspect: async () => { calls.push('playwright'); return report; } };
+    },
+  });
+
+  assert.deepEqual(calls, ['mcp', 'playwright-factory', 'playwright']);
+  assert.deepEqual(result, {
+    attempted_routes: ['mcp_chrome_devtools', 'playwright_fallback'],
+    effective_route: 'playwright_fallback',
+    reason: 'mcp_unavailable',
+    route_reasons: {
+      mcp_chrome_devtools: 'mcp_unavailable',
+      playwright_fallback: 'playwright_success',
+    },
+    observed_state: report.visual_state,
+    report,
   });
 });
 

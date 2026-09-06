@@ -41,9 +41,15 @@ _RECEIPT_FIELDS = (
     "timestamp_registered",
     "duplicate_created",
 )
-_RECEIPT_FALLBACK_FIELDS = {"mcp_failure", "fallback_reason"}
+_RECEIPT_FALLBACK_FIELDS = {
+    "mcp_failure",
+    "fallback_reason",
+    "route_attempted",
+    "mcp_attempted",
+    "verification_evidence",
+}
 
-_RECEIPT_ROUTES = {"mcp_chrome_devtools", "playwright_fallback"}
+_RECEIPT_ROUTES = {"mcp_chrome_devtools", "playwright_fallback", "stop"}
 _RECEIPT_FALLBACKS = {"none", "playwright_fallback"}
 _EVIDENCE_STATUSES = {
     "real_non_destructive",
@@ -107,12 +113,28 @@ def validate_schedule_events(events, route):
     return _validate_exact(events, expected)
 
 
-def validate_reschedule_events(events, route):
+def validate_reschedule_events(events, route, *, effective_route=None, fallback=None):
     if route != "existing_post":
         raise ValueError(f"unknown reschedule route: {route}")
+    observed = tuple(events)
+    if not observed or observed[0] != "mcp_chrome_devtools_attempt":
+        raise ValueError("reschedule requires an MCP Chrome DevTools attempt")
+    if effective_route not in _RECEIPT_ROUTES - {"stop"}:
+        raise ValueError("reschedule requires an effective browser route")
+    if effective_route == "playwright_fallback":
+        if fallback != "playwright_fallback":
+            raise ValueError("Playwright reschedule requires a valid fallback")
+        if "playwright_fallback" not in observed or "playwright_attempt" not in observed:
+            raise ValueError("Playwright reschedule requires fallback evidence")
+    elif fallback != "none":
+        raise ValueError("MCP reschedule requires fallback none")
+    if effective_route == "mcp_chrome_devtools" and "playwright_fallback" in observed:
+        raise ValueError("effective route cannot be MCP after Playwright fallback")
     return _validate_exact(
         events,
         (
+            "mcp_chrome_devtools_attempt",
+            *(("playwright_fallback", "playwright_attempt") if effective_route == "playwright_fallback" else ()),
             "existing_post_menu",
             "alter_schedule",
             "date_selected",
@@ -149,20 +171,6 @@ def can_register_timestamp(
     if type(scheduled_list) is not bool or scheduled_list is not True:
         return False
 
-    # Preserve the small behavioral helper while keeping all supplied evidence strict.
-    if all(
-        value is None
-        for value in (
-            receipt,
-            summary,
-            requested_timestamp,
-            displayed_timestamp,
-            timestamp_registered,
-            failure_state,
-        )
-    ):
-        return True
-
     if not isinstance(receipt, dict):
         return False
     try:
@@ -171,6 +179,12 @@ def can_register_timestamp(
     except (TypeError, ValueError):
         return False
     if receipt["evidence_status"] not in {"real_non_destructive", "real_existing_post"}:
+        return False
+    if receipt.get("mcp_attempted") is not True:
+        return False
+    if not isinstance(receipt.get("route_attempted"), list) or not receipt["route_attempted"]:
+        return False
+    if not isinstance(receipt.get("verification_evidence"), str) or not receipt["verification_evidence"].strip():
         return False
     if summary != "pass":
         return False
@@ -181,6 +195,8 @@ def can_register_timestamp(
     if type(displayed_timestamp) is not str or not displayed_timestamp:
         return False
     if requested_timestamp != displayed_timestamp:
+        return False
+    if not all(receipt[field] == "pass" for field in ("preview", "confirmation", "scheduled_list", "timestamp_registered")):
         return False
     if failure_state is not None:
         return False
@@ -202,20 +218,22 @@ def validate_dry_run_events(events):
     )
     if playwright_indexes and (mcp_index is None or mcp_index > min(playwright_indexes)):
         raise ValueError("MCP Chrome DevTools must be attempted before Playwright")
-    return _validate_exact(
-        events,
-        (
-            "approved_file",
-            "markdown_converted",
-            "mcp_chrome_devtools_attempt",
-            "playwright_attempt",
-            "visual_route",
-            "date_selected",
-            "time_selected",
-            "summary_confirmed",
-            "blocked_before_advance",
-        ),
+    base = (
+        "approved_file",
+        "markdown_converted",
+        "mcp_chrome_devtools_attempt",
     )
+    suffix = (
+        "visual_route",
+        "date_selected",
+        "time_selected",
+        "summary_confirmed",
+        "blocked_before_advance",
+    )
+    try:
+        return _validate_exact(events, base + suffix)
+    except ValueError:
+        return _validate_exact(events, base + ("playwright_attempt",) + suffix)
 
 
 def validate_receipt(receipt):
@@ -232,7 +250,16 @@ def validate_receipt(receipt):
         raise ValueError("invalid receipt route")
     if receipt["fallback"] not in _RECEIPT_FALLBACKS:
         raise ValueError("invalid receipt fallback")
-    if receipt["route"] == "mcp_chrome_devtools":
+    if receipt["route"] == "stop":
+        if receipt["fallback"] != "none":
+            raise ValueError("stop receipt cannot declare a fallback")
+        if receipt.get("mcp_attempted") is not True:
+            raise ValueError("stop receipt requires MCP attempt evidence")
+        if not isinstance(receipt.get("route_attempted"), list) or "mcp_chrome_devtools" not in receipt["route_attempted"]:
+            raise ValueError("stop receipt requires attempted route evidence")
+        if not isinstance(receipt.get("verification_evidence"), str) or not receipt["verification_evidence"].strip():
+            raise ValueError("stop receipt requires verification evidence")
+    elif receipt["route"] == "mcp_chrome_devtools":
         if receipt["fallback"] != "none":
             raise ValueError("receipt route and fallback are inconsistent")
         if "mcp_failure" in fields or "fallback_reason" in fields:
@@ -252,7 +279,7 @@ def validate_receipt(receipt):
             raise ValueError("receipt timestamp mismatch")
         if not all(receipt[field] == "pass" for field in ("date_selected", "time_selected", "summary")):
             raise ValueError("receipt gate failed")
-        if any(receipt[field] != "not_run" for field in ("preview", "confirmation", "scheduled_list", "timestamp_registered")):
+        if any(receipt[field] not in {"not_run", "pass"} for field in ("preview", "confirmation", "scheduled_list", "timestamp_registered")):
             raise ValueError("receipt claims unexecuted completion")
     else:
         if receipt["requested_timestamp"] or receipt["displayed_timestamp"]:
