@@ -33,8 +33,8 @@ fallback**.
 
 ### P1 — Próximas entregas operacionais
 
-- [!] Confirmar o backend X em uma pesquisa real: configurar uma fonte X acionável
-  e repetir o `doctor`; o backend X atual está `unconfigured`.
+- [x] Confirmar o backend X em uma pesquisa real: backend `bird` acionável via
+  cookies autorizados do Chrome; pesquisa retornou 30 posts em modo somente leitura.
 - [x] Configurar e validar a Brave Search API; backend `brave` ativo.
 - [ ] Criar logs de execução por etapa, rota, estado e receipt.
 - [ ] Criar scripts Python para scoring e clustering quando o fluxo manual estiver estável.
@@ -76,16 +76,70 @@ fallback**.
 - [x] Nenhum clique, preenchimento, publicação ou agendamento foi executado.
 - [x] A execução usou `mcp_chrome_devtools`; Playwright não foi chamado.
 
+### Política de rota e evidência
+
+A sequência normativa é MCP Chrome DevTools → Playwright
+`playwright_fallback` → screenshot e visão nativa → `stop`. O screenshot e a
+visão nativa acontecem depois das duas rotas de controle; em caso de falha, o
+fluxo termina com `stop` e fail-closed.
+Cada operação registra a rota, o motivo e a evidência observada.
+
+### Receipt estruturada
+
+```yaml
+route: stop
+evidence_status: simulated
+fallback: none
+requested_timestamp: ""
+displayed_timestamp: ""
+date_selected: not_run
+time_selected: not_run
+summary: not_run
+preview: not_run
+confirmation: not_run
+scheduled_list: not_run
+timestamp_registered: not_run
+duplicate_created: false
+route_attempted:
+  - mcp_chrome_devtools
+mcp_attempted: true
+route_reasons:
+  mcp_chrome_devtools: ausência de sessão autenticada para ação mutante
+observed_state: public_page_read_only
+verification_evidence: snapshot MCP da página pública
+post_action_confirmation: not_run
+```
+
+Status auxiliar: `not_run: criação não executada por segurança`; evidência
+`simulated: contrato/teste`.
+
+### Matriz de agendamento — pendente
+
+Quando P1-D for autorizada, a matriz deverá cobrir exatamente:
+
+- new schedule with different date and time;
+- new schedule for today with explicit date and time;
+- reschedule existing post with same time and different date;
+- wrong summary detected before Avançar;
+- scheduled post missing from the scheduled list.
+
+Nenhum caso será executado no post do incidente. Cada caso precisa de
+evidência, receipt e confirmação do estado final antes de persistir qualquer
+timestamp.
+Os casos mutantes ainda não foram executados.
+
+Operational gates: summary divergence blocks Avançar; confirmation/list absence blocks registration; never duplicate.
+
 ### Integrações
 
 - [x] Brave Search API ativa no arquivo global do `last30days`.
-- [~] X: cookies detectados no Chrome pelo setup; validação operacional ainda pendente.
+- [x] X: backend `bird` validado em pesquisa real; 30 posts retornados.
 - [x] `yt-dlp`, Digg, arXiv e Techmeme disponíveis.
 
 ## Documentos e planos de referência
 
 - [x] `docs/superpowers/plans/2026-09-06-mcp-first-browser-automation.md` — implementação MCP-first concluída.
-- [~] `docs/superpowers/plans/2026-09-01-linkedin-scheduling.md` — publicação e agendamento; validação real pendente.
+- [~] `docs/superpowers/plans/2026-09-01-linkedin-scheduling.md` — publicação e agendamento; matriz mutante ainda pendente.
 - [x] `docs/browser-route-contract.md` — contrato compartilhado de navegador.
 - [x] `.agents/skills/publicar-linkedin/SKILL.md` — regras operacionais do LinkedIn.
 - [x] `AGENTS.md` — contrato geral do projeto.
