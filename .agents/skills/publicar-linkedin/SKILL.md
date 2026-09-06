@@ -157,10 +157,12 @@ Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar
 
 ### Contrato comportamental
 
-Uma execução válida usa estes eventos na ordem indicada; `screenshot_fallback_if_needed` só aparece nos branches que precisam de screenshot:
+Uma execução válida usa estes eventos na ordem indicada; `playwright_fallback` e
+`playwright_attempt` só aparecem no branch Playwright, e
+`screenshot_fallback_if_needed` só aparece nos branches que precisam de screenshot:
 
 ```text
-approved_file → markdown_converted → mcp_chrome_devtools_attempt → playwright_fallback_if_needed → screenshot_fallback_if_needed → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
+approved_file → markdown_converted → mcp_chrome_devtools_attempt → playwright_fallback → playwright_attempt → screenshot_fallback_if_needed → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
 ```
 
 O evento `screenshot_fallback_if_needed` representa a confirmação visual quando necessária; não autoriza inferência sem evidência. No branch `playwright`, ele é omitido quando a tentativa tem sucesso. Os branches visuais são `playwright`, `no_native_vision`, `native_failed` e `unreadable_image`. O branch `no_native_vision` vai diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa; `native_failed` usa screenshot e `reason: native_failed`; `unreadable_image` encerra em `stop`.

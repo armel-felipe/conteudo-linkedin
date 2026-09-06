@@ -29,7 +29,11 @@ function resolveBrowserRoute({
 }) {
   const attemptedRoutes = ['mcp_chrome_devtools'];
   const mcp = mcpAttempt || {};
-  if (mcp.mutation_confirmed || mcp.ambiguous === true) {
+  if (
+    mcp.mutation_confirmed
+    || mcp.ambiguous === true
+    || mcp.reason === 'ambiguous_mutation'
+  ) {
     return {
       attempted_routes: attemptedRoutes,
       effective_route: 'stop',
@@ -199,7 +203,11 @@ async function runBrowserCheck({
       report: mcpAttempt.report,
     };
   }
-  if (mcpAttempt.mutation_confirmed || mcpAttempt.ambiguous === true) {
+  if (
+    mcpAttempt.mutation_confirmed
+    || mcpAttempt.ambiguous === true
+    || mcpAttempt.reason === 'ambiguous_mutation'
+  ) {
     return resolveBrowserRoute({ mcpAttempt });
   }
 

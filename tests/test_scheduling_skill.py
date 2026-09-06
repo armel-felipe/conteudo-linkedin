@@ -608,6 +608,27 @@ def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
         validate_receipt(receipt)
 
 
+@pytest.mark.parametrize("sensitive", [
+    "secret=abc",
+    "API_KEY=abc",
+    "api-key=abc",
+    "authorization: bearer abc",
+])
+def test_validate_receipt_rejects_new_sensitive_patterns_case_insensitively(sensitive):
+    receipt = valid_registration_gate()["receipt"]
+    receipt["verification_evidence"] = sensitive
+    with pytest.raises(ValueError, match="sensitive receipt value"):
+        validate_receipt(receipt)
+
+
+@pytest.mark.parametrize("sensitive_key", ["secret", "API_KEY", "authorization-header"])
+def test_validate_receipt_rejects_sensitive_nested_keys(sensitive_key):
+    receipt = valid_registration_gate()["receipt"]
+    receipt["observed_state"] = {"nested": [{sensitive_key: "redacted"}]}
+    with pytest.raises(ValueError, match="sensitive receipt value"):
+        validate_receipt(receipt)
+
+
 def test_validate_receipt_rejects_sensitive_text_nested_in_structures():
     receipt = valid_registration_gate()["receipt"]
     receipt["observed_state"] = {

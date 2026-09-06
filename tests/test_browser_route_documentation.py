@@ -72,6 +72,14 @@ def test_docs_retain_critical_linkedin_safety_rules():
     assert "novo composer" in text
 
 
+def test_linkedin_skill_uses_canonical_browser_events():
+    text = Path(".agents/skills/publicar-linkedin/SKILL.md").read_text()
+    assert "mcp_chrome_devtools_attempt" in text
+    assert "playwright_fallback" in text
+    assert "playwright_attempt" in text
+    assert "playwright_fallback_if_needed" not in text
+
+
 def test_mutation_docs_define_fail_closed_boundary_as_behavior():
     text = Path("docs/browser-route-contract.md").read_text(encoding="utf-8")
     mutation_section = text[text.index("## Publicar") : text.index("## Registro mínimo")]

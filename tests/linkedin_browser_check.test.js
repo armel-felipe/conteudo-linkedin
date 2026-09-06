@@ -201,6 +201,28 @@ test('fails closed on an ambiguous MCP return without constructing Playwright', 
   assert.deepEqual(result.observed_state, { mutation: 'unknown' });
 });
 
+test('fails closed on an MCP ambiguous_mutation reason without constructing Playwright', async () => {
+  let playwrightConstructed = false;
+  const result = await runBrowserCheck({
+    mcpAdapter: {
+      inspect: async () => ({
+        ok: false,
+        reason: 'ambiguous_mutation',
+        observed_state: { mutation: 'unknown' },
+      }),
+    },
+    playwrightAdapterFactory: async () => {
+      playwrightConstructed = true;
+      return { inspect: async () => ({ ok: true }) };
+    },
+  });
+
+  assert.equal(playwrightConstructed, false);
+  assert.equal(result.reason, 'ambiguous_mutation');
+  assert.equal(result.effective_route, 'stop');
+  assert.deepEqual(result.observed_state, { mutation: 'unknown' });
+});
+
 test('main accepts an injected MCP adapter through the operational entrypoint', async () => {
   const previousLog = console.log;
   const logs = [];

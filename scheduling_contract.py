@@ -1,3 +1,6 @@
+import re
+
+
 _COMMON = (
     "approved_file",
     "markdown_converted",
@@ -71,6 +74,10 @@ _FORBIDDEN_RECEIPT_TERMS = (
     "account id",
     "identificador",
     "identificadores",
+)
+_FORBIDDEN_RECEIPT_PATTERN = re.compile(
+    r"secret|api[\s_-]*key|authorization",
+    re.IGNORECASE,
 )
 
 
@@ -352,7 +359,10 @@ def validate_receipt(receipt):
         raise ValueError("receipt timestamp missing")
     def contains_sensitive_value(value):
         if isinstance(value, str):
-            return any(term in value.lower() for term in _FORBIDDEN_RECEIPT_TERMS)
+            return (
+                any(term in value.lower() for term in _FORBIDDEN_RECEIPT_TERMS)
+                or _FORBIDDEN_RECEIPT_PATTERN.search(value) is not None
+            )
         if isinstance(value, dict):
             return any(
                 contains_sensitive_value(key) or contains_sensitive_value(item)
