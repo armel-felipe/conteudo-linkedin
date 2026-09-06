@@ -2,14 +2,15 @@
 
 ## Status
 
-PASS para o contrato e o protocolo seguro da rodada 5. Nenhuma ação foi executada no LinkedIn.
+PASS para o contrato e o protocolo seguro da rodada 5; BLOCKED para evidência
+browser-real. Nenhuma ação foi executada no LinkedIn.
 
 ## Receipt estruturada
 
 ```yaml
 evidence_status: simulated
 route: mcp_chrome_devtools
-fallback: playwright_fallback
+fallback: none
 requested_timestamp: ""
 displayed_timestamp: ""
 date_selected: not_run
@@ -26,6 +27,22 @@ O receipt acima é de contrato/teste (`simulated`), não de browser-real.
 Os estados permitidos e distintos são `real_non_destructive`,
 `real_existing_post`, `simulated` e `not_run`; esta rodada usou somente os
 dois últimos.
+
+## Correção da revisão da Task 3
+
+- `validate_schedule_events()` agora exige `mcp_chrome_devtools_attempt` antes de
+  `playwright_fallback` ou de qualquer evento Playwright em fluxos mutantes.
+- A rota Playwright válida registra `playwright_fallback` e preserva
+  `playwright_attempt` depois da tentativa MCP; um fluxo Playwright-only é
+  rejeitado.
+- `validate_receipt()` exige `mcp_failure: true` e `fallback_reason` não vazio
+  quando `fallback` é `playwright_fallback`.
+- Receipts com `fallback: none` não podem declarar evidência de fallback; o
+  receipt acima permanece consistente com o dry-run, sem fallback executado.
+- Foram adicionados testes para ordem MCP/Playwright, fluxo Playwright-only e
+  consistência dos campos de fallback.
+- Verificação direcionada: `python3 -m pytest tests/test_scheduling_skill.py -q`
+  — 72 passed.
 
 ## Casos executados
 

@@ -1,7 +1,7 @@
 _COMMON = (
     "approved_file",
     "markdown_converted",
-    "playwright_attempt",
+    "mcp_chrome_devtools_attempt",
 )
 
 _SUCCESS = (
@@ -18,7 +18,7 @@ _SUCCESS = (
 )
 
 _VISUAL_BRANCHES = {
-    "playwright": (),
+    "playwright": ("playwright_fallback", "playwright_attempt"),
     "no_native_vision": ("image-analyzer:reason=no_native_vision",),
     "native_failed": (
         "screenshot_fallback_if_needed",
@@ -41,6 +41,7 @@ _RECEIPT_FIELDS = (
     "timestamp_registered",
     "duplicate_created",
 )
+_RECEIPT_FALLBACK_FIELDS = {"mcp_failure", "fallback_reason"}
 
 _RECEIPT_ROUTES = {"playwright", "mcp_chrome_devtools"}
 _RECEIPT_FALLBACKS = {"none", "playwright_fallback", "no_native_vision", "native_failed"}
@@ -74,6 +75,23 @@ def _validate_exact(events, expected):
 
 
 def validate_schedule_events(events, route):
+    observed = tuple(events)
+    playwright_indexes = [
+        index for index, event in enumerate(observed) if "playwright" in event
+    ]
+    if playwright_indexes:
+        mcp_index = next(
+            (
+                index
+                for index, event in enumerate(observed)
+                if event == "mcp_chrome_devtools_attempt"
+            ),
+            None,
+        )
+        if mcp_index is None or mcp_index > min(playwright_indexes):
+            raise ValueError(
+                "MCP Chrome DevTools must be attempted before Playwright"
+            )
     if route == "unreadable_image":
         expected = _COMMON + (
             "screenshot_fallback_if_needed",
@@ -170,25 +188,31 @@ def can_register_timestamp(
 
 
 def validate_dry_run_events(events):
-    return _validate_exact(
-        events,
-        (
-            "approved_file",
-            "markdown_converted",
-            "playwright_attempt",
-            "visual_route",
-            "date_selected",
-            "time_selected",
-            "summary_confirmed",
-            "blocked_before_advance",
-        ),
+    expected = (
+        "approved_file",
+        "markdown_converted",
+        "mcp_chrome_devtools_attempt",
+        "playwright_attempt",
+        "visual_route",
+        "date_selected",
+        "time_selected",
+        "summary_confirmed",
+        "blocked_before_advance",
     )
+    try:
+        return _validate_exact(events, expected)
+    except ValueError:
+        # Keep the non-mutating legacy dry-run sequence valid.
+        return _validate_exact(events, (expected[0], expected[1], *expected[3:]))
 
 
 def validate_receipt(receipt):
     if not isinstance(receipt, dict):
         raise ValueError("receipt must be an object")
-    if set(receipt) != set(_RECEIPT_FIELDS):
+    fields = set(receipt)
+    if not set(_RECEIPT_FIELDS).issubset(fields) or not fields <= (
+        set(_RECEIPT_FIELDS) | _RECEIPT_FALLBACK_FIELDS
+    ):
         raise ValueError("incomplete receipt")
     if receipt["evidence_status"] not in _EVIDENCE_STATUSES:
         raise ValueError("invalid evidence status")
@@ -196,6 +220,15 @@ def validate_receipt(receipt):
         raise ValueError("invalid receipt route")
     if receipt["fallback"] not in _RECEIPT_FALLBACKS:
         raise ValueError("invalid receipt fallback")
+    if receipt["fallback"] == "playwright_fallback":
+        if receipt.get("mcp_failure") is not True:
+            raise ValueError("playwright fallback requires MCP failure")
+        if not isinstance(receipt.get("fallback_reason"), str) or not receipt[
+            "fallback_reason"
+        ].strip():
+            raise ValueError("playwright fallback requires an explicit reason")
+    elif "mcp_failure" in fields or "fallback_reason" in fields:
+        raise ValueError("receipt declares fallback evidence without fallback")
     status = receipt["evidence_status"]
     if status in {"real_non_destructive", "real_existing_post"}:
         if receipt["requested_timestamp"] != receipt["displayed_timestamp"]:
