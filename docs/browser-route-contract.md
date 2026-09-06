@@ -86,5 +86,8 @@ Cada execução deve preservar:
 - classificação final (`success`, `failed`, `ambiguous_mutation` ou `stop`);
 - qualquer aplicação de `fail_closed`.
 
+`scheduled_list_confirmed` deve estar confirmado antes de registrar o `timestamp`,
+e ambos devem ser validados antes da persistência local.
+
 Skills e scripts que não conseguirem produzir esse registro devem parar antes
 de executar uma mutação.

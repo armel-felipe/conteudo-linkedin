@@ -46,6 +46,18 @@ test('stops after an ambiguous possible mutation', () => {
   });
 });
 
+test('does not permit fallback after a confirmed mutation', () => {
+  assert.deepEqual(resolveBrowserRoute({
+    mcpAvailable: false,
+    capabilityAvailable: false,
+    mutationConfirmed: true,
+    errorBeforeMutation: false,
+  }), {
+    route: 'stop',
+    reason: 'ambiguous_mutation',
+  });
+});
+
 function fixturePage(url) {
   const calls = [];
   return {
@@ -150,7 +162,8 @@ test('documents visual fallback downstream of the selected browser route', () =>
     path.join(__dirname, '..', '.agents', 'skills', 'publicar-linkedin', 'SKILL.md'),
     'utf8',
   );
-  assert.ok(skill.indexOf('capturar screenshot e usar visão nativa') < skill.indexOf('delegar ao `image-analyzer` com `reason: native_failed`'));
+  assert.ok(skill.indexOf('capturar screenshot e usar visão nativa') < skill.indexOf('delegar ao `image-analyzer`'));
+  assert.ok(skill.indexOf('reason: native_failed') >= 0);
 });
 
 test('keeps the visual fallback order explicit', () => {

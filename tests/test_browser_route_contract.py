@@ -45,6 +45,13 @@ def test_contract_requires_effective_route_and_state_records():
     assert "verificação do estado" in text
 
 
+def test_contract_persists_timestamp_only_after_scheduled_list_confirmation():
+    text = contract_text()
+    persistence_index = text.index("persistência local")
+    assert text.index("timestamp") < persistence_index
+    assert text.index("scheduled_list_confirmed") < persistence_index
+
+
 def test_contract_separates_read_and_mutation_rules():
     text = contract_text()
     read_section = text[text.index("## Leitura e inspeção") : text.index("## Publicar")]
