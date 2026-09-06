@@ -36,13 +36,22 @@ dois últimos.
   `playwright_attempt` depois da tentativa MCP; um fluxo Playwright-only é
   rejeitado.
 - `validate_receipt()` exige `mcp_failure: true` e `fallback_reason` não vazio
-  quando `fallback` é `playwright_fallback`.
-- Receipts com `fallback: none` não podem declarar evidência de fallback; o
-  receipt acima permanece consistente com o dry-run, sem fallback executado.
+  quando a rota efetiva é `playwright_fallback`; a combinação canônica é
+  `route: playwright_fallback` e `fallback: playwright_fallback`.
+- A rota primária exige `route: mcp_chrome_devtools` e `fallback: none`, sem
+  campos de falha MCP; relações entre rota e fallback são rejeitadas.
+- `validate_dry_run_events()` rejeita a sequência Playwright-only e exige a
+  tentativa MCP antes de qualquer evento Playwright.
 - Foram adicionados testes para ordem MCP/Playwright, fluxo Playwright-only e
   consistência dos campos de fallback.
 - Verificação direcionada: `python3 -m pytest tests/test_scheduling_skill.py -q`
-  — 72 passed.
+  — 74 passed.
+- Verificação relacionada: `python3 -m pytest tests/test_browser_route_documentation.py tests/test_scheduling_skill.py -q`
+  — 79 passed.
+- Verificação completa: `python3 -m pytest tests -q` — 245 passed, 1 failed. A
+  falha é preexistente e fora do escopo: `tests/test_run_contracts.py::test_runtime_runs_are_ignored_but_keep_file_is_tracked`
+  espera `runs/*` em `.gitignore`; `.gitignore` não foi alterado.
+- `git diff --check` — passou sem saída.
 
 ## Casos executados
 

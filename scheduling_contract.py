@@ -43,8 +43,8 @@ _RECEIPT_FIELDS = (
 )
 _RECEIPT_FALLBACK_FIELDS = {"mcp_failure", "fallback_reason"}
 
-_RECEIPT_ROUTES = {"playwright", "mcp_chrome_devtools"}
-_RECEIPT_FALLBACKS = {"none", "playwright_fallback", "no_native_vision", "native_failed"}
+_RECEIPT_ROUTES = {"mcp_chrome_devtools", "playwright_fallback"}
+_RECEIPT_FALLBACKS = {"none", "playwright_fallback"}
 _EVIDENCE_STATUSES = {
     "real_non_destructive",
     "real_existing_post",
@@ -188,22 +188,34 @@ def can_register_timestamp(
 
 
 def validate_dry_run_events(events):
-    expected = (
-        "approved_file",
-        "markdown_converted",
-        "mcp_chrome_devtools_attempt",
-        "playwright_attempt",
-        "visual_route",
-        "date_selected",
-        "time_selected",
-        "summary_confirmed",
-        "blocked_before_advance",
+    observed = tuple(events)
+    playwright_indexes = [
+        index for index, event in enumerate(observed) if "playwright" in event
+    ]
+    mcp_index = next(
+        (
+            index
+            for index, event in enumerate(observed)
+            if event == "mcp_chrome_devtools_attempt"
+        ),
+        None,
     )
-    try:
-        return _validate_exact(events, expected)
-    except ValueError:
-        # Keep the non-mutating legacy dry-run sequence valid.
-        return _validate_exact(events, (expected[0], expected[1], *expected[3:]))
+    if playwright_indexes and (mcp_index is None or mcp_index > min(playwright_indexes)):
+        raise ValueError("MCP Chrome DevTools must be attempted before Playwright")
+    return _validate_exact(
+        events,
+        (
+            "approved_file",
+            "markdown_converted",
+            "mcp_chrome_devtools_attempt",
+            "playwright_attempt",
+            "visual_route",
+            "date_selected",
+            "time_selected",
+            "summary_confirmed",
+            "blocked_before_advance",
+        ),
+    )
 
 
 def validate_receipt(receipt):
@@ -220,15 +232,20 @@ def validate_receipt(receipt):
         raise ValueError("invalid receipt route")
     if receipt["fallback"] not in _RECEIPT_FALLBACKS:
         raise ValueError("invalid receipt fallback")
-    if receipt["fallback"] == "playwright_fallback":
+    if receipt["route"] == "mcp_chrome_devtools":
+        if receipt["fallback"] != "none":
+            raise ValueError("receipt route and fallback are inconsistent")
+        if "mcp_failure" in fields or "fallback_reason" in fields:
+            raise ValueError("receipt declares fallback evidence without fallback")
+    elif receipt["fallback"] != "playwright_fallback":
+        raise ValueError("receipt route and fallback are inconsistent")
+    if receipt["route"] == "playwright_fallback":
         if receipt.get("mcp_failure") is not True:
             raise ValueError("playwright fallback requires MCP failure")
         if not isinstance(receipt.get("fallback_reason"), str) or not receipt[
             "fallback_reason"
         ].strip():
             raise ValueError("playwright fallback requires an explicit reason")
-    elif "mcp_failure" in fields or "fallback_reason" in fields:
-        raise ValueError("receipt declares fallback evidence without fallback")
     status = receipt["evidence_status"]
     if status in {"real_non_destructive", "real_existing_post"}:
         if receipt["requested_timestamp"] != receipt["displayed_timestamp"]:

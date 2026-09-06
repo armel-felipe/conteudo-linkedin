@@ -192,9 +192,7 @@ def valid_registration_gate(**overrides):
         "receipt": {
             "evidence_status": "real_non_destructive",
             "route": "mcp_chrome_devtools",
-            "fallback": "playwright_fallback",
-            "mcp_failure": True,
-            "fallback_reason": "MCP route unavailable before mutation",
+            "fallback": "none",
             "requested_timestamp": "01/09/2026 10:00",
             "displayed_timestamp": "01/09/2026 10:00",
             "date_selected": "pass",
@@ -255,7 +253,7 @@ def test_reschedule_requires_existing_post_and_complete_new_selection():
 def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "mcp_chrome_devtools",
+        "route": "playwright_fallback",
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
@@ -275,11 +273,19 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
 
 def test_receipt_requires_mcp_failure_and_reason_for_playwright_fallback():
     receipt = valid_registration_gate()["receipt"]
+    receipt["route"] = "playwright_fallback"
+    receipt["fallback"] = "playwright_fallback"
+    receipt["mcp_failure"] = True
+    receipt["fallback_reason"] = "MCP route unavailable before mutation"
     del receipt["mcp_failure"]
     with pytest.raises(ValueError, match="MCP failure"):
         validate_receipt(receipt)
 
     receipt = valid_registration_gate()["receipt"]
+    receipt["route"] = "playwright_fallback"
+    receipt["fallback"] = "playwright_fallback"
+    receipt["mcp_failure"] = True
+    receipt["fallback_reason"] = "MCP route unavailable before mutation"
     receipt["fallback_reason"] = ""
     with pytest.raises(ValueError, match="explicit reason"):
         validate_receipt(receipt)
@@ -287,7 +293,8 @@ def test_receipt_requires_mcp_failure_and_reason_for_playwright_fallback():
 
 def test_receipt_without_fallback_cannot_declare_fallback_evidence():
     receipt = valid_registration_gate()["receipt"]
-    receipt["fallback"] = "none"
+    receipt["mcp_failure"] = True
+    receipt["fallback_reason"] = "MCP route unavailable before mutation"
     with pytest.raises(ValueError, match="without fallback"):
         validate_receipt(receipt)
 
@@ -309,7 +316,7 @@ def test_receipt_without_fallback_cannot_declare_fallback_evidence():
 def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "mcp_chrome_devtools",
+        "route": "playwright_fallback",
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
@@ -332,7 +339,7 @@ def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
 def test_validate_receipt_rejects_missing_field():
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "mcp_chrome_devtools",
+        "route": "playwright_fallback",
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
@@ -366,7 +373,7 @@ def test_validate_receipt_rejects_empty_object_as_incomplete():
 def test_validate_receipt_accepts_object_root_after_type_boundary():
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "mcp_chrome_devtools",
+        "route": "playwright_fallback",
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
@@ -388,7 +395,7 @@ def test_validate_receipt_accepts_object_root_after_type_boundary():
 def test_validate_receipt_rejects_invalid_route_or_fallback(field):
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "mcp_chrome_devtools",
+        "route": "playwright_fallback",
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
@@ -412,7 +419,7 @@ def test_validate_receipt_rejects_invalid_route_or_fallback(field):
 def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "mcp_chrome_devtools",
+        "route": "playwright_fallback",
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
@@ -498,6 +505,22 @@ def test_dry_run_stops_before_advance():
     ) is True
 
 
+def test_dry_run_rejects_playwright_only_sequence():
+    with pytest.raises(ValueError, match="MCP Chrome DevTools"):
+        validate_dry_run_events(
+            [
+                "approved_file",
+                "markdown_converted",
+                "playwright_attempt",
+                "visual_route",
+                "date_selected",
+                "time_selected",
+                "summary_confirmed",
+                "blocked_before_advance",
+            ]
+        )
+
+
 @pytest.mark.parametrize(
     "event",
     ["advance", "schedule", "confirmation", "scheduled_list_confirmed", "timestamp_registered"],
@@ -518,9 +541,7 @@ def test_receipt_accepts_each_explicit_evidence_status(status):
     receipt = {
         "evidence_status": status,
         "route": "mcp_chrome_devtools",
-        "fallback": "playwright_fallback",
-        "mcp_failure": True,
-        "fallback_reason": "MCP route unavailable before mutation",
+        "fallback": "none",
         "requested_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
         "displayed_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
         "date_selected": "not_run" if status in {"simulated", "not_run"} else "pass",
@@ -539,9 +560,7 @@ def test_receipt_rejects_unknown_evidence_status_and_completed_dry_run():
     receipt = {
         "evidence_status": "browser_realish",
         "route": "mcp_chrome_devtools",
-        "fallback": "playwright_fallback",
-        "mcp_failure": True,
-        "fallback_reason": "MCP route unavailable before mutation",
+        "fallback": "none",
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",
@@ -562,14 +581,19 @@ def test_receipt_rejects_unknown_evidence_status_and_completed_dry_run():
         validate_receipt(receipt)
 
 
+def test_receipt_rejects_inconsistent_primary_route_and_fallback():
+    receipt = valid_registration_gate()["receipt"]
+    receipt["fallback"] = "playwright_fallback"
+    with pytest.raises(ValueError, match="route.*fallback"):
+        validate_receipt(receipt)
+
+
 @pytest.mark.parametrize("field", ["confirmation", "scheduled_list", "timestamp_registered"])
 def test_dry_run_receipt_cannot_claim_completion_evidence(field):
     receipt = {
         "evidence_status": "simulated",
         "route": "mcp_chrome_devtools",
-        "fallback": "playwright_fallback",
-        "mcp_failure": True,
-        "fallback_reason": "MCP route unavailable before mutation",
+        "fallback": "none",
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",
