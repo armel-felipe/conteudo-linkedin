@@ -38,7 +38,9 @@ fallback**.
 - [x] Configurar e validar a Brave Search API; backend `brave` ativo.
 - [x] Criar logs JSONL sanitizados por etapa, rota, estado e receipt em `runs/`;
   cobertura de logger Python/Node e integração de receipts concluída.
-- [ ] Criar scripts Python para scoring e clustering quando o fluxo manual estiver estável.
+- [x] Criar scripts Python determinísticos para scoring e clustering; artefatos
+  gerados em `research/topics/topics_scored_2026-09-06.yaml` e
+  `research/topics/clusters_2026-09-06.yaml`.
 - [ ] Executar a matriz de cenários de agendamento somente quando existir uma
   publicação real e houver autorização explícita.
 
