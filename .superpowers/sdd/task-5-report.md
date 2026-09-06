@@ -1,57 +1,42 @@
-# Task 5 Report — Agentes B4 (Executa pesquisa)
+# Task 5 Report — AGENTS.md (contrato de operação)
 
 ## What I implemented
 
-Per the brief and the established deviation pattern from Tasks 2-4:
+Created `AGENTS.md` at the repo root with the exact contents from the task brief:
+- Projeto (pipeline agentico manual, fluxo completo)
+- 7 regras centrais (nunca começar por "sobre o que escrever?", artefatos persistentes, pesquisa separada de redação, LinkedIn complementar, specs de post, escrita-humana, nunca inventar dados)
+- Skills section referencing `mapa.md`
+- Estrutura (config/, research/, content/, memory/)
+- Segurança (.env/credenciais, publicação via browser OpenWork)
+- Estados de conteúdo (discovered → … → archived)
 
-- Created `.agents/agents/pesquisa-executor/AGENT.md` — executor of B4, verbatim from the brief.
-- Created `.agents/agents/pesquisa-revisor/AGENT.md` — brief's verbatim content (`## O que validar`, `## Formato de feedback`, `## Memória`) **plus** two minimal sections required by `test_agent_files_have_required_sections`:
-  - `## Processo`: 5 numbered steps restating the `## O que validar` bullets.
-  - `## Contrato`: the executor's contract bullets reused verbatim.
-- Created `.agents/agents/pesquisa-revisor/memory.md` — verbatim from the brief.
-- Modified `tests/test_orquestrador_runtime.py` — added `"B4": "pesquisa"` to `BLOCKS`.
+The old AGENTS.md was already deleted in the working tree (part of the project restart). The new file replaces it; the commit records the deletion + new content as a modification, which is correct per the task.
 
-The revisor additions follow the exact precedent of B1/B2/B3 revisors (same section placement, same 5-step Processo shape, same verbatim contract reuse).
+## What I tested
 
-## What I tested and test results
-
-- Focused suite: `PYTHONPATH="$PWD/src" /Users/mac/.pyenv/shims/python3.12 -m pytest tests/test_orquestrador_runtime.py -q` → **5 passed**.
-- Full suite: `pytest tests/ -q` → **115 passed, 40 subtests passed**.
-
-## TDD Evidence
-
-**RED** — after adding `"B4": "pesquisa"` to BLOCKS, before creating agent files:
+Verification command from the brief:
 ```
-FAILED tests/test_orquestrador_runtime.py::OrquestradorRuntimeStructureTests::test_agent_files_have_required_sections
-FAILED tests/test_orquestrador_runtime.py::OrquestradorRuntimeStructureTests::test_each_block_has_executor_and_revisor
-FAILED tests/test_orquestrador_runtime.py::OrquestradorRuntimeStructureTests::test_reviewers_have_memory
-3 failed, 2 passed in 0.03s
+grep -c "mapa.md" AGENTS.md
 ```
-Key failure lines: `AssertionError: False is not true : B4 executor missing`, `B4 revisor memory missing`.
+Output: `1` (≥1 reference to `mapa.md` — PASS)
 
-**GREEN** — after creating the three agent files:
-```
-.....                                                                    [100%]
-5 passed in 0.01s
-```
+Additionally verified the file content is byte-identical to the brief's code block (diff excluding the markdown fences): `MATCH: content identical to brief`.
 
 ## Files changed
 
-- `tests/test_orquestrador_runtime.py` (modified, +1 line)
-- `.agents/agents/pesquisa-executor/AGENT.md` (created)
-- `.agents/agents/pesquisa-revisor/AGENT.md` (created)
-- `.agents/agents/pesquisa-revisor/memory.md` (created)
+- `AGENTS.md` (created, 35 lines)
 
-Commit: `5be711b` — `feat: agentes do bloco B4 (Executa pesquisa) — executor e revisor` (exact message from brief). 4 files changed, 65 insertions.
+## Commit
 
-## Self-review findings
+- `8baac43` — docs: contrato de operação (AGENTS.md)
 
-- **Completeness:** all 5 steps of the brief done; nothing from the brief omitted.
-- **Quality:** revisor's Processo/Contrato additions mirror the committed B1/B2/B3 convention exactly, so the structural test passes consistently across all blocks.
-- **Discipline (YAGNI):** only what the brief and harness required; no extra files, no scope creep.
-- **Testing:** TDD followed (RED then GREEN); test output pristine; full suite green before commit.
-- No credentials, tokens, or secrets introduced.
+## Self-review
 
-## Issues or concerns
+- Completeness: AGENTS.md created with exact contents — PASS
+- Quality: 7 regras centrais, referência a mapa.md, estrutura, segurança, estados — all present — PASS
+- Discipline: no extra files created (YAGNI) — PASS
+- Verification: grep -c "mapa.md" → 1 — PASS
 
-None. The only non-brief content is the two required revisor sections, which the task description explicitly authorized and which match the established B1/B2/B3 pattern.
+## Issues / concerns
+
+None. Note: the commit shows "35 insertions, 35 deletions" because git tracked the new AGENTS.md as a modification of the deleted old one — expected and correct.

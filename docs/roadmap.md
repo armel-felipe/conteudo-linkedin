@@ -24,16 +24,16 @@ Cada item só começa depois da aprovação do anterior pelo Loop Gauntlet. O ga
 2. [x] Batch editorial: seleção, idempotência, paths, eventos, métricas e retomada.
 3. [x] Integração/documentação: schemas, `result_path`, critérios e eventos válidos.
 4. [x] Browser: pacote Playwright, conexão CDP, target LinkedIn e fallback visual.
-5. [ ] Revisão final dos novos findings do batch:
+5. [x] Revisão final dos novos findings do batch:
    - [x] rejeitar `--topics 0`, seleção vazia e IDs duplicados;
    - [x] rejeitar seleção divergente de manifesto congelado;
    - [x] recuperar ou bloquear intents parciais sem sobrescrever estado;
     - [x] manter `completed` inconsistente em falha fechada;
     - [x] rejeitar valores semânticos de falha no registro de timestamp;
-    - [x] tratar estado terminal sem stages restantes sem `StopIteration`.
-   - validar o tipo raiz de `receipt` antes de usar operações de conjunto, evitando `TypeError` com entrada malformada.
+    - [x] tratar estado terminal sem stages restantes sem `StopIteration`;
+    - [x] validar o tipo raiz de `receipt` antes de usar operações de conjunto, evitando `TypeError` com entrada malformada.
 
-O item 5 é o próximo passo. O agendamento só será considerado operacionalmente concluído depois da validação da publicação existente e dos cenários não mutantes restantes.
+Todos os findings da revisão final foram tratados e aprovados pelo Loop Gauntlet. O agendamento continua separado e só é considerado operacionalmente concluído depois da validação da publicação existente e dos cenários não mutantes restantes.
 
 O agendamento não faz parte deste fluxo documental. Ele permanece separado no plano de publicação do LinkedIn e só ocorre após aprovação humana.
 

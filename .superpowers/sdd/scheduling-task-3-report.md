@@ -2,7 +2,13 @@
 
 ## Status
 
-PASS para o contrato e o protocolo seguro da rodada 5. Nenhuma ação foi executada no LinkedIn.
+BLOCKED conforme opção B: o contrato e o protocolo seguro da rodada 5 passam nos
+testes automatizados, mas os cinco cenários não têm evidência browser-real.
+Nenhuma ação foi executada no LinkedIn.
+
+- SPEC: BLOCKED pela cobertura real ausente.
+- QUALITY: BLOCKED para aprovação final; os gates automatizados passam, mas a
+  preservação do timestamp existente não foi demonstrada por execução real.
 
 ## Receipt estruturada
 

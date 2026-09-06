@@ -1,52 +1,30 @@
-# Task 4 report
+# Task 4 Report
 
 ## Status
 
-Complete after review fixes. Recovery, observability, recursive event
-redaction, bounded review failures, CLI resume support, and acceptance coverage
-were implemented without breaking Tasks 1-3.
+Implemented the requested regression coverage for mutation safety, timestamp
+persistence ordering, and duplicate/composer prevention. The worktree changes
+are limited to the route implementation, its focused test, and the existing
+route contract and test:
 
-## Commit
+- `docs/browser-route-contract.md`
+- `scripts/linkedin_browser_check.js`
+- `tests/linkedin_browser_check.test.js`
+- `tests/test_browser_route_contract.py`
 
-- `f5ff756 test: cover resumable reviewer orchestration`
-- `7ef0f07 fix: close Task 4 orchestration review findings` (cycle freshness, invalid-response failure events,
-  stricter failure validation, content redaction, and closed-round recovery.
+The confirmed-mutation route now stops before selecting MCP or Playwright, even
+when MCP is available. The contract test proves
+`scheduled_list_confirmed < timestamp_registered < persistência local` and
+explicitly guards against a new composer or duplicate mutation.
 
-## Files
+## Tests
 
-- `src/content_ops/orchestration.py`
-- `src/content_ops/db.py`
-- `src/content_ops/cli.py`
-- `tests/test_orchestration.py`
-- `tests/test_db.py`
-- `tests/test_cli_smoke.py`
-- `docs/superpowers/specs/2026-08-29-orquestrador-hibrido-revisao-design.md`
-
-## Verification
-
-- `python3.12 -m pytest tests/test_orchestration.py tests/test_db.py -k 'resume or redact or timeout or duplicate' -v`: 13 passed, 49 deselected.
-- `python3.12 -m pytest -q`: 170 passed, 40 subtests passed.
-- `python3.12 -m compileall -q src tests`: passed.
-- `git diff --check`: passed.
-- `./contentctl --help`: passed; includes `workflow-resume`.
-- Manual smoke: completion without a matching approved reviewer receipt was blocked.
-
-## Review fixes
-
-- Review and completion now require the newest cycle for the exact round,
-  block, and artifact.
-- Invalid reviewer responses persist a sanitized `failed` event before the
-  error is returned.
-- Failure recording validates open rounds, known blocks, and canonical order.
-- Redaction covers sensitive keys and inline `token=`, `api_key=`, and
-  `password=` patterns recursively.
-- Closed rounds are complete only when every canonical block has a completion
-  event.
+- Focused Node tests: PASS, 13 tests.
+- Focused Python tests: PASS, 13 tests.
+- Full Node suite: PASS, 13 tests.
+- Full Python suite: 247 passed, 1 preexisting failure.
+- `git diff --check`: PASS.
 
 ## Concerns
 
-- Review events retain a compatibility `cycle_started` marker as the latest
-  block state because existing Task 1-3 consumers query that event directly;
-  it carries explicit reviewed-state metadata and `resume_round` interprets it
-  without replacing the semantic `review_*` event.
-- No final review was initiated, per task instruction.
+- Preexisting failure: `tests/test_run_contracts.py::test_runtime_runs_are_ignored_but_keep_file_is_tracked` expects `runs/*` in `.gitignore`. `.gitignore` was not modified.

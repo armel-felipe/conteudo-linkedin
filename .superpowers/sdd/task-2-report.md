@@ -2,32 +2,42 @@
 
 ## Status
 
-Complete. Task 3 was not started.
-
-## Commits
-
-- `3fb8ee2 fix: close orchestration database bypasses`
-- A correction commit and a separate report-only commit contain the final changes.
+Implemented deterministic MCP-first browser route selection in the requested
+worktree.
 
 ## Changes
 
-- Routed public database cycle, review, completion, and validation writes through the fail-closed orchestration guards.
-- Rejected unscoped or arbitrary `block_completed` persistence, including closed rounds and out-of-order blocks.
-- Counted `human_completed` as a completed workflow block so B7 releases B8 without automatic reviewer approval.
-- Persisted the artifact in completion event payloads.
-- Updated fixtures and direct API coverage for contextual artifacts, cycles, reviews, and legacy `bloco-ok` rejection.
-- Rejected all generic `record_workflow_event()` writes so cycle, review, automatic completion, and human completion events can only be persisted by domain APIs.
-- Required `record_human_completion()` to match an existing B7 cycle and persist round/block plus artifact, cycle, and selection context, without a reviewer receipt.
-- Made `close_round()` fail closed until every required block, including human B7, is complete.
-- Made compatibility persistence atomic: `record_block_validation()` now uses one domain transaction for `block_completed` and `block_validations`, with rollback coverage when the compatibility insert fails.
+- Added `browserRouteOrder()` with MCP Chrome DevTools before Playwright.
+- Added `resolveBrowserRoute(...)` with explicit MCP, fallback, and stop results.
+- Changed `visualFallbackOrder()` to describe only the downstream visual path.
+- Exported both route-policy functions.
+- Added route-policy tests and retained the existing target-selection,
+  screenshot-safety, and non-mutating `inspectPage` tests.
 
-## Commands and Results
+## TDD Evidence
 
-- `python3.12 -m pytest tests/test_orchestration.py tests/test_cli_smoke.py tests/test_db.py -v` -> `51 passed, 37 subtests passed`
-- `python3.12 -m pytest -q` -> `145 passed, 40 subtests passed`
-- The atomic compatibility rollback regression is included in the Task 2 suite.
-- Required final verification is run after this report is committed.
+- RED: `node --test tests/linkedin_browser_check.test.js` failed with missing
+  route-policy exports and the obsolete Playwright visual entry.
+- GREEN: the same command passed all 12 tests.
+
+## Verification
+
+Command:
+
+```text
+node --test tests/linkedin_browser_check.test.js
+```
+
+Result: 12 passed, 0 failed.
+
+## Commit
+
+`d4de5a8 test: enforce MCP-first browser routing`
 
 ## Concerns
 
-- `record_block_validation` remains a compatibility API and writes the legacy `block_validations` row after the central completion gate; new workflow callers should use `workflow-block-complete` or the contextual orchestration API.
+- The brief's pseudocode checks `mcp_ready` before ambiguity, while its
+  mandatory ambiguity test requires `stop` for the same input flags. The
+  implementation follows the mandatory safety test and stops before any route
+  when a possible mutation is ambiguous.
+- The preexisting `.gitignore` failure was not changed.

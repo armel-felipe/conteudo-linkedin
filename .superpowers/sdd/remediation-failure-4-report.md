@@ -115,3 +115,22 @@ was attempted.
 - A real CDP smoke test was not run because it would require an available
   browser session; the script's connection failure remains non-mutating.
 - Screenshot behavior is covered by a local Page fixture, not a real browser.
+
+## Real smoke verification
+
+After the browser tab was restored, the real Playwright/CDP smoke test was
+executed without mutation:
+
+```text
+npm run linkedin:check
+{"url":"https://www.linkedin.com/feed/","title":"Feed | LinkedIn","visual_state":{"visibility":"visible","ready_state":"complete","body_present":true}}
+```
+
+An explicit temporary screenshot was also captured through the Playwright
+route. Native visual inspection confirmed the LinkedIn feed and the visible
+"Começar publicação" entry point. No click, fill, navigation, scheduling or
+publication action was performed during this smoke test.
+
+The previous about:blank condition is therefore resolved for the current
+session. The non-mutating route is now verified both with fixtures and against
+a live OpenWork CDP target.

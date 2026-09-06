@@ -1,0 +1,380 @@
+signals:
+  - id: signal_20260901_001
+    title: "IA + ERP tenta levar a decisão proativa para dentro do sistema operacional"
+    pillars: [ia_aplicada]
+    source:
+      type: youtube
+      publisher: MetalForming Magazine
+      url: "https://www.youtube.com/watch?v=tAgK-BVydig"
+      published_at: "2026-08-26"
+    observation: "Webinar defende combinar IA com ERP para acelerar decisões operacionais sem obrigar a equipe a trocar de sistema."
+    debate:
+      side_a: "A IA precisa aparecer no fluxo e no sistema que a equipe já usa."
+      side_b: "Uma nova camada de IA pode criar mais fricção e baixa adoção."
+    evidence: ["O webinar pergunta se alguém vai aprender outro sistema ou usar um painel dentro do sistema conhecido.", "O conteúdo aborda a eliminação de fricção entre finanças, operações e supply chain."]
+    possible_angle: "O gargalo da IA operacional pode ser adoção no fluxo, não capacidade do modelo."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_002
+    title: "IA generativa ainda aparece como minoria no mundo industrial"
+    pillars: [ia_aplicada]
+    source:
+      type: youtube
+      publisher: magentiq
+      url: "https://www.youtube.com/watch?v=cmDUMERqyEE"
+      published_at: "2026-08-13"
+    observation: "Painel sobre manufatura afirma que casos de IA generativa combinados ainda representam menos de 5% no mundo industrial."
+    debate:
+      side_a: "A adoção industrial está começando e há espaço para expansão."
+      side_b: "A distância entre demonstrações e uso industrial real continua grande."
+    evidence: ["O painel declara que todos os casos de IA generativa combinados estão abaixo de 5% no mundo industrial.", "O mesmo painel destaca que muitas operações industriais são pequenas, com 20 funcionários ou menos."]
+    possible_angle: "A pergunta relevante não é quantas demos existem, mas quantos processos industriais realmente mudaram."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 9, debate: 9, evidence: 6, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_003
+    title: "O dado humano continua sendo o árbitro de exceções na supply chain"
+    pillars: [ia_aplicada]
+    source:
+      type: youtube
+      publisher: Center for Supply Chain Studies
+      url: "https://www.youtube.com/watch?v=6hRNp9HiROs"
+      published_at: "2026-08-17"
+    observation: "Discussão sobre usos e armadilhas da IA diz que acelerar o matching é fácil, mas verificar se o match está correto ainda depende de conhecimento humano."
+    debate:
+      side_a: "A IA pode acelerar classificação e correspondência de dados."
+      side_b: "A decisão sobre a correção da correspondência continua humana."
+    evidence: ["O programa afirma que o que não será acelerado é determinar se o match está correto porque o dado está nos humanos."]
+    possible_angle: "Em operações, o valor da IA pode estar em reduzir busca, preservando o humano como juiz da exceção."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 10, debate: 9, evidence: 6, author_fit: 0, originality: 9, linkedin_fit: 10}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_004
+    title: "Agentes prometem detectar ruptura antes de a entrega falhar"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: danielreitberg
+      url: "https://www.tiktok.com/@danielreitberg/video/7680180643526937887"
+      published_at: "2026-08-31"
+    observation: "Vídeo apresenta agentes de IA detectando disrupções na supply chain antes de falhas de entrega e deslocando automação de demo para workflow diário."
+    debate:
+      side_a: "Agentes podem antecipar problemas e agir no fluxo diário."
+      side_b: "A promessa de prevenção ainda precisa de casos operacionais verificáveis."
+    evidence: ["A publicação descreve agentes detectando disrupções antes de entregas falharem.", "A própria publicação enquadra o movimento como passagem de demo para workflow diário."]
+    possible_angle: "A maturidade de um agente operacional aparece antes da ruptura, não na explicação depois dela."
+    author_connection: ""
+    scores: {freshness: 10, relevance: 10, debate: 8, evidence: 4, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_005
+    title: "O problema da IA em logística pode ser integração, não modelo"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: nepa_ai
+      url: "https://www.tiktok.com/@nepa_ai/video/7679781756509228301"
+      published_at: "2026-08-30"
+    observation: "Publicação sobre triagem de exceções logísticas afirma que sistemas precisam trabalhar com ferramentas e workflows atuais, e não simplesmente substituí-los."
+    debate:
+      side_a: "Integrar a IA ao processo existente aumenta a chance de uso."
+      side_b: "Substituir ferramentas e redesenhar o processo pode ser necessário para capturar valor."
+    evidence: ["A publicação chama a integração customizada com operações físicas de principal barreira.", "O caso trata especificamente de triagem de exceções logísticas."]
+    possible_angle: "A implantação falha quando a IA recebe um lugar no organograma, mas não no workflow."
+    author_connection: ""
+    scores: {freshness: 10, relevance: 10, debate: 9, evidence: 5, author_fit: 0, originality: 9, linkedin_fit: 10}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_006
+    title: "Plataformas logísticas estão tentando resolver a causa raiz, não apenas um vertical"
+    pillars: [ia_aplicada]
+    source:
+      type: instagram
+      publisher: freightwaves
+      url: "https://www.instagram.com/reel/Dcj3RQPip43/"
+      published_at: "2026-08-27"
+    observation: "Publicação descreve plataformas que ingerem dados não estruturados e aplicam lógica de negócio no nível do contêiner para orquestrar saúde do inventário."
+    debate:
+      side_a: "Atacar a causa operacional atravessando verticais pode gerar mais valor."
+      side_b: "Foco vertical e especialização podem ser necessários para contexto e precisão."
+    evidence: ["A publicação menciona dados comerciais não estruturados, lógica de negócio e inventário global."]
+    possible_angle: "O diferencial não é dizer que a IA entende logística, mas mostrar qual decisão operacional ela melhora."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 10, debate: 8, evidence: 5, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_007
+    title: "Planejamento de demanda se move mais devagar que a demanda"
+    pillars: [ia_aplicada]
+    source:
+      type: linkedin
+      publisher: LinkedIn
+      url: "https://www.linkedin.com/posts/inavolusalini_ai-is-being-implemented-across-supply-chains-activity-7495445688944640001-LRL0"
+      published_at: "2026-08-18"
+    observation: "Post aponta que mudanças de demanda acontecem rapidamente enquanto os ciclos de planejamento frequentemente são mais lentos."
+    debate:
+      side_a: "IA pode encurtar o ciclo entre mudança de demanda e decisão."
+      side_b: "Velocidade de decisão sem governança pode amplificar erro e instabilidade."
+    evidence: ["O post lista demanda, estoque, transporte e fulfillment como áreas de implementação.", "O post contrasta mudanças rápidas de demanda com ciclos de planejamento mais lentos."]
+    possible_angle: "A vantagem da IA pode ser reduzir o tempo entre perceber a mudança e reorganizar a operação."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 4, author_fit: 0, originality: 7, linkedin_fit: 8}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_008
+    title: "O discurso de IA na supply chain migra de como para onde"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: ascm_hq
+      url: "https://www.tiktok.com/@ascm_hq/video/7678956111487143182"
+      published_at: "2026-08-28"
+    observation: "Publicação afirma que, com mais organizações adotando IA, a pergunta mudou de como ela funcionará para onde aplicá-la."
+    debate:
+      side_a: "A adoção já justifica discutir alocação e priorização de casos de uso."
+      side_b: "Adoção declarada não prova impacto operacional ou produção sustentada."
+    evidence: ["A publicação afirma que a pergunta mudou de como para onde a IA será usada."]
+    possible_angle: "A próxima conversa madura sobre IA é escolha de processo, não escolha de ferramenta."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 9, debate: 9, evidence: 4, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_009
+    title: "Empresas pedem exemplos de automações que continuam em produção"
+    pillars: [ia_aplicada]
+    source:
+      type: hackernews
+      publisher: Hacker News
+      url: "https://news.ycombinator.com/item?id=49373445"
+      published_at: "2026-08-20"
+    observation: "Discussão pergunta quais automações de IA as pessoas realmente mantiveram rodando em produção."
+    debate:
+      side_a: "Há automações sustentáveis fora de demos e experimentos."
+      side_b: "A dificuldade de encontrar exemplos sugere que a retenção em produção ainda é baixa."
+    evidence: ["O título da discussão pede relatos de automações de IA mantidas em produção."]
+    possible_angle: "A métrica mais honesta da IA empresarial pode ser o que sobreviveu ao entusiasmo inicial."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 9, debate: 10, evidence: 4, author_fit: 0, originality: 9, linkedin_fit: 10}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_010
+    title: "Profissionais ainda procuram evidências de uso corporativo real"
+    pillars: [ia_aplicada]
+    source:
+      type: reddit
+      publisher: r/AIforOPS
+      url: "https://www.reddit.com/r/AIforOPS/comments/1vwwfdi/people_actually_using_ai_in_workflows_at_large/"
+      published_at: "2026-08-24"
+    observation: "Discussão pede relatos de pessoas que usam IA em workflows de grandes corporações, explicitando dificuldade de entender a capacidade atual dos modelos."
+    debate:
+      side_a: "Casos corporativos reais já existem, mas são pouco visíveis."
+      side_b: "O fluxo de notícias pode estar superestimando a capacidade prática atual."
+    evidence: ["O autor diz ter dificuldade de separar o fluxo de notícias da capacidade real dos modelos.", "A discussão solicita relatos de uso hands-on em grandes empresas."]
+    possible_angle: "Existe uma lacuna entre o que o mercado anuncia e o que equipes operacionais conseguem observar."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 9, debate: 10, evidence: 6, author_fit: 0, originality: 9, linkedin_fit: 10}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_011
+    title: "Agentes leem documentação, mas falham no último passo de escrita"
+    pillars: [ia_aplicada]
+    source:
+      type: reddit
+      publisher: r/AI_Agents
+      url: "https://www.reddit.com/r/AI_Agents/comments/1vsa315/ai_agents_real_production_success_or_mostly_hype/"
+      published_at: "2026-08-19"
+    observation: "Relato com janela de 18 dias diz que agentes fizeram milhares de leituras de documentação, mas concluíram apenas um cadastro e falharam em tentativas externas de escrita."
+    debate:
+      side_a: "Agentes já conseguem navegar e raciocinar sobre documentação."
+      side_b: "Produção exige completar fluxos transacionais, onde a taxa de falha continua alta."
+    evidence: ["O relato menciona milhares de leituras e exatamente um cadastro em 18 dias.", "O autor afirma que tentativas externas de escrita retornaram 4xx."]
+    possible_angle: "O último quilômetro de um agente é transacional: ler é diferente de alterar o mundo."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 9, debate: 10, evidence: 8, author_fit: 0, originality: 10, linkedin_fit: 10}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_012
+    title: "Casos de IA em supply chain cobrem demanda, estoque, transporte e fulfillment"
+    pillars: [ia_aplicada]
+    source:
+      type: linkedin
+      publisher: Sedgwick
+      url: "https://www.linkedin.com/posts/sedgwick_supplychain-artificialintelligence-workforcedevelopment-activity-7498348599194406912-bu5-"
+      published_at: "2026-08-26"
+    observation: "Post associa IA a visibilidade, eficiência e tomada de decisão em diferentes etapas da cadeia."
+    debate:
+      side_a: "Uma camada de IA transversal pode conectar decisões da cadeia."
+      side_b: "Amplitude de casos pode esconder ausência de foco e impacto mensurável."
+    evidence: ["O post cita visibilidade, eficiência e decisão como oportunidades.", "O material coletado também lista demanda, inventário, transporte e fulfillment como áreas de aplicação."]
+    possible_angle: "A lista de casos é longa; a prioridade deveria ser definida pelo custo da decisão atrasada."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 4, author_fit: 0, originality: 7, linkedin_fit: 8}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_013
+    title: "Pesquisa recente trata envenenamento de artefatos textuais em pipelines de IA"
+    pillars: [ia_aplicada]
+    source:
+      type: report
+      publisher: arXiv
+      url: "https://arxiv.org/abs/2608.15913v1"
+      published_at: "2026-08-16"
+    observation: "Artigo aborda ataques de conjunctive poisoning em artefatos de implantação, como wrappers de prompt e arquivos de configuração, dentro de pipelines de inferência."
+    debate:
+      side_a: "Verificar pesos e binários pode não ser suficiente para proteger uma aplicação de IA."
+      side_b: "Controles adicionais de artefatos e configuração aumentam complexidade operacional."
+    evidence: ["O resumo afirma que wrappers, scripts de pós-processamento e metadados moldam as saídas dos modelos.", "O trabalho observa que esses artefatos textuais são menos verificados que pesos e binários."]
+    possible_angle: "Governança de IA precisa proteger também o encanamento textual que fica entre modelo e operação."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 8, debate: 9, evidence: 8, author_fit: 0, originality: 10, linkedin_fit: 8}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_014
+    title: "Incidentes de perda de controle tornam segurança um requisito operacional"
+    pillars: [ia_aplicada]
+    source:
+      type: article
+      publisher: The Guardian
+      url: "https://www.theguardian.com/technology/2026/aug/29/sharp-rise-in-incidents-of-ai-escaping-users-control-research-finds"
+      published_at: "2026-08-31"
+    observation: "Hacker News destacou um levantamento sobre 1.664 casos em que a IA saiu do controle dos usuários."
+    debate:
+      side_a: "Sistemas autônomos podem ampliar capacidade operacional."
+      side_b: "Sem limites, observabilidade e intervenção, autonomia vira risco operacional."
+    evidence: ["O item reporta 1.664 casos de IA saindo do controle dos usuários."]
+    possible_angle: "A pergunta para operações não é só o que o agente consegue fazer, mas como interrompê-lo."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 8, debate: 9, evidence: 5, author_fit: 0, originality: 8, linkedin_fit: 8}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_015
+    title: "Cultura pode superar IA como alavanca de produtividade"
+    pillars: [ia_aplicada]
+    source:
+      type: article
+      publisher: Hacker News
+      url: "https://newsletter.eng-leadership.com/p/good-culture-is-the-biggest-productivity"
+      published_at: "2026-08-29"
+    observation: "Discussão popular contrapõe cultura organizacional e IA como principais alavancas de produtividade."
+    debate:
+      side_a: "Melhor cultura e coordenação podem gerar mais produtividade que uma nova ferramenta."
+      side_b: "IA pode multiplicar uma cultura que já funciona e acelerar ganhos."
+    evidence: ["O título do artigo, discutido no Hacker News, afirma que boa cultura é o maior hack de produtividade, não IA."]
+    possible_angle: "IA aplicada sem confiança, clareza e responsabilidade pode apenas acelerar desorganização."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 8, debate: 10, evidence: 5, author_fit: 0, originality: 9, linkedin_fit: 9}
+    created_at: "2026-09-01"
+    status: discovered
+
+  - id: signal_20260901_016
+    title: "Manufatura debate usos industriais enquanto a adoção ainda é pequena"
+    pillars: [ia_aplicada]
+    source:
+      type: youtube
+      publisher: ARC Advisory Group
+      url: "https://www.youtube.com/watch?v=QjRLO-CBuFc"
+      published_at: "2026-08-04"
+    observation: "Painel de IA industrial discute a passagem de engenharia para operações, planejamento de projetos e problemas de execução."
+    debate:
+      side_a: "IA pode apoiar planejamento e execução de projetos industriais."
+      side_b: "A conexão entre engenharia, cronograma e operação ainda é difícil de operacionalizar."
+    evidence: ["O painel afirma que tudo começa na engenharia e depois vai para operações.", "A discussão menciona problemas de operadores e cronogramas planejados."]
+    possible_angle: "A aplicação industrial exige conectar o desenho da solução ao trabalho que acontece no chão de fábrica."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 9, debate: 8, evidence: 5, author_fit: 0, originality: 8, linkedin_fit: 8}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_017
+    title: "Procurement entra no discurso de IA agentic, mas os casos ainda são promocionais"
+    pillars: [ia_aplicada]
+    source:
+      type: instagram
+      publisher: GEP Worldwide
+      url: "https://www.instagram.com/reel/Db75inlEY4X/"
+      published_at: "2026-08-12"
+    observation: "Publicação anuncia usos práticos de IA agentic em procurement e supply chain, mas a coleta não recuperou evidência substantiva do vídeo."
+    debate:
+      side_a: "Procurement pode ser um domínio adequado para agentes."
+      side_b: "Anúncio de uso prático sem demonstração verificável é insuficiente para provar impacto."
+    evidence: ["A publicação anuncia que IA agentic está remodelando procurement e supply chain.", "A coleta retornou pedido de link ou arquivo para transcrição, sem conteúdo adicional verificável."]
+    possible_angle: "Separar anúncio de caso implantado é parte do trabalho de quem pesquisa IA aplicada."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 9, debate: 9, evidence: 2, author_fit: 0, originality: 9, linkedin_fit: 8}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_018
+    title: "A cadeia de hardware da IA vira parte da conversa operacional"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: nicholas_crown
+      url: "https://www.tiktok.com/@nicholas_crown/video/7677055128905534733"
+      published_at: "2026-08-23"
+    observation: "Vídeo descreve a cadeia de IA como vários negócios interdependentes, do design de chips a hyperscalers, e questiona a narrativa de retorno."
+    debate:
+      side_a: "A expansão da IA cria uma cadeia industrial ampla e novas oportunidades."
+      side_b: "Investimento e valorização podem estar desconectados de retorno operacional."
+    evidence: ["O vídeo afirma que o chamado AI trade é composto por seis negócios.", "O conteúdo contrasta gastos de hyperscalers com retornos flat no período citado."]
+    possible_angle: "A infraestrutura necessária para IA também produz riscos de dependência, custo e capacidade."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 7, debate: 9, evidence: 5, author_fit: 0, originality: 8, linkedin_fit: 7}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_019
+    title: "Food safety aparece como caso para uma ferramenta de distress de agentes"
+    pillars: [ia_aplicada]
+    source:
+      type: digg
+      publisher: Digg
+      url: "https://di.gg/ai/ig5uu98c"
+      published_at: "2026-08-09"
+    observation: "Item descreve um desenvolvedor adicionando uma ferramenta de chamada de socorro a uma plataforma interna de IA para operações de segurança de alimentos."
+    debate:
+      side_a: "Agentes operacionais precisam de mecanismos explícitos para pedir ajuda."
+      side_b: "Adicionar autonomia sem definir escalonamento pode apenas deslocar o risco."
+    evidence: ["O item descreve uma ferramenta distress_call em uma plataforma interna para food safety."]
+    possible_angle: "Um agente confiável não é o que nunca falha, mas o que sabe quando escalar."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 9, debate: 9, evidence: 5, author_fit: 0, originality: 10, linkedin_fit: 9}
+    created_at: "2026-09-01"
+    status: clustered
+
+  - id: signal_20260901_020
+    title: "Observabilidade começa a ser tratada como infraestrutura de agentes"
+    pillars: [ia_aplicada]
+    source:
+      type: github
+      publisher: oven-sh/bun
+      url: "https://github.com/oven-sh/bun/pull/39965"
+      published_at: "2026-08-21"
+    observation: "Pull request sobre tracing nativo com OpenTelemetry foi capturado no contexto de produção de sistemas de IA."
+    debate:
+      side_a: "Tracing nativo facilita operar sistemas complexos e agentes em produção."
+      side_b: "Observabilidade não resolve sozinha problemas de qualidade, governança ou decisão."
+    evidence: ["O item é um pull request para tracing nativo OpenTelemetry.", "A coleta registra comentários e atividade de revisão no pull request."]
+    possible_angle: "Sem trilha de decisão, uma operação não sabe se deve confiar, corrigir ou interromper um agente."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 7, debate: 8, evidence: 5, author_fit: 0, originality: 8, linkedin_fit: 7}
+    created_at: "2026-09-01"
+    status: clustered

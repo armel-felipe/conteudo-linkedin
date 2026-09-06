@@ -1,69 +1,46 @@
-# Task 3 Report
+# Task 3 Report: Memória do autor (3 arquivos)
 
-## Status
+## What I implemented
 
-Concluída e corrigida após revisão. O protocolo usa o schema real `ReviewResult`
-(`decision`, `artifact`, `feedback`, `checks`), permite iniciar ciclos B1-B3 com artefato
-futuro, exige o arquivo antes de review/completion, e mantém configuração inválida
-fail-closed. As regras de domínio dos blocos foram preservadas.
+Created the 3 memory files with the exact contents from the task brief:
 
-## Commits
+- `memory/professional_experience.md` — fatos profissionais (operações/food delivery, automação e dados, gestão de equipes) + nota de rascunho.
+- `memory/opinions.md` — banco de opiniões (automação, métricas, IA) + nota de rascunho.
+- `memory/writing_style.md` — perfil de escrita (formato, esqueleto obrigatório, critérios de qualidade, o que evitar, revisão).
 
-- `c1b2342 feat: define OpenCode reviewer dispatch protocol`
-- `d3a937e docs: add Task 3 implementation report`
-- `c795594 fix: align reviewer protocol with workflow schema`
+## Verification
 
-## Arquivos
+Commands from the brief:
 
-- `.agents/skills/orquestrador-runtime/SKILL.md`
-- `.agents/agents/orquestrador-runtime-executor/AGENT.md`
-- `.agents/agents/orquestrador-runtime-revisor/AGENT.md`
-- `.agents/agents/pilar-executor/AGENT.md`
-- `.agents/agents/pilar-revisor/AGENT.md`
-- `.agents/agents/pesquisa-mece-executor/AGENT.md`
-- `.agents/agents/pesquisa-mece-revisor/AGENT.md`
-- `.agents/agents/pesquisa-executor/AGENT.md`
-- `.agents/agents/pesquisa-revisor/AGENT.md`
-- `.agents/agents/cruzamento-executor/AGENT.md`
-- `.agents/agents/cruzamento-revisor/AGENT.md`
-- `tests/test_orquestrador_runtime.py`
-- `src/content_ops/orchestration.py`
-- `tests/test_orchestration.py`
-- `docs/superpowers/plans/2026-08-29-orquestrador-hibrido-revisao.md`
+```
+$ ls memory/
+opinions.md
+professional_experience.md
+writing_style.md
 
-## Comandos e resultados
+$ grep -c "ABERTURA" memory/writing_style.md
+1
+```
 
-- `python3.12 -m pytest tests/test_orquestrador_runtime.py -v`: 12 passed.
-- `python3.12 -m pytest tests/test_orquestrador_runtime.py tests/test_orchestration.py tests/test_cli_smoke.py -v`: 38 passed, 8 subtests passed.
-- `python3.12 -m pytest -v`: executado na verificação final.
-- `python3.12 -m compileall -q src tests`: passou sem saída.
-- `git diff --check`: passou sem saída.
+Expected: 3 arquivos; `ABERTURA` presente. ✅ Passed.
 
-## Concerns
+## Files changed
 
-- O runtime continua sendo uma skill documental; a execução efetiva do dispatch depende do agente seguir o procedimento descrito.
-- A mudança em `src/content_ops/orchestration.py` é a validação necessária para o ciclo futuro B1-B3, sem avançar a Task 4.
+- `memory/professional_experience.md` (new)
+- `memory/opinions.md` (new)
+- `memory/writing_style.md` (new)
 
-## Task 3: Visão Nativa Primeiro
+## Commit
 
-### Status
+- `c4fb16c` feat: memória do autor (experiência, opiniões, estilo de escrita)
 
-Concluída. A política central explicita o comportamento voltado à pessoa para sucesso
-nativo, delegação sem visão, falha nativa, falha do fallback e imagem ilegível ou
-corrompida. Os metadados de rota ficam limitados a rota, motivo, modo de delegação e
-limitação de legibilidade, sem conteúdo de imagem ou segredos.
+## Self-review
 
-### Commits
+- Completeness: all 3 files created with exact contents from the brief. ✅
+- Quality: contents match the brief verbatim. ✅
+- Discipline: no extra files created (YAGNI). Only `memory/` staged. ✅
+- Verification: passed. ✅
 
-- `c50c857` — `test: cover native vision fallback routes`
+## Issues / concerns
 
-### Testes
-
-- `python3.12 -m pytest tests/test_visual_vision_policy.py -v` — 9 passed.
-- `python3.12 -m pytest -q` — 208 passed, 53 subtests passed.
-- `git diff --check` — passou.
-
-### Concerns
-
-- Nenhum concern conhecido. Não houve alteração de comportamento não visual, credenciais,
-  tokens ou chaves.
+None. Note: the working tree still contains pre-existing deleted files from the old system (per task context, intentionally left untouched) and an untracked `linkedin_content_plan_SPEC.md` — none of these were touched or staged.

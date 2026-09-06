@@ -1,0 +1,23 @@
+{
+  "decision": "approved",
+  "coverage": 1.0,
+  "criteria": {
+    "clareza": 10,
+    "força da abertura": 10,
+    "originalidade": 9,
+    "credibilidade": 10,
+    "uso de evidências": 10,
+    "risco de alucinação": 10,
+    "tom humano": 10,
+    "densidade": 10,
+    "relevância": 10,
+    "consistência com a voz do autor": 10,
+    "estrutura obrigatória": 10,
+    "pergunta final": 10,
+    "tamanho editorial": 10,
+    "rastreabilidade das fontes": 10
+  },
+  "hard_failures": [],
+  "feedback": [],
+  "artifact": "content/drafts/topic_20260901_01.md"
+}

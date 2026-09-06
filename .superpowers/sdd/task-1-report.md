@@ -1,35 +1,54 @@
-# Task 1 Report
+# Task 1 Report — Estrutura de diretórios + README + roadmap
 
-Status: DONE
+## What I implemented
 
-## Commits
+- Created directories: `config/`, `research/signals/`, `research/topics/`, `research/briefs/`, `content/drafts/`, `content/approved/`, `content/published/`, `memory/`, `docs/superpowers/plans/`
+- Created `README.md` with the exact content from the brief
+- Created `docs/roadmap.md` with the exact content from the brief (6 pending items)
 
-- `11ecee1 feat: persist orchestration review cycles`
-- `1e019d7 fix: make task tests use worktree source`
-- `97fc694 docs: record task 1 implementation report`
+## What I tested
 
-## Files
+Verification commands from the brief:
 
-- `src/content_ops/db.py`
-- `tests/test_db.py`
-- `pyproject.toml`
+```
+$ ls config research/signals research/topics research/briefs content/drafts content/approved content/published memory docs
+config:            (empty dir exists)
+content/approved:  (empty dir exists)
+content/drafts:   (empty dir exists)
+content/published:(empty dir exists)
+docs: roadmap.md  superpowers
+memory:            (empty dir exists)
+research/briefs:   (empty dir exists)
+research/signals:  (empty dir exists)
+research/topics:   (empty dir exists)
 
-## Cause and Decisions
+$ grep -c "^- \[ \]" docs/roadmap.md
+6
+```
 
-- Increased the schema version from 6 to 7 and added the v7 migration.
-- Added `block_cycles`, `review_receipts`, and `workflow_events` with foreign keys, JSON checks, decision checks, and the required composite uniqueness constraint.
-- Added transactional APIs for starting cycles, recording reviews/events, checking exact approvals, and reading the latest block event.
-- Added focused durability, migration, scoping, and latest-state tests using real SQLite storage.
+Expected: directories exist; roadmap has 6 pending items. ✅ Both passed.
 
-## Tests
+Also verified committed content via `git show HEAD:README.md` and `git show HEAD:docs/roadmap.md` — matches the brief verbatim.
 
-- `python3.12 -m pytest tests/test_db.py -k orchestration -v`
-  - Result: PASS, 5 passed, 20 deselected.
-- `python3.12 -m pytest tests/test_db.py -v`
-  - Result: PASS, 25 passed, 29 subtests passed.
-- `git diff --check`
-  - Result: PASS, no whitespace errors.
+## Files changed
 
-## Concerns
+- `README.md` (created)
+- `docs/roadmap.md` (created)
+- Directories created (empty, not tracked by git)
 
-- No concerns. Pytest now resolves `src` through `[tool.pytest.ini_options] pythonpath = ["src"]`.
+## Commit
+
+- `03f43f0` chore: estrutura base do pipeline + roadmap
+
+## Self-review
+
+- **Completeness:** all dirs, README.md, docs/roadmap.md created. ✅
+- **Quality:** content matches brief verbatim. ✅
+- **Discipline:** no extra files created. The untracked `linkedin_content_pipeline_SPEC.md` was left untouched (not part of this task). ✅
+- **Verification:** both commands passed. ✅
+
+## Notes / concerns
+
+- The commit shows "2 files changed, 22 insertions(+), 90 deletions(-)" because the old tracked `README.md` and `docs/roadmap.md` were deleted in the working tree (old system cleanup) and recreated with new content. This is expected and correct — the committed content is the new base structure.
+- Deleted files from the old system (git status "D" entries) were not restored or touched, per the plan's Global Constraints.
+- `.env` remains gitignored (already in `.gitignore`).
