@@ -221,18 +221,19 @@ A skill `publicar-linkedin` será revisada separadamente com este contrato:
 
 1. validar `content/approved/`;
 2. converter Markdown para texto LinkedIn;
-3. tentar primeiro visualização/controle com Playwright;
-4. diante de ausência ou dificuldade, capturar screenshot;
-5. usar visão nativa primeiro;
-6. se falhar, delegar ao `image-analyzer` com `reason: native_failed`;
+3. usar `MCP Chrome DevTools` primeiro;
+4. se falhar antes de mutação confirmada, usar `Playwright (fallback)` com `playwright_fallback` e registrar a razão;
+5. só depois das rotas de controle, capturar screenshot e usar visão nativa;
+6. se a visão nativa falhar, delegar ao `image-analyzer` com `reason: native_failed`;
 7. nunca inferir estado da tela sem evidência visual;
-8. no reagendamento, usar `... → Alterar agenda`;
-9. selecionar explicitamente data e horário, mesmo se o horário não mudar;
-10. confirmar visualmente o resumo antes de avançar;
-11. confirmar a tela final antes de agendar;
-12. verificar a publicação em `Publicações agendadas`;
-13. só então registrar `<!-- agendado: ... -->`;
-14. se houver divergência, corrigir a publicação existente, sem criar duplicata.
+8. registrar rota, resultado e verificação; em mutação ambígua, parar em fail-closed;
+9. no reagendamento, usar `... → Alterar agenda`;
+10. selecionar explicitamente data e horário, mesmo se o horário não mudar;
+11. confirmar visualmente o resumo antes de avançar;
+12. confirmar a tela final antes de agendar;
+13. verificar a publicação em `Publicações agendadas`;
+14. só então registrar `<!-- agendado: ... -->`;
+15. se houver divergência, corrigir a publicação existente, sem duplicata ou novo composer.
 
 ## Falhas e segurança
 
@@ -257,5 +258,5 @@ A skill `publicar-linkedin` será revisada separadamente com este contrato:
 - Rejeita post com padrão proibido de IA, mesmo com conformidade geral acima de 95%.
 - Mantém fontes no final de drafts e aprovados.
 - Mantém publicação/agendamento fora do lote editorial.
-- Usa Playwright antes do fallback visual no agendamento.
+- Usa MCP Chrome DevTools antes de Playwright; Playwright é apenas `playwright_fallback`, seguido do fallback visual.
 - Registra agendamento somente após confirmação visual na lista do LinkedIn.

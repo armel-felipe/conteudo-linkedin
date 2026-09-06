@@ -133,17 +133,25 @@ A confirmação final deve ocorrer em **Publicações agendadas**, com o post e 
 
 ## Visão e rota de interação
 
-Use esta ordem de decisão, sem tratar fallback como substituto de evidência visual:
+O contrato compartilhado está em `docs/browser-route-contract.md`. Use esta ordem
+de decisão, sem tratar fallback como substituto de evidência visual:
 
 ```text
-Playwright → screenshot + visão nativa → image-analyzer(native_failed) → stop
+MCP Chrome DevTools → Playwright (fallback) → screenshot + visão nativa → image-analyzer(native_failed) → stop
 ```
 
-1. Tentar primeiro o script Playwright/observação CDP (`npm run linkedin:check`) para localizar o target e, na interação, os elementos acessíveis. Se o Playwright for bem-sucedido, não é necessário executar fallback de screenshot.
-2. Se o modelo tiver visão nativa e a interação exigir confirmação visual, capturar screenshot e usar visão nativa para produzir um resumo visual do estado: conteúdo, data, hora, botões e prévia.
-3. Se o modelo não tiver visão nativa, delegar diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa.
-4. Se a visão nativa falhar, delegar ao `image-analyzer` com `reason: native_failed`, passando o screenshot. Isso é um fallback de leitura visual, não uma substituição por inferência.
-5. Se nenhuma rota funcionar ou a imagem estiver ilegível, parar, relatar a limitação e não inferir o estado da tela.
+1. Tentar primeiro MCP Chrome DevTools para abrir, localizar o target e interagir sem mutação. Registrar a rota e o resultado.
+2. Se MCP falhar antes de qualquer mutação confirmada, registrar a razão e usar Playwright com `playwright_fallback` (`npm run linkedin:check`). Nunca usar Playwright como primeira rota.
+3. Depois das duas rotas de controle, se ainda for necessária confirmação visual, capturar screenshot e usar visão nativa para resumir conteúdo, data, hora, botões e prévia.
+4. Se o modelo não tiver visão nativa, delegar ao `image-analyzer` com `reason: no_native_vision`; se a visão nativa falhar, usar `reason: native_failed`, sempre passando o screenshot.
+5. Se nenhuma rota funcionar ou a imagem estiver ilegível, registrar `stop`, relatar a limitação e não inferir o estado da tela.
+
+Cada execução deve preservar a operação, alvo, rota tentada, rota efetiva, resultado,
+razão de fallback (`playwright_fallback`, `no_native_vision` ou `native_failed`),
+evidência de verificação e classificação final. Para publicar, agendar, reagendar
+ou excluir, confirmar alvo e intenção antes do envio; após o envio, verificar o
+estado independente. Em `ambiguous_mutation`, aplicar fail-closed: não repetir,
+não avançar e nunca abrir um novo composer.
 
 Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar para a visão nativa.
 
@@ -152,7 +160,7 @@ Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar
 Uma execução válida usa estes eventos na ordem indicada; `screenshot_fallback_if_needed` só aparece nos branches que precisam de screenshot:
 
 ```text
-approved_file → markdown_converted → playwright_attempt → screenshot_fallback_if_needed → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
+approved_file → markdown_converted → mcp_chrome_devtools_attempt → playwright_fallback_if_needed → screenshot_fallback_if_needed → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
 ```
 
 O evento `screenshot_fallback_if_needed` representa a confirmação visual quando necessária; não autoriza inferência sem evidência. No branch `playwright`, ele é omitido quando a tentativa tem sucesso. Os branches visuais são `playwright`, `no_native_vision`, `native_failed` e `unreadable_image`. O branch `no_native_vision` vai diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa; `native_failed` usa screenshot e `reason: native_failed`; `unreadable_image` encerra em `stop`.
@@ -172,7 +180,7 @@ Para reagendamento, a sequência é `existing_post_menu → alter_schedule → d
 - Não validar que o arquivo está em approved/ — bloquear se não estiver.
 - Agendar sem confirmar o valor exibido no seletor — o LinkedIn pode manter data/hora padrão; confirmar antes de clicar em "Agendar".
 - Concluir como sucesso sem verificar "Ver publicações agendadas" — o agendamento pode ter falhado silenciosamente.
-- Usar outra rota antes de tentar Playwright, ou tratar o fallback visual como evidência ausente.
+- Inverter a ordem MCP Chrome DevTools → Playwright (`playwright_fallback`), ou tratar o fallback visual como evidência ausente.
 - Não selecionar novamente o horário depois de trocar a data.
 - Reagendar abrindo um compositor novo em vez de usar `... → Alterar agenda`.
 - Não registrar o agendamento no arquivo do post — sem o bloco `<!-- agendado: ... -->` não há rastreabilidade.

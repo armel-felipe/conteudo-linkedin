@@ -14,7 +14,7 @@ Ações futuras com status `[ ]` pendente / `[x]` feito / `[~]` parcialmente val
 - [~] Lote editorial com fila congelada, checkpoints, retomada, eventos append-only e bloqueio individual (`run-editorial-batch`)
 - [~] Gauntlet com executor/revisor isolados, até cinco ciclos, `coverage >= 0.99`, critérios `>=9/10` e `hard_failures` fail-closed (`gauntlet-loop`)
 - [x] Brief com fontes e conexão do autor; post com duas passagens de `escrita-humana` e aprovação humana
-- [x] Rota Playwright/CDP não mutante para localizar e inspecionar uma sessão LinkedIn
+- [x] Rota MCP Chrome DevTools → Playwright (`playwright_fallback`) não mutante para localizar e inspecionar uma sessão LinkedIn
 
 ## Fila de remediação sequencial
 
@@ -53,8 +53,9 @@ Regra adicional: never duplicate. Em qualquer falha de confirmação ou de prese
 
 O registro de timestamp usa um gate explícito: flags de confirmação são booleanos estritos, o receipt e o resumo são válidos, os timestamps solicitado e exibido coincidem, e nenhum estado de falha (`not_run`, `simulated`, `blocked` ou falha semântica) pode ser convertido em aprovação.
 
-### Smoke test Playwright/CDP
+### Smoke test MCP Chrome DevTools / Playwright fallback
 
+- [x] MCP Chrome DevTools é a primeira tentativa; `npm run linkedin:check` é usado somente como `playwright_fallback`.
 - [x] `npm run linkedin:check` encontrou uma sessão real em `https://www.linkedin.com/feed/`.
 - [x] O script confirmou título, visibilidade, `readyState` e presença do body sem mutação.
 - [x] Screenshot explícito foi tentado pelo Playwright; a captura visual via CDP pode sofrer timeout intermitente enquanto a página aguarda fontes.

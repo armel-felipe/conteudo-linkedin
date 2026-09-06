@@ -22,7 +22,7 @@ Referenciado pelo `AGENTS.md`.
 | Skill | Objetivo | Vínculo | Invocação |
 |---|---|---|---|
 | `last30days` | Pesquisar o que se discute nos últimos 30 dias (Reddit, HN, YouTube, etc.) | Ferramenta primária de pesquisa do `discover-signals` | "pesquisa last30days sobre X" |
-| `publicar-linkedin` | Publicar/agendar conteúdo aprovado no LinkedIn via browser logado; Playwright é a primeira rota, com fallback visual controlado | Etapa final operacional, separada da aprovação editorial | "publica content/approved/X.md amanhã às 9h" |
+| `publicar-linkedin` | Publicar/agendar conteúdo aprovado no LinkedIn via browser logado; MCP Chrome DevTools é a primeira rota, Playwright é `playwright_fallback`, seguido de fallback visual controlado | Etapa final operacional, separada da aprovação editorial | "publica content/approved/X.md amanhã às 9h" |
 | `visao-nativa-primeiro` | Política visual: visão nativa antes do fallback ao image-analyzer | Transversal (tarefas visuais) | Seguir sempre em tarefas visuais |
 | `escrita-humana` | Editar rascunhos para ficarem mais humanos, preservando a voz | Revisão obrigatória de todo post | "revisa com escrita-humana" |
 | `orquestrador-runtime` | Orquestrador do pipeline editorial antigo | LEGADO — fora do fluxo novo | Não invocar |
