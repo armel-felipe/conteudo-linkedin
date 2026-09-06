@@ -40,13 +40,16 @@ _RECEIPT_FIELDS = (
     "scheduled_list",
     "timestamp_registered",
     "duplicate_created",
+    "route_attempted",
+    "mcp_attempted",
+    "route_reasons",
+    "observed_state",
+    "verification_evidence",
+    "post_action_confirmation",
 )
 _RECEIPT_FALLBACK_FIELDS = {
     "mcp_failure",
     "fallback_reason",
-    "route_attempted",
-    "mcp_attempted",
-    "verification_evidence",
 }
 
 _RECEIPT_ROUTES = {"mcp_chrome_devtools", "playwright_fallback", "stop"}
@@ -250,6 +253,44 @@ def validate_receipt(receipt):
         raise ValueError("invalid receipt route")
     if receipt["fallback"] not in _RECEIPT_FALLBACKS:
         raise ValueError("invalid receipt fallback")
+    if receipt["mcp_attempted"] is not True:
+        raise ValueError("receipt requires MCP attempt evidence")
+    attempted = receipt["route_attempted"]
+    if (
+        not isinstance(attempted, list)
+        or not attempted
+        or any(route not in _RECEIPT_ROUTES - {"stop"} for route in attempted)
+        or len(attempted) != len(set(attempted))
+        or attempted[0] != "mcp_chrome_devtools"
+    ):
+        raise ValueError("invalid attempted route order")
+    if receipt["route"] == "mcp_chrome_devtools" and attempted != ["mcp_chrome_devtools"]:
+        raise ValueError("effective route does not match attempted route order")
+    if receipt["route"] == "playwright_fallback" and attempted != [
+        "mcp_chrome_devtools", "playwright_fallback"
+    ]:
+        raise ValueError("effective route does not match attempted route order")
+    if receipt["route"] == "stop" and attempted not in (
+        ["mcp_chrome_devtools"],
+        ["mcp_chrome_devtools", "playwright_fallback"],
+    ):
+        raise ValueError("stop route has invalid attempted route order")
+    reasons = receipt["route_reasons"]
+    if (
+        not isinstance(reasons, dict)
+        or set(reasons) != set(attempted)
+        or any(not isinstance(reason, str) or not reason.strip() for reason in reasons.values())
+    ):
+        raise ValueError("receipt requires reasons for every attempted route")
+    observed_state = receipt["observed_state"]
+    if observed_state is None or observed_state == "" or observed_state == {}:
+        raise ValueError("receipt requires observed state")
+    if not isinstance(receipt["verification_evidence"], str) or not receipt["verification_evidence"].strip():
+        raise ValueError("receipt requires verification evidence")
+    if not isinstance(receipt["post_action_confirmation"], str) or not receipt[
+        "post_action_confirmation"
+    ].strip():
+        raise ValueError("receipt requires post-action confirmation")
     if receipt["route"] == "stop":
         if receipt["fallback"] != "none":
             raise ValueError("stop receipt cannot declare a fallback")
@@ -281,6 +322,8 @@ def validate_receipt(receipt):
             raise ValueError("receipt gate failed")
         if any(receipt[field] not in {"not_run", "pass"} for field in ("preview", "confirmation", "scheduled_list", "timestamp_registered")):
             raise ValueError("receipt claims unexecuted completion")
+        if receipt["post_action_confirmation"] == "not_run":
+            raise ValueError("real receipt requires post-action confirmation")
     else:
         if receipt["requested_timestamp"] or receipt["displayed_timestamp"]:
             raise ValueError("non-real receipt timestamp")

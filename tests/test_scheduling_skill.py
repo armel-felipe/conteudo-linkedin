@@ -1,4 +1,5 @@
 import pytest
+import yaml
 from pathlib import Path
 
 from scheduling_contract import (
@@ -232,9 +233,12 @@ def valid_registration_gate(**overrides):
             "evidence_status": "real_non_destructive",
             "route": "mcp_chrome_devtools",
             "fallback": "none",
-            "route_attempted": ["mcp_chrome_devtools"],
-            "mcp_attempted": True,
-            "verification_evidence": "scheduled list confirmed after MCP action",
+        "route_attempted": ["mcp_chrome_devtools"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "mcp inspection completed"},
+        "observed_state": {"scheduled_list": "confirmed"},
+        "verification_evidence": "scheduled list confirmed after MCP action",
+        "post_action_confirmation": "confirmed independently in scheduled list",
             "requested_timestamp": "01/09/2026 10:00",
             "displayed_timestamp": "01/09/2026 10:00",
             "date_selected": "pass",
@@ -299,6 +303,15 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
+        "route_attempted": ["mcp_chrome_devtools", "playwright_fallback"],
+        "mcp_attempted": True,
+        "route_reasons": {
+            "mcp_chrome_devtools": "MCP route unavailable before mutation",
+            "playwright_fallback": "inspection completed",
+        },
+        "observed_state": {"scheduled_list": "not confirmed"},
+        "verification_evidence": "fallback inspection evidence",
+        "post_action_confirmation": "confirmed independently in scheduled list",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -311,6 +324,31 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
         "duplicate_created": False,
     }
     assert validate_receipt(receipt) is True
+
+
+@pytest.mark.parametrize("field", [
+    "route_attempted", "mcp_attempted", "route_reasons", "observed_state",
+    "verification_evidence", "post_action_confirmation",
+])
+def test_receipt_rejects_missing_audit_field(field):
+    receipt = valid_registration_gate()["receipt"]
+    receipt.pop(field)
+    with pytest.raises(ValueError, match="incomplete receipt"):
+        validate_receipt(receipt)
+
+
+def test_receipt_rejects_route_history_that_does_not_follow_effective_route():
+    receipt = valid_registration_gate()["receipt"]
+    receipt["route_attempted"] = ["playwright_fallback", "mcp_chrome_devtools"]
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
+
+
+def test_receipt_requires_post_action_confirmation_for_real_evidence():
+    receipt = valid_registration_gate()["receipt"]
+    receipt["post_action_confirmation"] = "not_run"
+    with pytest.raises(ValueError):
+        validate_receipt(receipt)
 
 
 def test_stop_receipt_requires_mcp_attempt_and_verification_evidence():
@@ -344,6 +382,11 @@ def test_receipt_requires_mcp_failure_and_reason_for_playwright_fallback():
     receipt["fallback"] = "playwright_fallback"
     receipt["mcp_failure"] = True
     receipt["fallback_reason"] = "MCP route unavailable before mutation"
+    receipt["route_attempted"] = ["mcp_chrome_devtools", "playwright_fallback"]
+    receipt["route_reasons"] = {
+        "mcp_chrome_devtools": "MCP route unavailable before mutation",
+        "playwright_fallback": "fallback attempted",
+    }
     del receipt["mcp_failure"]
     with pytest.raises(ValueError, match="MCP failure"):
         validate_receipt(receipt)
@@ -353,6 +396,11 @@ def test_receipt_requires_mcp_failure_and_reason_for_playwright_fallback():
     receipt["fallback"] = "playwright_fallback"
     receipt["mcp_failure"] = True
     receipt["fallback_reason"] = "MCP route unavailable before mutation"
+    receipt["route_attempted"] = ["mcp_chrome_devtools", "playwright_fallback"]
+    receipt["route_reasons"] = {
+        "mcp_chrome_devtools": "MCP route unavailable before mutation",
+        "playwright_fallback": "fallback attempted",
+    }
     receipt["fallback_reason"] = ""
     with pytest.raises(ValueError, match="explicit reason"):
         validate_receipt(receipt)
@@ -387,6 +435,12 @@ def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
+        "route_attempted": ["mcp_chrome_devtools", "playwright_fallback"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "MCP failed", "playwright_fallback": "fallback"},
+        "observed_state": {"state": "observed"},
+        "verification_evidence": "fallback evidence",
+        "post_action_confirmation": "confirmed",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -444,6 +498,12 @@ def test_validate_receipt_accepts_object_root_after_type_boundary():
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
+        "route_attempted": ["mcp_chrome_devtools", "playwright_fallback"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "MCP failed", "playwright_fallback": "fallback"},
+        "observed_state": {"state": "observed"},
+        "verification_evidence": "fallback evidence",
+        "post_action_confirmation": "confirmed",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -466,6 +526,12 @@ def test_validate_receipt_rejects_invalid_route_or_fallback(field):
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
+        "route_attempted": ["mcp_chrome_devtools", "playwright_fallback"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "MCP failed", "playwright_fallback": "fallback"},
+        "observed_state": {"state": "observed"},
+        "verification_evidence": "fallback evidence",
+        "post_action_confirmation": "confirmed",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -490,6 +556,12 @@ def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
         "fallback": "playwright_fallback",
         "mcp_failure": True,
         "fallback_reason": "MCP route unavailable before mutation",
+        "route_attempted": ["mcp_chrome_devtools", "playwright_fallback"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "MCP failed", "playwright_fallback": "fallback"},
+        "observed_state": {"state": "observed"},
+        "verification_evidence": "fallback evidence",
+        "post_action_confirmation": "confirmed",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -525,23 +597,23 @@ def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
     assert "summary divergence blocks Avançar" in roadmap
     assert "confirmation/list absence blocks registration" in roadmap
     assert "never duplicate" in roadmap
-    receipt_fields = (
-        "evidence_status: simulated",
-        "route: mcp_chrome_devtools",
-        'requested_timestamp: ""',
-        'displayed_timestamp: ""',
-        "date_selected: not_run",
-        "time_selected: not_run",
-        "summary: not_run",
-        "preview: not_run",
-        "confirmation: not_run",
-        "scheduled_list: not_run",
-        "timestamp_registered: not_run",
-        "duplicate_created: false",
-    )
-    for field in receipt_fields:
-        assert field in roadmap
-        assert field in report
+    def documented_receipt(text):
+        marker = "### Receipt estruturada" if "### Receipt estruturada" in text else "## Receipt estruturada"
+        block = text.split(marker, 1)[1]
+        yaml_text = block.split("```yaml\n", 1)[1].split("\n```", 1)[0]
+        return yaml.safe_load(yaml_text)
+
+    for text in (roadmap, report):
+        receipt = documented_receipt(text)
+        assert validate_receipt(receipt) is True
+        assert receipt["evidence_status"] == "simulated"
+        assert receipt["route"] == "stop"
+        assert receipt["route_attempted"] == ["mcp_chrome_devtools"]
+        assert receipt["post_action_confirmation"] == "not_run"
+
+    assert "real_existing_post: confirmado" not in roadmap
+    assert "real_existing_post: confirmado" not in report
+    assert "não foram executados" in roadmap.lower()
 
     sensitive_terms = ("screenshot", "cookie", "account identifier", "private page content")
     assert not any(term in report.lower() for term in sensitive_terms)
@@ -615,6 +687,12 @@ def test_receipt_accepts_each_explicit_evidence_status(status):
         "evidence_status": status,
         "route": "mcp_chrome_devtools",
         "fallback": "none",
+        "route_attempted": ["mcp_chrome_devtools"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "MCP inspection completed"},
+        "observed_state": {"state": "not_run" if status in {"simulated", "not_run"} else "observed"},
+        "verification_evidence": "MCP inspection receipt",
+        "post_action_confirmation": "not_run" if status in {"simulated", "not_run"} else "confirmed",
         "requested_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
         "displayed_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
         "date_selected": "not_run" if status in {"simulated", "not_run"} else "pass",
@@ -634,6 +712,12 @@ def test_receipt_rejects_unknown_evidence_status_and_completed_dry_run():
         "evidence_status": "browser_realish",
         "route": "mcp_chrome_devtools",
         "fallback": "none",
+        "route_attempted": ["mcp_chrome_devtools"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "MCP inspection completed"},
+        "observed_state": {"state": "not_run"},
+        "verification_evidence": "MCP inspection receipt",
+        "post_action_confirmation": "not_run",
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",
@@ -667,6 +751,12 @@ def test_dry_run_receipt_cannot_claim_completion_evidence(field):
         "evidence_status": "simulated",
         "route": "mcp_chrome_devtools",
         "fallback": "none",
+        "route_attempted": ["mcp_chrome_devtools"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "MCP inspection completed"},
+        "observed_state": {"state": "not_run"},
+        "verification_evidence": "MCP inspection receipt",
+        "post_action_confirmation": "not_run",
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",

@@ -14,7 +14,7 @@ Ações futuras com status `[ ]` pendente / `[x]` feito / `[~]` parcialmente val
 - [~] Lote editorial com fila congelada, checkpoints, retomada, eventos append-only e bloqueio individual (`run-editorial-batch`)
 - [~] Gauntlet com executor/revisor isolados, até cinco ciclos, `coverage >= 0.99`, critérios `>=9/10` e `hard_failures` fail-closed (`gauntlet-loop`)
 - [x] Brief com fontes e conexão do autor; post com duas passagens de `escrita-humana` e aprovação humana
-- [x] Rota `mcp_chrome_devtools` → `playwright_fallback` não mutante para localizar e inspecionar uma sessão LinkedIn; `playwright_fallback` só é permitido após falha MCP registrada antes de mutação
+- [~] Contrato de rota `mcp_chrome_devtools` → `playwright_fallback` para localizar e inspecionar uma sessão LinkedIn; execução browser-real não comprovada nesta rodada
 
 ## Fila de remediação sequencial
 
@@ -45,7 +45,7 @@ Matriz não sensível da Task 3. Cenários mutantes só foram executados quando 
 | --- | --- | --- |
 | new schedule with different date and time | data e horário explícitos aparecem no resumo antes de Avançar | not_run: criação não executada por segurança |
 | new schedule for today with explicit date and time | data de hoje e horário explícitos aparecem no resumo | not_run: agendamento não executado por segurança |
-| reschedule existing post with same time and different date | usar `... → Alterar agenda`, selecionar data e horário novamente e confirmar na lista | real_existing_post: confirmado em 01/09/2026 às 10:00 |
+| reschedule existing post with same time and different date | usar `... → Alterar agenda`, selecionar data e horário novamente e confirmar na lista | not_run: nenhuma ação browser-real executada |
 | wrong summary detected before Avançar | summary divergence blocks Avançar; não agendar | simulated: contrato/teste |
 | scheduled post missing from the scheduled list | confirmation/list absence blocks registration; não registrar timestamp | simulated: contrato/teste |
 
@@ -55,20 +55,27 @@ O registro de timestamp usa um gate explícito: flags de confirmação são bool
 
 ### Smoke test MCP Chrome DevTools / Playwright fallback
 
-- [x] MCP Chrome DevTools é a primeira tentativa; `npm run linkedin:check` é usado somente como `playwright_fallback`.
-- [x] `npm run linkedin:check` encontrou uma sessão real em `https://www.linkedin.com/feed/`.
-- [x] O script confirmou título, visibilidade, `readyState` e presença do body sem mutação.
-- [x] Screenshot explícito só é fallback visual pós-rotas; a captura pode sofrer timeout intermitente enquanto a página aguarda fontes.
-- [x] Nenhuma ação de clique, preenchimento, publicação ou agendamento foi executada pelo smoke test.
+- [~] A rota contratual exige MCP Chrome DevTools primeiro e Playwright apenas como `playwright_fallback`.
+- [ ] Nenhuma execução browser-real foi comprovada nesta rodada; não há evidência suficiente para afirmar descoberta de sessão.
+- [x] Nenhuma ação de clique, preenchimento, publicação ou agendamento foi executada.
+- A confirmação visual por screenshot ocorre somente depois das duas rotas de controle; não foi necessária nesta rodada.
+- O motivo registrado para o estado `stop` é a ausência de execução browser-real comprovada.
 
 ### Receipt estruturada
 
 ```yaml
 evidence_status: simulated
-route: mcp_chrome_devtools
-fallback: stop
-fallback_reason: smoke_test_documental_sem_falha_MCP_registrada
-route_record: MCP Chrome DevTools tentado antes de qualquer mutação; motivo, rota e resultado registrados; Playwright não foi necessário
+route: stop
+fallback: none
+route_attempted:
+  - mcp_chrome_devtools
+mcp_attempted: true
+route_reasons:
+  mcp_chrome_devtools: execução não realizada; receipt apenas simulado
+observed_state:
+  status: not_run
+verification_evidence: contrato e testes locais; nenhuma evidência browser-real
+post_action_confirmation: not_run
 requested_timestamp: ""
 displayed_timestamp: ""
 date_selected: not_run
@@ -86,4 +93,4 @@ duplicate_created: false
 - `evidence_status` agora separa rigorosamente `real_non_destructive`, `real_existing_post`, `simulated` e `not_run`.
 - O protocolo browser dry-run seleciona data, seleciona novamente o horário, confirma o resumo e bloqueia antes de `Avançar`.
 - Os cinco cenários acima foram classificados sem alegar evidência browser-real; criação, publicação, agendamento, exclusão e alteração não foram executados por segurança.
-- O caminho da publicação existente `... → Alterar agenda` foi confirmado e a publicação permaneceu em 01/09/2026 às 10:00.
+- O caminho da publicação existente `... → Alterar agenda` não foi executado nesta rodada; nenhum timestamp real foi confirmado ou alterado.

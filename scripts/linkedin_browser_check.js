@@ -36,6 +36,7 @@ function resolveBrowserRoute({
       reason: 'ambiguous_mutation',
       route_reasons: { mcp_chrome_devtools: 'ambiguous_mutation' },
       observed_state: mcp.observed_state || null,
+      mutation_confirmed: true,
     };
   }
   if (mcp.ok === true) {
@@ -67,6 +68,7 @@ function resolveBrowserRoute({
         playwright_fallback: 'ambiguous_mutation',
       },
       observed_state: playwrightAttempt.observed_state || null,
+      mutation_confirmed: true,
     };
   }
   if (playwrightAttempt.ok === true) {
@@ -91,6 +93,11 @@ function resolveBrowserRoute({
     },
     observed_state: playwrightAttempt.observed_state || null,
   };
+}
+
+function normalizePlaywrightAttempt(value) {
+  if (value && typeof value === 'object' && 'ok' in value) return value;
+  return { ok: true, report: value };
 }
 
 function visualFallbackOrder() {
@@ -186,9 +193,17 @@ async function runBrowserCheck({
   let adapter;
   try {
     adapter = await playwrightAdapterFactory();
-    playwrightAttempt = { ok: true, report: await adapter.inspect() };
+    playwrightAttempt = normalizePlaywrightAttempt(await adapter.inspect());
+    if (playwrightAttempt.ambiguous === true) {
+      playwrightAttempt.mutation_confirmed = true;
+    }
   } catch (error) {
-    playwrightAttempt = { ok: false, reason: error.message, mutation_confirmed: false };
+    playwrightAttempt = {
+      ok: false,
+      reason: error.mutation_confirmed || error.ambiguous ? 'ambiguous_mutation' : error.message,
+      mutation_confirmed: Boolean(adapter) || error.mutation_confirmed === true || error.ambiguous === true,
+      observed_state: error.observed_state || null,
+    };
   } finally {
     if (adapter?.close) await adapter.close();
   }

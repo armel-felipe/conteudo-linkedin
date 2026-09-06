@@ -9,8 +9,17 @@ browser-real. Nenhuma ação foi executada no LinkedIn.
 
 ```yaml
 evidence_status: simulated
-route: mcp_chrome_devtools
+route: stop
 fallback: none
+route_attempted:
+  - mcp_chrome_devtools
+mcp_attempted: true
+route_reasons:
+  mcp_chrome_devtools: execução não realizada; receipt apenas simulado
+observed_state:
+  status: not_run
+verification_evidence: contrato e testes locais; nenhuma evidência browser-real
+post_action_confirmation: not_run
 requested_timestamp: ""
 displayed_timestamp: ""
 date_selected: not_run
@@ -78,7 +87,7 @@ dois últimos.
 - `validate_receipt()` agora exige timestamps iguais, route/fallback em allowlist, gates `pass`, ausência de duplicata e rejeição de termos sensíveis em valores textuais.
 - `validate_reschedule_events()` agora exige a sequência completa até `timestamp_registered` e rejeita fluxo parcial, `new_composer` e duplicatas.
 - Foram adicionados testes para divergência, campo ausente, gate falho, route/fallback inválidos, dados sensíveis e sequência parcial.
-- Evidência manual permanece a mesma: reagendamento real da publicação existente; os demais casos continuam identificados como simulações não destrutivas.
+- Não há evidência manual browser-real nesta rodada; os casos continuam identificados como não executados ou simulações não destrutivas.
 
 ## Rodada 4
 

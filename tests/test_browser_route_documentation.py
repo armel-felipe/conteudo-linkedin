@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import yaml
 
 
 FILES = (
@@ -49,10 +50,19 @@ def test_editorial_batch_cannot_publish_or_schedule():
 
 def test_roadmap_receipt_uses_canonical_route_identifiers():
     text = Path("docs/roadmap.md").read_text()
-    assert "route: mcp_chrome_devtools" in text
-    assert "fallback: stop" in text
+    receipt_text = text.split("### Receipt estruturada", 1)[1].split("```yaml\n", 1)[1].split("\n```", 1)[0]
+    receipt = yaml.safe_load(receipt_text)
+    assert receipt["route"] == "stop"
+    assert receipt["fallback"] == "none"
+    assert receipt["route_attempted"] == ["mcp_chrome_devtools"]
+    assert receipt["mcp_attempted"] is True
+    assert receipt["route_reasons"]["mcp_chrome_devtools"]
+    assert receipt["observed_state"]
+    assert receipt["verification_evidence"]
+    assert receipt["post_action_confirmation"] == "not_run"
     assert "route: browser_cdp" not in text
     assert "fallback: native" not in text
+    assert "real_existing_post: confirmado" not in text
 
 
 def test_docs_retain_critical_linkedin_safety_rules():

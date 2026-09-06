@@ -60,6 +60,7 @@ test('does not permit fallback after a confirmed mutation', () => {
     reason: 'ambiguous_mutation',
     route_reasons: { mcp_chrome_devtools: 'ambiguous_mutation' },
     observed_state: null,
+    mutation_confirmed: true,
   });
 });
 
@@ -118,6 +119,42 @@ test('uses a controlled Playwright fallback only after an injected MCP failure',
     observed_state: report.visual_state,
     report,
   });
+});
+
+test('stops and preserves ambiguous state when Playwright inspection returns it', async () => {
+  const observedState = { mutation: 'possibly_sent', composer: 'unknown' };
+  const result = await runBrowserCheck({
+    mcpAdapter: { inspect: async () => ({ ok: false, reason: 'mcp_unavailable' }) },
+    playwrightAdapterFactory: async () => ({
+      inspect: async () => ({
+        ok: false,
+        reason: 'post_action_state_unknown',
+        mutation_confirmed: true,
+        observed_state: observedState,
+      }),
+    }),
+  });
+
+  assert.equal(result.effective_route, 'stop');
+  assert.equal(result.reason, 'ambiguous_mutation');
+  assert.equal(result.mutation_confirmed, true);
+  assert.deepEqual(result.observed_state, observedState);
+});
+
+test('stops and preserves ambiguous state when Playwright adapter throws', async () => {
+  const error = Object.assign(new Error('connection lost after submit'), {
+    mutation_confirmed: true,
+    observed_state: { mutation: 'possibly_sent' },
+  });
+  const result = await runBrowserCheck({
+    mcpAdapter: { inspect: async () => ({ ok: false, reason: 'mcp_unavailable' }) },
+    playwrightAdapterFactory: async () => ({ inspect: async () => { throw error; } }),
+  });
+
+  assert.equal(result.effective_route, 'stop');
+  assert.equal(result.reason, 'ambiguous_mutation');
+  assert.equal(result.mutation_confirmed, true);
+  assert.deepEqual(result.observed_state, error.observed_state);
 });
 
 function fixturePage(url) {
