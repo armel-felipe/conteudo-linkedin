@@ -19,8 +19,33 @@ function selectLinkedInPage(pages) {
   return selected;
 }
 
+function browserRouteOrder() {
+  return ['mcp_chrome_devtools', 'playwright_fallback', 'stop'];
+}
+
+function resolveBrowserRoute({
+  mcpAvailable,
+  capabilityAvailable,
+  mutationConfirmed,
+  errorBeforeMutation,
+}) {
+  if (!mutationConfirmed && !errorBeforeMutation) {
+    return { route: 'stop', reason: 'ambiguous_mutation' };
+  }
+  if (mcpAvailable && capabilityAvailable) {
+    return { route: 'mcp_chrome_devtools', reason: 'mcp_ready' };
+  }
+  if (!mutationConfirmed && errorBeforeMutation) {
+    return {
+      route: 'playwright_fallback',
+      reason: mcpAvailable ? 'capability_unavailable' : 'mcp_unavailable',
+    };
+  }
+  return { route: 'stop', reason: 'ambiguous_mutation' };
+}
+
 function visualFallbackOrder() {
-  return ['playwright', 'screenshot+nativa', 'image-analyzer:native_failed', 'stop'];
+  return ['screenshot+nativa', 'image-analyzer:native_failed', 'stop'];
 }
 
 function screenshotPathFromEnvironment(value = process.env.OPENWORK_BROWSER_SCREENSHOT_PATH) {
@@ -75,7 +100,9 @@ if (require.main === module) {
 }
 
 module.exports = {
+  browserRouteOrder,
   inspectPage,
+  resolveBrowserRoute,
   screenshotPathFromEnvironment,
   selectLinkedInPage,
   visualFallbackOrder,

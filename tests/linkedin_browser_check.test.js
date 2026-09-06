@@ -5,12 +5,46 @@ const os = require('node:os');
 const path = require('node:path');
 
 const {
+  browserRouteOrder,
   inspectPage,
+  resolveBrowserRoute,
   selectLinkedInPage,
   visualFallbackOrder,
 } = require('../scripts/linkedin_browser_check.js');
 
 const page = (url) => ({ url: () => url });
+
+test('declares MCP Chrome DevTools before Playwright', () => {
+  assert.deepEqual(browserRouteOrder(), [
+    'mcp_chrome_devtools',
+    'playwright_fallback',
+    'stop',
+  ]);
+});
+
+test('uses Playwright fallback when MCP is unavailable before mutation', () => {
+  assert.deepEqual(resolveBrowserRoute({
+    mcpAvailable: false,
+    capabilityAvailable: false,
+    mutationConfirmed: false,
+    errorBeforeMutation: true,
+  }), {
+    route: 'playwright_fallback',
+    reason: 'mcp_unavailable',
+  });
+});
+
+test('stops after an ambiguous possible mutation', () => {
+  assert.deepEqual(resolveBrowserRoute({
+    mcpAvailable: true,
+    capabilityAvailable: true,
+    mutationConfirmed: false,
+    errorBeforeMutation: false,
+  }), {
+    route: 'stop',
+    reason: 'ambiguous_mutation',
+  });
+});
 
 function fixturePage(url) {
   const calls = [];
@@ -111,19 +145,16 @@ test('inspectPage fails closed for an about:blank Page fixture', async () => {
   );
 });
 
-test('documents the Playwright then visual then analyzer fallback order', () => {
+test('documents visual fallback downstream of the selected browser route', () => {
   const skill = fs.readFileSync(
     path.join(__dirname, '..', '.agents', 'skills', 'publicar-linkedin', 'SKILL.md'),
     'utf8',
   );
-  assert.ok(skill.indexOf('Playwright → screenshot + visão nativa → image-analyzer(native_failed) → stop') >= 0);
-  assert.ok(skill.indexOf('Tentar primeiro o script Playwright/observação CDP') < skill.indexOf('capturar screenshot e usar visão nativa'));
   assert.ok(skill.indexOf('capturar screenshot e usar visão nativa') < skill.indexOf('delegar ao `image-analyzer` com `reason: native_failed`'));
 });
 
 test('keeps the visual fallback order explicit', () => {
   assert.deepEqual(visualFallbackOrder(), [
-    'playwright',
     'screenshot+nativa',
     'image-analyzer:native_failed',
     'stop',
