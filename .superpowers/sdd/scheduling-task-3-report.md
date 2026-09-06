@@ -8,8 +8,8 @@ PASS para o contrato e o protocolo seguro da rodada 5. Nenhuma ação foi execut
 
 ```yaml
 evidence_status: simulated
-route: browser_cdp
-fallback: native
+route: mcp_chrome_devtools
+fallback: playwright_fallback
 requested_timestamp: ""
 displayed_timestamp: ""
 date_selected: not_run

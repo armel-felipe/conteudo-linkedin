@@ -18,7 +18,8 @@ falha MCP registrada antes de mutação. O roadmap usa somente `mcp_chrome_devto
 
 ## Verificação desta correção
 
-- `python3 -m pytest tests/test_browser_route_documentation.py -q`: 4 passed.
+- `python3 -m pytest tests/test_browser_route_documentation.py -q`: 5 passed.
+- `python3 -m pytest tests/test_browser_route_documentation.py tests/test_scheduling_skill.py -q`: 73 passed.
 - `git diff --check`: passou sem saída.
 
 ## Concerns

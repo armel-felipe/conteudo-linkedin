@@ -42,8 +42,8 @@ _RECEIPT_FIELDS = (
     "duplicate_created",
 )
 
-_RECEIPT_ROUTES = {"playwright", "browser_cdp"}
-_RECEIPT_FALLBACKS = {"none", "native", "no_native_vision", "native_failed"}
+_RECEIPT_ROUTES = {"playwright", "mcp_chrome_devtools"}
+_RECEIPT_FALLBACKS = {"none", "playwright_fallback", "no_native_vision", "native_failed"}
 _EVIDENCE_STATUSES = {
     "real_non_destructive",
     "real_existing_post",

@@ -158,8 +158,8 @@ def valid_registration_gate(**overrides):
         "scheduled_list": True,
         "receipt": {
             "evidence_status": "real_non_destructive",
-            "route": "browser_cdp",
-            "fallback": "native",
+            "route": "mcp_chrome_devtools",
+            "fallback": "playwright_fallback",
             "requested_timestamp": "01/09/2026 10:00",
             "displayed_timestamp": "01/09/2026 10:00",
             "date_selected": "pass",
@@ -220,8 +220,8 @@ def test_reschedule_requires_existing_post_and_complete_new_selection():
 def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -249,8 +249,8 @@ def test_receipt_requires_structured_pass_fields_and_no_sensitive_data():
 def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -270,8 +270,8 @@ def test_validate_receipt_rejects_divergence_missing_or_failed_gate(change):
 def test_validate_receipt_rejects_missing_field():
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -302,8 +302,8 @@ def test_validate_receipt_rejects_empty_object_as_incomplete():
 def test_validate_receipt_accepts_object_root_after_type_boundary():
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -322,8 +322,8 @@ def test_validate_receipt_accepts_object_root_after_type_boundary():
 def test_validate_receipt_rejects_invalid_route_or_fallback(field):
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -344,8 +344,8 @@ def test_validate_receipt_rejects_invalid_route_or_fallback(field):
 def test_validate_receipt_rejects_sensitive_text_in_any_field(sensitive):
     receipt = {
         "evidence_status": "real_non_destructive",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -383,7 +383,7 @@ def test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete():
     assert "never duplicate" in roadmap
     receipt_fields = (
         "evidence_status: simulated",
-        "route: browser_cdp",
+        "route: mcp_chrome_devtools",
         'requested_timestamp: ""',
         'displayed_timestamp: ""',
         "date_selected: not_run",
@@ -446,8 +446,8 @@ def test_dry_run_rejects_mutating_or_completion_event(event):
 def test_receipt_accepts_each_explicit_evidence_status(status):
     receipt = {
         "evidence_status": status,
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
         "displayed_timestamp": "" if status in {"simulated", "not_run"} else "01/09/2026 10:00",
         "date_selected": "not_run" if status in {"simulated", "not_run"} else "pass",
@@ -465,8 +465,8 @@ def test_receipt_accepts_each_explicit_evidence_status(status):
 def test_receipt_rejects_unknown_evidence_status_and_completed_dry_run():
     receipt = {
         "evidence_status": "browser_realish",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",
@@ -491,8 +491,8 @@ def test_receipt_rejects_unknown_evidence_status_and_completed_dry_run():
 def test_dry_run_receipt_cannot_claim_completion_evidence(field):
     receipt = {
         "evidence_status": "simulated",
-        "route": "browser_cdp",
-        "fallback": "native",
+        "route": "mcp_chrome_devtools",
+        "fallback": "playwright_fallback",
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",
