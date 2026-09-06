@@ -29,13 +29,16 @@ function resolveBrowserRoute({
   mutationConfirmed,
   errorBeforeMutation,
 }) {
-  if (!mutationConfirmed && !errorBeforeMutation) {
+  if (mutationConfirmed) {
+    return { route: 'stop', reason: 'ambiguous_mutation' };
+  }
+  if (!errorBeforeMutation) {
     return { route: 'stop', reason: 'ambiguous_mutation' };
   }
   if (mcpAvailable && capabilityAvailable) {
     return { route: 'mcp_chrome_devtools', reason: 'mcp_ready' };
   }
-  if (!mutationConfirmed && errorBeforeMutation) {
+  if (errorBeforeMutation) {
     return {
       route: 'playwright_fallback',
       reason: mcpAvailable ? 'capability_unavailable' : 'mcp_unavailable',

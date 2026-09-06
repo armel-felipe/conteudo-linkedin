@@ -67,7 +67,8 @@ uma delas:
 - se o estado não puder distinguir sucesso de não execução, classificar como
   `ambiguous_mutation` e aplicar `fail_closed`;
 - em `fail_closed`, não repetir, não publicar novamente, não reagendar, não
-  excluir e não avançar o item para o próximo estado do pipeline.
+  excluir, não criar uma duplicata e não avançar o item para o próximo estado do
+  pipeline.
 
 Em particular, diante de um resultado ambíguo, **nunca abrir novo composer**:
 o composer existente pode conter uma mutação já enviada ou um rascunho cujo
@@ -86,8 +87,9 @@ Cada execução deve preservar:
 - classificação final (`success`, `failed`, `ambiguous_mutation` ou `stop`);
 - qualquer aplicação de `fail_closed`.
 
-`scheduled_list_confirmed` deve estar confirmado antes de registrar o `timestamp`,
-e ambos devem ser validados antes da persistência local.
+`scheduled_list_confirmed` deve estar confirmado antes de registrar o
+`timestamp_registered` e o `timestamp`, e ambos devem ser validados antes da
+persistência local.
 
 Skills e scripts que não conseguirem produzir esse registro devem parar antes
 de executar uma mutação.

@@ -48,8 +48,8 @@ test('stops after an ambiguous possible mutation', () => {
 
 test('does not permit fallback after a confirmed mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
-    mcpAvailable: false,
-    capabilityAvailable: false,
+    mcpAvailable: true,
+    capabilityAvailable: true,
     mutationConfirmed: true,
     errorBeforeMutation: false,
   }), {
