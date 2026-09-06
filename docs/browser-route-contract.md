@@ -4,7 +4,7 @@ Este documento define a rota normativa para qualquer skill ou script que opere
 um navegador no pipeline editorial. A rota padrão é sempre:
 
 ```text
-MCP Chrome DevTools -> Playwright (fallback) -> stop
+MCP Chrome DevTools → Playwright (fallback) → stop
 ```
 
 Os nomes normativos das rotas são:
@@ -27,10 +27,10 @@ Os nomes normativos das rotas são:
    mutação, registrar a falha e tentar `playwright_fallback`.
 3. Se o fallback também não concluir a operação, registrar a rota efetiva e
    parar. Não tentar uma terceira rota e não abrir uma nova composição de ação.
-4. Depois que uma mutação for enviada, o fallback não é permitido para repetir
+4. Depois que uma mutação for enviada, fallback não é permitido para repetir
    a ação. Primeiro é necessário verificar o estado resultante.
 
-Fallback é permitido apenas antes de uma mutação ser confirmada. Em especial,
+Fallback é permitido somente antes de uma mutação ser confirmada. Em especial,
 uma resposta de timeout, desconexão ou erro após o envio de uma ação deve ser
 tratada como `ambiguous_mutation`, não como autorização para repetir a ação.
 

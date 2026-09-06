@@ -1,35 +1,35 @@
-# Task 1 Report
+# Task 1 Report — Contrato central de rota de navegador
 
-Status: DONE
-
-## Commits
-
-- `11ecee1 feat: persist orchestration review cycles`
-- `1e019d7 fix: make task tests use worktree source`
-- `97fc694 docs: record task 1 implementation report`
+Status: DONE_WITH_CONCERNS
 
 ## Files
 
-- `src/content_ops/db.py`
-- `tests/test_db.py`
-- `pyproject.toml`
+- `docs/browser-route-contract.md`
+- `tests/test_browser_route_contract.py`
 
-## Cause and Decisions
+## Implementation
 
-- Increased the schema version from 6 to 7 and added the v7 migration.
-- Added `block_cycles`, `review_receipts`, and `workflow_events` with foreign keys, JSON checks, decision checks, and the required composite uniqueness constraint.
-- Added transactional APIs for starting cycles, recording reviews/events, checking exact approvals, and reading the latest block event.
-- Added focused durability, migration, scoping, and latest-state tests using real SQLite storage.
+- Defined the exact normative sequence `MCP Chrome DevTools → Playwright (fallback) → stop`.
+- Defined `mcp_chrome_devtools`, `playwright_fallback`, `ambiguous_mutation` and `fail_closed`.
+- Restricted fallback to only before a mutation is confirmed.
+- Required effective-route and state-verification records for every operation.
+- Added separate rules for read/inspect operations and publish/schedule/reschedule/delete mutations.
+- Required fail-closed behavior for ambiguous mutations and prohibited opening a new composer.
+- Expanded the contract tests for fallback boundaries, ambiguous mutations, state verification, fail-closed behavior, route records, and separate read/mutation rules.
+- Tests read the contract with `encoding="utf-8"`.
 
 ## Tests
 
-- `python3.12 -m pytest tests/test_db.py -k orchestration -v`
-  - Result: PASS, 5 passed, 20 deselected.
-- `python3.12 -m pytest tests/test_db.py -v`
-  - Result: PASS, 25 passed, 29 subtests passed.
-- `git diff --check`
-  - Result: PASS, no whitespace errors.
+- Initial review regression check: `python3 -m pytest tests/test_browser_route_contract.py -q`
+  - Result: FAIL, 2 failed and 4 passed; it exposed the missing literal Unicode route sequence and the exact fallback-boundary wording.
+- Final check: `python3 -m pytest tests/test_browser_route_contract.py -q`
+  - Result: PASS, 6 passed.
+
+## Commit
+
+- Review correction commit created after the final test run.
 
 ## Concerns
 
-- No concerns. Pytest now resolves `src` through `[tool.pytest.ini_options] pythonpath = ["src"]`.
+- The pre-existing `.gitignore` failure was not corrected or modified.
+- The report preserves the concern about the unrelated `.gitignore` failure and records only the focused Task 1 contract test result requested for this correction.
