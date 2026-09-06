@@ -24,6 +24,44 @@ test('declares MCP Chrome DevTools before Playwright', () => {
   ]);
 });
 
+test('logs MCP-first browser execution without calling Playwright', async () => {
+  const logPath = path.join(os.tmpdir(), `browser-${Date.now()}-mcp.jsonl`);
+  const result = await runBrowserCheck({
+    mcpAdapterFactory: async () => ({
+      inspect: async () => ({ ok: true, report: { visual_state: 'public_page' } }),
+    }),
+    playwrightAdapterFactory: async () => {
+      throw new Error('must not be called');
+    },
+    logPath,
+    runId: 'browser-run-1',
+  });
+  assert.equal(result.effective_route, 'mcp_chrome_devtools');
+  assert.equal(result.events[0].event, 'started');
+  assert.equal(result.events.at(-1).event, 'completed');
+});
+
+test('logs fallback reason and never logs adapter secrets', async () => {
+  const logPath = path.join(os.tmpdir(), `browser-${Date.now()}-fallback.jsonl`);
+  const result = await runBrowserCheck({
+    mcpAdapterFactory: async () => ({
+      inspect: async () => ({
+        ok: false,
+        reason: 'mcp_unavailable',
+        details: { api_key: 'secret' },
+      }),
+    }),
+    playwrightAdapterFactory: async () => ({
+      inspect: async () => ({ ok: true, report: { visual_state: 'ok' } }),
+    }),
+    logPath,
+    runId: 'browser-run-2',
+  });
+  assert.equal(result.effective_route, 'playwright_fallback');
+  assert.equal(result.route_reasons.mcp_chrome_devtools, 'mcp_unavailable');
+  assert.equal(JSON.stringify(result.events).includes('secret'), false);
+});
+
 test('uses Playwright fallback when MCP is unavailable before mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
     mcpAttempt: { ok: false, reason: 'mcp_unavailable' },
@@ -82,7 +120,8 @@ test('runs an injected MCP adapter before the Playwright fallback', async () => 
   });
 
   assert.deepEqual(calls, ['mcp']);
-  assert.deepEqual(result, {
+  const { log_path: logPath, events, ...core } = result;
+  assert.deepEqual(core, {
     attempted_routes: ['mcp_chrome_devtools'],
     effective_route: 'mcp_chrome_devtools',
     reason: 'mcp_success',
@@ -90,6 +129,8 @@ test('runs an injected MCP adapter before the Playwright fallback', async () => 
     observed_state: report.visual_state,
     report,
   });
+  assert.ok(logPath.endsWith('browser-check.jsonl'));
+  assert.deepEqual(events.map((event) => event.event), ['started', 'completed']);
 });
 
 test('uses a controlled Playwright fallback only after an injected MCP failure', async () => {
@@ -109,7 +150,8 @@ test('uses a controlled Playwright fallback only after an injected MCP failure',
   });
 
   assert.deepEqual(calls, ['mcp', 'playwright-factory', 'playwright']);
-  assert.deepEqual(result, {
+  const { log_path: logPath, events, ...core } = result;
+  assert.deepEqual(core, {
     attempted_routes: ['mcp_chrome_devtools', 'playwright_fallback'],
     effective_route: 'playwright_fallback',
     reason: 'mcp_unavailable',
@@ -120,6 +162,8 @@ test('uses a controlled Playwright fallback only after an injected MCP failure',
     observed_state: report.visual_state,
     report,
   });
+  assert.ok(logPath.endsWith('browser-check.jsonl'));
+  assert.deepEqual(events.map((event) => event.event), ['started', 'fallback', 'completed']);
 });
 
 test('stops and preserves ambiguous state when Playwright inspection returns it', async () => {

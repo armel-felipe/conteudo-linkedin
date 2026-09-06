@@ -1,5 +1,6 @@
 const os = require('node:os');
 const path = require('node:path');
+const { createExecutionLogger } = require('./execution_log.js');
 
 const DEFAULT_CDP_URL = 'http://127.0.0.1:9223';
 
@@ -181,7 +182,11 @@ async function runBrowserCheck({
   mcpAdapter,
   mcpAdapterFactory = defaultMcpAdapterFactory,
   playwrightAdapterFactory = defaultPlaywrightAdapterFactory,
+  logPath = path.resolve('runs', 'browser-check.jsonl'),
+  runId,
 } = {}) {
+  const logger = createExecutionLogger(logPath, { runId });
+  logger.start('browser');
   let mcpAttempt;
   try {
     const adapter = mcpAdapter || await mcpAdapterFactory();
@@ -198,18 +203,37 @@ async function runBrowserCheck({
     };
   }
   if (mcpAttempt.ok === true) {
-    return {
+    const result = {
       ...resolveBrowserRoute({ mcpAttempt }),
       report: mcpAttempt.report,
     };
+    logger.finish('browser', 'completed', {
+      route_attempted: result.attempted_routes,
+      effective_route: result.effective_route,
+      state: result.observed_state,
+      reason: result.reason,
+    });
+    return { ...result, log_path: logger.path, events: logger.events };
   }
   if (
     mcpAttempt.mutation_confirmed
     || mcpAttempt.ambiguous === true
     || mcpAttempt.reason === 'ambiguous_mutation'
   ) {
-    return resolveBrowserRoute({ mcpAttempt });
+    const result = resolveBrowserRoute({ mcpAttempt });
+    logger.finish('browser', 'blocked', {
+      route_attempted: result.attempted_routes,
+      effective_route: result.effective_route,
+      state: result.observed_state,
+      reason: result.reason,
+    });
+    return { ...result, log_path: logger.path, events: logger.events };
   }
+
+  logger.finish('browser', 'fallback', {
+    route_attempted: ['mcp_chrome_devtools', 'playwright_fallback'],
+    reason: mcpAttempt.reason || 'mcp_failed',
+  });
 
   let playwrightAttempt;
   let adapter;
@@ -231,7 +255,13 @@ async function runBrowserCheck({
   }
   const result = resolveBrowserRoute({ mcpAttempt, playwrightAttempt });
   if (playwrightAttempt.ok === true) result.report = playwrightAttempt.report;
-  return result;
+  logger.finish('browser', result.effective_route === 'stop' ? 'blocked' : 'completed', {
+    route_attempted: result.attempted_routes,
+    effective_route: result.effective_route,
+    state: result.observed_state,
+    reason: result.reason,
+  });
+  return { ...result, log_path: logger.path, events: logger.events };
 }
 
 async function main(options = {}) {
@@ -252,6 +282,7 @@ if (require.main === module) {
 
 module.exports = {
   browserRouteOrder,
+  createExecutionLogger,
   inspectPage,
   runBrowserCheck,
   main,
