@@ -33,8 +33,8 @@ fallback**.
 
 ### P1 — Próximas entregas operacionais
 
-- [~] Confirmar o backend X em uma pesquisa real: o setup encontrou cookies no
-  Chrome, mas o `doctor` ainda reporta o backend X como `unconfigured`.
+- [!] Confirmar o backend X em uma pesquisa real: configurar uma fonte X acionável
+  e repetir o `doctor`; o backend X atual está `unconfigured`.
 - [x] Configurar e validar a Brave Search API; backend `brave` ativo.
 - [ ] Criar logs de execução por etapa, rota, estado e receipt.
 - [ ] Criar scripts Python para scoring e clustering quando o fluxo manual estiver estável.

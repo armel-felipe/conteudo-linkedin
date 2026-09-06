@@ -14,7 +14,8 @@
 - Executar pesquisa somente de leitura.
 - Não publicar, seguir contas, enviar mensagens ou alterar qualquer conteúdo.
 - Nunca registrar `AUTH_TOKEN`, `CT0`, cookies, API keys ou conteúdo privado em chat, Git ou relatório.
-- Se X estiver `unconfigured`, `auth-failed`, `rate-limited`, `timeout` ou outro estado não confirmado, marcar P1-A como bloqueado/parcial e não dizer que X foi validado. Exceção: se o doctor reportar X como `unconfigured`/não acionável, `blocked` é válido sem engine receipt; nesse caso, não rodar o engine para evitar pesquisa enganosa.
+- Se X estiver `unconfigured`, `auth-failed`, `rate-limited`, `timeout` ou outro estado não acionável, marcar P1-A como `blocked` sem executar o engine e sem produzir receipt; registrar apenas `doctor live + report sanitizado + roadmap bloqueado`.
+- Executar o engine e exigir receipt somente quando o preflight fornecer backend X acionável. Nunca executar o engine para contornar um preflight não acionável ou produzir pesquisa enganosa.
 - Atualizar `docs/roadmap.md` somente depois da evidência desta execução.
 
 ---
@@ -46,7 +47,7 @@ Save only the redacted source statuses in the report. Never copy the JSON wholes
 
 - [ ] **Step 3: Decide whether the test can proceed**
 
-Proceed only if the doctor or runtime preflight provides an actionable X backend. If it reports X as `unconfigured`/não acionável, record the exact stable status and stop P1-A as `blocked`, without running the engine or producing an engine receipt.
+Proceed only if the doctor or runtime preflight provides an actionable X backend. If it reports X as `unconfigured`, `auth-failed`, `rate-limited`, `timeout` or another non-actionable status, record the exact stable status, stop P1-A as `blocked`, do not run the engine, do not produce an engine receipt, and continue only with the sanitized report and blocked roadmap update.
 
 ---
 
@@ -58,28 +59,30 @@ Proceed only if the doctor or runtime preflight provides an actionable X backend
 - Modify: `research/briefs/p1-a-x-validation-2026-09-06.md`
 
 **Interfaces:**
-- Consumes: selected topic and validated local X/browser configuration.
-- Produces: raw engine receipt plus a sanitized report containing source status and evidence counts.
+- Consumes: selected topic and actionable local X/browser configuration from Task 1.
+- Produces: raw engine receipt plus a sanitized report containing source status and evidence counts, only when the backend is actionable.
 
 - [ ] **Step 1: Resolve the required runtime interpreter**
 
-Set `LAST30DAYS_PYTHON` to a discovered Python 3.12+ interpreter and verify:
+Run this step only after Task 1 confirms an actionable X backend. Set `LAST30DAYS_PYTHON` to a discovered Python 3.12+ interpreter and verify:
 
 ```bash
 python3.12 -c 'import sys; assert sys.version_info >= (3, 12)'
 ```
 
+For a non-actionable preflight, skip this step and do not run the engine.
+
 - [ ] **Step 2: Generate the named-topic research plan**
 
-Write a temporary JSON plan for `topic_20260901_03` containing the topic title, its central question, its thesis, an X lane using the configured account/session, and the required non-X lanes. Do not put cookies or API keys in the JSON plan.
+Only with an actionable X backend, write a temporary JSON plan for `topic_20260901_03` containing the topic title, its central question, its thesis, an X lane using the configured account/session, and the required non-X lanes. Do not put cookies or API keys in the JSON plan. Skip this step when P1-A is blocked by preflight.
 
 - [ ] **Step 3: Run the engine with the plan and native search**
 
-Run the engine with the generated plan, `--emit=json`, `--save-dir="$LAST30DAYS_MEMORY_DIR"`, and `LAST30DAYS_NATIVE_SEARCH=1` because Brave Search is available. Use the normal source preflight flags required by the engine. Do not use `--mock`, WebSearch-only synthesis, or any mutating X operation.
+Only with an actionable X backend, run the engine with the generated plan, `--emit=json`, `--save-dir="$LAST30DAYS_MEMORY_DIR"`, and `LAST30DAYS_NATIVE_SEARCH=1` because Brave Search is available. Use the normal source preflight flags required by the engine. Do not use `--mock`, WebSearch-only synthesis, or any mutating X operation. If preflight is non-actionable, do not run the engine and do not create a receipt.
 
 - [ ] **Step 4: Capture only safe results**
 
-Record in the report:
+When the engine ran, record in the report:
 
 ```text
 status: confirmed | partial | blocked
@@ -91,7 +94,7 @@ mutations: none
 limitations: <short factual statement>
 ```
 
-Do not copy raw cookies, authorization headers, private profile data or complete raw payloads into the report.
+When preflight blocked the run, record the sanitized doctor status instead, with `status: blocked`, `route: read_only`, `mutations: none`, and a factual limitation explaining that no engine receipt was produced. Do not copy raw cookies, authorization headers, private profile data or complete raw payloads into the report.
 
 ---
 
@@ -107,7 +110,7 @@ Do not copy raw cookies, authorization headers, private profile data or complete
 
 - [ ] **Step 1: Apply the outcome rule**
 
-Mark `confirmed` only when the X source completed successfully and returned at least one usable, current evidence item. Mark `partial` for incomplete but non-empty coverage. Mark `blocked` for unconfigured/auth/rate-limit/timeout/error or zero usable X evidence.
+Mark `confirmed` only when the actionable preflight was followed by a successful X source run that returned at least one usable, current evidence item. Mark `partial` for incomplete but non-empty coverage after an actionable preflight. Mark `blocked` for non-actionable preflight states (`unconfigured`, `auth-failed`, `rate-limited`, `timeout` or other errors), or for zero usable X evidence after an engine run. A blocked preflight is valid without an engine receipt.
 
 - [ ] **Step 2: Update the roadmap from evidence**
 
@@ -117,7 +120,7 @@ Change only the P1-A line in `docs/roadmap.md`:
 [x] Confirmar o backend X em uma pesquisa real: ...
 ```
 
-only for `confirmed`; otherwise use `[~]` or `[!]` and include the exact next action. Do not mark X complete based only on cookies found by setup.
+only for `confirmed`; otherwise use `[~]` or `[!]` and include the exact next action. Do not mark X complete based only on cookies found by setup. For a blocked preflight, the next action must address the reported doctor status; do not imply that the engine ran or that X was validated.
 
 - [ ] **Step 3: Verify no secrets or mutations were recorded**
 
@@ -128,7 +131,7 @@ git diff --check
 git status --short
 ```
 
-Review the report and staged diff for tokens, cookies, authorization headers, private profile data, or claims unsupported by the receipt.
+Review the report and staged diff for tokens, cookies, authorization headers, private profile data, or claims unsupported by the receipt. For a blocked preflight, verify that the report contains no claim of an engine run or engine receipt.
 
 - [ ] **Step 4: Commit the durable report and roadmap change**
 
@@ -142,8 +145,8 @@ Do not commit the raw `${LAST30DAYS_MEMORY_DIR}` output unless the repository po
 ## Acceptance criteria
 
 - The selected topic is `topic_20260901_03` or a newer first eligible topic, recorded by id.
-- When the doctor reports an actionable X backend, the engine runs once with a named-topic plan, not WebSearch-only. If the doctor reports X `unconfigured`/não acionável, `blocked` is valid without an engine receipt and the engine must not run.
-- X outcome is classified from the engine receipt, not inferred from setup messages.
+- When the preflight provides an actionable X backend, the engine runs exactly once with a named-topic plan and produces a receipt, not WebSearch-only. When the doctor reports X `unconfigured`, `auth-failed`, `rate-limited`, `timeout` or another non-actionable state, `blocked` is valid with no engine run and no engine receipt; the exception is `doctor live + report sanitizado + roadmap bloqueado`.
+- X outcome is classified from the engine receipt when the engine ran, or from the sanitized live doctor status for a blocked preflight; it is never inferred from setup messages.
 - The operation was read-only and made no LinkedIn/X mutations.
 - The report contains no secrets or private session data.
 - The roadmap has one accurate P1-A status and one concrete next action.
