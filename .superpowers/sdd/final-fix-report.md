@@ -50,7 +50,7 @@
 
 - `npm test`: 22 passed.
 - `python3 -m pytest tests/test_scheduling_skill.py tests/test_browser_route_contract.py tests/test_browser_route_documentation.py -q`: 114 passed.
-- `python3 -m pytest tests -q`: 273 passed, 1 failed baseline em
+- `python3 -m pytest tests -q`: 274 passed, 1 failed baseline em
   `tests/test_run_contracts.py::test_runtime_runs_are_ignored_but_keep_file_is_tracked`,
   que exige `runs/*` em `.gitignore`; `.gitignore` foi preservado.
 - `git diff --check`: passou.
