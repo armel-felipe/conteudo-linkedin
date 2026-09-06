@@ -95,3 +95,18 @@ observação sem mutação e devem ser rejeitados pelo gate.
 
 Skills e scripts que não conseguirem produzir esse registro devem parar antes
 de executar uma mutação.
+
+## Logs de execução JSONL
+
+O logger compartilhado persiste um evento JSON por linha em `runs/`. O envelope
+mínimo contém `run_id`, `timestamp`, `stage`, `event`, `route_attempted`,
+`effective_route`, `state`, `duration_ms`, `receipt_ref` e `reason` quando
+aplicáveis. O ciclo normal é `started` seguido por `completed`, `blocked` ou
+`fallback`.
+
+O logger é somente observabilidade: não controla o navegador e não executa
+publicação, agendamento ou exclusão. Antes de serializar, ele sanitiza
+recursivamente valores associados a `AUTH_TOKEN`, `CT0`, cookies, API keys,
+authorization headers, senhas, identificadores de conta e conteúdo privado.
+`runs/` é diretório local e não deve ser incluído em commits; somente fixtures
+sanitizadas e testes são versionáveis.

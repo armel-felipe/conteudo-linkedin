@@ -36,7 +36,8 @@ fallback**.
 - [x] Confirmar o backend X em uma pesquisa real: backend `bird` acionável via
   cookies autorizados do Chrome; pesquisa retornou 30 posts em modo somente leitura.
 - [x] Configurar e validar a Brave Search API; backend `brave` ativo.
-- [ ] Criar logs de execução por etapa, rota, estado e receipt.
+- [x] Criar logs JSONL sanitizados por etapa, rota, estado e receipt em `runs/`;
+  cobertura de logger Python/Node e integração de receipts concluída.
 - [ ] Criar scripts Python para scoring e clustering quando o fluxo manual estiver estável.
 - [ ] Executar a matriz de cenários de agendamento somente quando existir uma
   publicação real e houver autorização explícita.

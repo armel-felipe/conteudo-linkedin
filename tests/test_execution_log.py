@@ -1,6 +1,7 @@
 import json
 
 from execution_log import ExecutionLogger
+from scheduling_contract import validate_receipt_with_log
 
 
 def test_sanitizes_nested_secrets_and_writes_jsonl(tmp_path):
@@ -52,3 +53,37 @@ def test_start_and_finish_emit_required_lifecycle_events(tmp_path):
         for line in (tmp_path / "run.jsonl").read_text().splitlines()
     ]
     assert [event["event"] for event in events] == ["started", "blocked"]
+
+
+def test_receipt_validation_can_emit_sanitized_log(tmp_path):
+    logger = ExecutionLogger(
+        tmp_path / "run.jsonl",
+        run_id="receipt-1",
+        clock=lambda: "now",
+    )
+    receipt = {
+        "evidence_status": "simulated",
+        "route": "stop",
+        "fallback": "none",
+        "requested_timestamp": "",
+        "displayed_timestamp": "",
+        "date_selected": "not_run",
+        "time_selected": "not_run",
+        "summary": "not_run",
+        "preview": "not_run",
+        "confirmation": "not_run",
+        "scheduled_list": "not_run",
+        "timestamp_registered": "not_run",
+        "duplicate_created": False,
+        "route_attempted": ["mcp_chrome_devtools"],
+        "mcp_attempted": True,
+        "route_reasons": {"mcp_chrome_devtools": "blocked"},
+        "observed_state": "ambiguous_mutation",
+        "verification_evidence": "state check",
+        "post_action_confirmation": "not_run",
+    }
+    assert validate_receipt_with_log(receipt, logger, receipt_ref="receipt-1") is True
+    event = json.loads((tmp_path / "run.jsonl").read_text().splitlines()[-1])
+    assert event["event"] == "completed"
+    assert event["state"] == "confirmed"
+    assert "cookie" not in json.dumps(event).lower()

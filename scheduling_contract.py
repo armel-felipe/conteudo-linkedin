@@ -1,5 +1,7 @@
 import re
 
+from execution_log import ExecutionLogger
+
 
 _COMMON = (
     "approved_file",
@@ -378,3 +380,34 @@ def validate_receipt(receipt):
     if contains_sensitive_value(receipt):
         raise ValueError("sensitive receipt value")
     return True
+
+
+def validate_receipt_with_log(
+    receipt,
+    logger: ExecutionLogger,
+    *,
+    receipt_ref=None,
+):
+    """Validate a receipt and record only the sanitized validation outcome."""
+
+    try:
+        valid = validate_receipt(receipt)
+    except Exception as error:
+        logger.finish(
+            "scheduling",
+            "blocked",
+            state="receipt_invalid",
+            receipt_ref=receipt_ref,
+            reason=type(error).__name__,
+        )
+        raise
+    logger.finish(
+        "scheduling",
+        "completed",
+        state="confirmed",
+        receipt_ref=receipt_ref,
+        effective_route=receipt.get("route"),
+        route_attempted=receipt.get("route_attempted", ()),
+        reason="receipt_validated",
+    )
+    return valid
