@@ -25,9 +25,9 @@ fallback**.
 - [x] Integrar o branch MCP-first ao `main`.
 - [x] Adicionar `runs/*` ao `.gitignore`.
 - [x] Validar o contrato de rota: MCP Chrome DevTools → Playwright fallback → stop.
-- [~] Comprovar uma execução browser-real via MCP Chrome DevTools; os testes usam
-  adapter injetado, mas ainda não há evidência real de uma execução MCP nesta rodada.
-- [~] Registrar o incidente de agendamento: o post foi publicado em 05/09/2026
+- [x] Comprovar uma execução browser-real via MCP Chrome DevTools em página pública
+  do LinkedIn, com navegação e snapshot somente leitura; não houve Playwright nem mutação.
+- [x] Registrar o incidente de agendamento: o post foi publicado em 05/09/2026
   às 21:45, em vez de ser reagendado para 07/09 às 10:00. Não é mais possível
   reagendar uma publicação já realizada.
 
@@ -68,6 +68,13 @@ fallback**.
 - [x] Contrato MCP-first em `docs/browser-route-contract.md`.
 - [x] Implementação integrada em `scripts/linkedin_browser_check.js` e
   `scheduling_contract.py`.
+
+### Evidência P0.1 — MCP Chrome DevTools
+
+- [x] O MCP navegou até `https://www.linkedin.com/` e capturou um snapshot real.
+- [x] A página estava deslogada; a evidência comprova a rota MCP, mas não uma sessão autenticada.
+- [x] Nenhum clique, preenchimento, publicação ou agendamento foi executado.
+- [x] A execução usou `mcp_chrome_devtools`; Playwright não foi chamado.
 
 ### Integrações
 
