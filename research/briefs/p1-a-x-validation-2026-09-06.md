@@ -7,7 +7,7 @@
 - Selection: first eligible `ready_for_research` topic in `research/topics/topics_2026-09-01.yaml`
 - Topic mutation: none; YAML status remains `ready_for_research`
 - Backlog mutation: none
-- Research pass: not run
+- Research pass: doctor executado; research pass não executado por bloqueio de configuração
 
 ## Preflight
 
