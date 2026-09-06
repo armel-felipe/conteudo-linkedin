@@ -1,4 +1,33 @@
-# Task 3 Report
+# Task 3 Report: MCP-first browser automation
+
+## Status atual
+
+Corrigida a revisão da Task 3 sobre documentação e operação browser. A skill `publicar-linkedin`
+agora começa por MCP Chrome DevTools; Playwright só aparece como `playwright_fallback` após
+falha MCP registrada antes de mutação. O roadmap usa somente `mcp_chrome_devtools`,
+`playwright_fallback` e `stop`, com motivo e registro auditáveis.
+
+## Alterações
+
+- `.agents/skills/publicar-linkedin/SKILL.md`: removida a instrução que executava
+  `npm run linkedin:check` antes do MCP; adicionados fail-closed e registro de rota/fallback.
+- `docs/roadmap.md`: corrigidos `route`/`fallback` e documentado o motivo do `stop`.
+- `tests/test_browser_route_documentation.py`: cobertura de Playwright-first operacional,
+  fallback visual pós-rotas, motivo/registro, fail-closed e separação do lote editorial.
+- `mapa.md` e a especificação editorial: alinhadas ao contrato operacional reforçado.
+
+## Verificação desta correção
+
+- `python3 -m pytest tests/test_browser_route_documentation.py -q`: 4 passed.
+- `git diff --check`: passou sem saída.
+
+## Concerns
+
+- O teste valida documentação e contrato textual; não executa mutações no LinkedIn.
+- O smoke test do roadmap permanece documental/simulado e usa `stop` quando não há falha MCP
+  registrada que justifique um fallback.
+
+## Histórico preservado (tarefas anteriores)
 
 ## Status
 

@@ -223,8 +223,8 @@ A skill `publicar-linkedin` será revisada separadamente com este contrato:
 2. converter Markdown para texto LinkedIn;
 3. usar `MCP Chrome DevTools` primeiro;
 4. se falhar antes de mutação confirmada, usar `Playwright (fallback)` com `playwright_fallback` e registrar a razão;
-5. só depois das rotas de controle, capturar screenshot e usar visão nativa;
-6. se a visão nativa falhar, delegar ao `image-analyzer` com `reason: native_failed`;
+5. só depois das duas rotas de controle, capturar screenshot e usar visão nativa como fallback visual pós-rotas;
+6. se a visão nativa falhar, delegar ao `image-analyzer` com `reason: native_failed`; se a evidência continuar ilegível, registrar `stop`;
 7. nunca inferir estado da tela sem evidência visual;
 8. registrar rota, resultado e verificação; em mutação ambígua, parar em fail-closed;
 9. no reagendamento, usar `... → Alterar agenda`;

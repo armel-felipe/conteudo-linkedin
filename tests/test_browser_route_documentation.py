@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 FILES = (
@@ -14,9 +15,44 @@ FILES = (
 def test_browser_docs_use_mcp_before_playwright():
     for path in FILES:
         text = path.read_text()
-        assert "MCP Chrome DevTools" in text, path
-        assert text.index("MCP Chrome DevTools") < text.index("Playwright"), path
-        assert "playwright_fallback" in text or "fallback" in text.lower(), path
+        mcp = text.index("MCP Chrome DevTools")
+        playwright = text.index("Playwright", mcp)
+        screenshot = text.lower().index("screenshot", playwright)
+        stop = text.lower().index("stop", screenshot)
+
+        assert mcp < playwright < screenshot < stop, path
+        assert "playwright_fallback" in text, path
+        assert "registr" in text.lower(), path
+        assert "motivo" in text.lower() or "raz" in text.lower(), path
+        assert "fail-closed" in text.lower(), path
+        assert not re.search(
+            r"(?:primeir[ao]\s+(?:tentativa|rota)|tentar\s+primeiro)\D{0,30}Playwright|"
+            r"Playwright\s+(?:é|e)\s+(?:a\s+)?(?:primeira|rota\s+inicial)",
+            text,
+            re.IGNORECASE,
+        ), path
+
+
+def test_visual_fallback_is_not_a_control_route():
+    for path in FILES:
+        text = path.read_text().lower()
+        assert "depois" in text and "duas rotas" in text or "pós-rotas" in text, path
+        assert "evidência" in text or "evidencia" in text, path
+
+
+def test_editorial_batch_cannot_publish_or_schedule():
+    text = "\n".join(path.read_text() for path in FILES)
+    assert "run-editorial-batch" in text
+    assert re.search(r"lote.{0,120}não publica", text, re.IGNORECASE | re.DOTALL)
+    assert re.search(r"lote.{0,120}não.*agenda", text, re.IGNORECASE | re.DOTALL)
+
+
+def test_roadmap_receipt_uses_canonical_route_identifiers():
+    text = Path("docs/roadmap.md").read_text()
+    assert "route: mcp_chrome_devtools" in text
+    assert "fallback: stop" in text
+    assert "route: browser_cdp" not in text
+    assert "fallback: native" not in text
 
 
 def test_docs_retain_critical_linkedin_safety_rules():

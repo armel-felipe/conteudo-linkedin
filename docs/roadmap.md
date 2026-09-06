@@ -14,7 +14,7 @@ Ações futuras com status `[ ]` pendente / `[x]` feito / `[~]` parcialmente val
 - [~] Lote editorial com fila congelada, checkpoints, retomada, eventos append-only e bloqueio individual (`run-editorial-batch`)
 - [~] Gauntlet com executor/revisor isolados, até cinco ciclos, `coverage >= 0.99`, critérios `>=9/10` e `hard_failures` fail-closed (`gauntlet-loop`)
 - [x] Brief com fontes e conexão do autor; post com duas passagens de `escrita-humana` e aprovação humana
-- [x] Rota MCP Chrome DevTools → Playwright (`playwright_fallback`) não mutante para localizar e inspecionar uma sessão LinkedIn
+- [x] Rota `mcp_chrome_devtools` → `playwright_fallback` não mutante para localizar e inspecionar uma sessão LinkedIn; `playwright_fallback` só é permitido após falha MCP registrada antes de mutação
 
 ## Fila de remediação sequencial
 
@@ -58,15 +58,17 @@ O registro de timestamp usa um gate explícito: flags de confirmação são bool
 - [x] MCP Chrome DevTools é a primeira tentativa; `npm run linkedin:check` é usado somente como `playwright_fallback`.
 - [x] `npm run linkedin:check` encontrou uma sessão real em `https://www.linkedin.com/feed/`.
 - [x] O script confirmou título, visibilidade, `readyState` e presença do body sem mutação.
-- [x] Screenshot explícito foi tentado pelo Playwright; a captura visual via CDP pode sofrer timeout intermitente enquanto a página aguarda fontes.
+- [x] Screenshot explícito só é fallback visual pós-rotas; a captura pode sofrer timeout intermitente enquanto a página aguarda fontes.
 - [x] Nenhuma ação de clique, preenchimento, publicação ou agendamento foi executada pelo smoke test.
 
 ### Receipt estruturada
 
 ```yaml
 evidence_status: simulated
-route: browser_cdp
-fallback: native
+route: mcp_chrome_devtools
+fallback: stop
+fallback_reason: smoke_test_documental_sem_falha_MCP_registrada
+route_record: MCP Chrome DevTools tentado antes de qualquer mutação; motivo, rota e resultado registrados; Playwright não foi necessário
 requested_timestamp: ""
 displayed_timestamp: ""
 date_selected: not_run

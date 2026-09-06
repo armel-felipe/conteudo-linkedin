@@ -24,8 +24,8 @@ Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via br
 
 1. Localizar arquivo em content/approved/ (valida existência; se não existir, parar e informar).
 2. Ler o arquivo Markdown e converter para texto LinkedIn (opção B): remover `# ` de título, converter/remover `**`/`__`/`*` sem vazar literal, manter quebras de linha, emojis e hashtags (`#palavra` preservadas).
-3. Observar primeiro a rota do browser, sem mutação: executar `npm run linkedin:check` (ou `node scripts/linkedin_browser_check.js`) com `OPENWORK_BROWSER_CDP_URL` quando necessário. O script usa `chromium.connectOverCDP`, seleciona somente um target `linkedin.com`, reporta URL/título/estado visual e falha fechado em `about:blank` ou ausência de target; não clica nem publica. Screenshot só pode ser solicitado com `OPENWORK_BROWSER_SCREENSHOT_PATH` apontando explicitamente para um caminho temporário.
-4. Abrir o browser do OpenWork já logado (openwork_execute browser.open_url → linkedin.com/feed) e navegar até "Começar publicação".
+3. Observar primeiro a rota MCP Chrome DevTools, sem mutação: abrir o browser do OpenWork já logado (openwork_execute browser.open_url → linkedin.com/feed), localizar o target `linkedin.com` e registrar rota, resultado e evidência. Nunca iniciar por Playwright.
+4. Se MCP Chrome DevTools falhar antes de qualquer mutação confirmada, registrar o motivo e usar Playwright somente como `playwright_fallback` (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) com `OPENWORK_BROWSER_CDP_URL` quando necessário. O script usa `chromium.connectOverCDP`, seleciona somente um target `linkedin.com`, reporta URL/título/estado visual e falha fechado em `about:blank` ou ausência de target; não clica nem publica. Screenshot só pode ser solicitado com `OPENWORK_BROWSER_SCREENSHOT_PATH` apontando explicitamente para um caminho temporário.
 5. Colar o conteúdo no campo de texto.
 6. Aplicar agendamento:
    - Envio "agora": colar conteúdo, PAUSAR antes do clique final, informar que a pessoa pode anexar imagem manualmente, e aguardar o comando para concluir.
@@ -180,7 +180,7 @@ Para reagendamento, a sequência é `existing_post_menu → alter_schedule → d
 - Não validar que o arquivo está em approved/ — bloquear se não estiver.
 - Agendar sem confirmar o valor exibido no seletor — o LinkedIn pode manter data/hora padrão; confirmar antes de clicar em "Agendar".
 - Concluir como sucesso sem verificar "Ver publicações agendadas" — o agendamento pode ter falhado silenciosamente.
-- Inverter a ordem MCP Chrome DevTools → Playwright (`playwright_fallback`), ou tratar o fallback visual como evidência ausente.
+- Usar Playwright antes de tentar MCP Chrome DevTools, ou tratar o fallback visual como evidência ausente.
 - Não selecionar novamente o horário depois de trocar a data.
 - Reagendar abrindo um compositor novo em vez de usar `... → Alterar agenda`.
 - Não registrar o agendamento no arquivo do post — sem o bloco `<!-- agendado: ... -->` não há rastreabilidade.
