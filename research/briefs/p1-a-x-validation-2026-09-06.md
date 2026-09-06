@@ -46,3 +46,7 @@ Only source names and stable status/tier values are recorded:
 ## Decision
 
 X has stable status `unconfigured` and no actionable backend was reported. Stop P1-A here; do not run a misleading research pass.
+
+## Next step
+
+Configure an actionable X source and repeat the doctor before attempting P1-A again.
