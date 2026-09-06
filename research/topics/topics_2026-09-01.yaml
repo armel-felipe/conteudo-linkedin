@@ -40,7 +40,7 @@ topics:
     possible_thesis: "Uma IA operacional confiável não é a que promete autonomia total, mas a que tem rastreabilidade, limites e um caminho explícito para pedir ajuda."
     author_connection: weak
     scores: {freshness: 8, relevance: 8.3, debate: 9, evidence: 6, author_fit: 0, originality: 9.3, linkedin_fit: 8.3, total: 65.7}
-    status: ready_for_research
+    status: approved
 
   - id: topic_20260901_04
     title: "A manufatura ainda está entre o piloto e a decisão industrial"
