@@ -48,7 +48,7 @@ discover-signals → (analyze-discussions, opcional) → cluster-signals → sco
 
 ## Bloco 2 — Gerar o post (de tema a texto aprovado)
 
-**O que faz:** pega temas `ready_for_research` do backlog, pesquisa a fundo cada um, escreve o post, revisa e humaniza até a aprovação — em lote, com checkpoints e falha isolada (se um tema falha, os outros seguem).
+**O que faz:** pega temas `ready_for_research` do backlog, pesquisa a fundo cada um, escreve o post, revisa e humaniza até virar um **draft em revisão** — em lote, com checkpoints e falha isolada (se um tema falha, os outros seguem).
 
 **Skill única:** `run-editorial-batch`. Você não chama as etapas internas isoladamente numa rodada.
 
@@ -66,7 +66,7 @@ Rode run-editorial-batch --topics id1,id2      # temas específicos, nessa ordem
 ```
 research-topic → brief_review_gauntlet → write-post → critique-post
 → correction_gauntlet → humanize_pass_1 → humanize_review_1
-→ humanize_pass_2 → humanize_review_2 → approval_humana
+→ humanize_pass_2 → humanize_review_2
 ```
 
 - **research-topic** — pesquisa a fundo e gera o `research/briefs/topic_*.md` (fatos, números, argumentos dos dois lados, incertezas, fontes com URL e data).
@@ -75,16 +75,42 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 - **critique-post** — crítica o rascunho (clareza, originalidade, tom humano, risco de alucinação, clichês de IA…).
 - **correction_gauntlet** — corrige o rascunho conforme a crítica.
 - **humanize_pass_1 / review_1** e **humanize_pass_2 / review_2** — duas passadas obrigatórias de escrita humana.
-- **approval_humana** — você aprova o texto; ele recebe o marco editorial `approved`, mantendo-se em `content/drafts/topic_*.md`.
 
 **Regras que valem para você ao operar o bloco 2:**
 
 - Cada gate (Gauntlet) usa até **5 ciclos** e aprova só com `coverage ≥ 0.99` e todos os critérios `≥ 9/10`. Falha → o tema vira `blocked` e **o lote segue para o próximo** (não para tudo).
 - Há **checkpoints persistentes** em `runs/<run_id>/` a cada etapa — dá para retomar de onde parou.
-- O lote **nunca publica nem agenda**. Ele termina em `approved`.
+- O lote **nunca publica nem agenda**. Ele termina em `drafted`.
 - Só entram temas com `status: ready_for_research`.
 
-**Saída do bloco:** post com marco editorial `approved` (arquivo ainda em `content/drafts/`). **Este bloco não publica.**
+**Saída do bloco:** draft em `content/drafts/` com status `drafted`. **Este bloco não marca `approved`** — a aprovação é decisão humana no QA (Bloco 2.5).
+
+## Bloco 2.5 — QA (revisão humana dos drafts)
+
+**O que faz:** você lê cada draft e decide — **aprovar** (que dispara o agendamento e move o arquivo), **pedir modificação**, **editar direto** e pedir ações ao agente, ou **descartar**.
+
+**Skill:** `qa-draft`.
+
+**Entrada:** drafts em `content/drafts/` com status `drafted`.
+
+**Como operar (invocação):**
+
+```text
+Revisa os drafts
+Aprova o topic_X e agenda para amanhã às 9h
+Ajusta o topic_X: passar escrita-humana / baixar para 1000 caracteres
+Editei o topic_X direto; rode escrita-humana nele
+Descarta o topic_X
+```
+
+**Resultados possíveis (as 3 ações esgotam o QA):**
+
+- **Aprovar** (= decidir agendar) → marca `approved`, dispara o agendamento (Bloco 3) e **move o arquivo** de `content/drafts/` para `content/published/`. Não é preciso aguardar a publicação real; basta o agendamento correto.
+- **Pedir modificação** → sua instrução volta para correção; o draft permanece `drafted` até você aprovar.
+- **Editar direto** → você edita e informa ações ao agente; o draft permanece `drafted` até você aprovar.
+- **Descartar** → move o arquivo para `content/arquived/`; sai do fluxo de aprovação.
+
+**Saída do bloco:** drafts aprovados (movidos para `published/`), ajustados (permanecem `drafted`) ou descartados (em `arquived/`).
 
 ## Bloco 3 — Publicar (texto aprovado para o LinkedIn)
 
@@ -110,7 +136,7 @@ Agende content/drafts/topic_X.md para 2026-09-10 às 09:00 (horário de São Pau
 - O fallback visual (screenshot + visão) ocorre **depois das duas rotas** de controle e não substitui evidência; em mutação ambígua, pare em **fail-closed**, não repita.
 - Agendar exige confirmar data e hora, refazer o horário após trocar a data, conferir prévia e confirmar em "Publicações agendadas".
 - Nunca abrir um novo composer para reagendar uma publicação existente (evita duplicata) — use `Alterar agenda`.
-- A aprovação editorial (bloco 2) é separada da publicação (bloco 3).
+- A aprovação editorial é feita no QA (bloco 2.5, skill `qa-draft`), separada da publicação (bloco 3).
 - O timestamp só é registrado no arquivo aprovado depois da confirmação na lista, sem nova aprovação textual.
 
 ## Estado dos artefatos do pipeline
@@ -142,7 +168,8 @@ Cada skill é invocada por frase no OpenWork. O agente lê a skill e executa só
 | `analyze-discussions` | 1 | Aprofunda o debate de um signal promissor | opcional, sob demanda |
 | `cluster-signals` | 1 | Agrupa sinais em temas com pergunta central e tese | 2×/semana |
 | `score-opportunities` | 1 | Pontua 0–100 cada tema e ordena o backlog | 2×/semana |
-| `run-editorial-batch` | 2 | Roda pesquisa → escrita → humanização → aprovação em lote | quando quiser gerar posts |
+| `run-editorial-batch` | 2 | Roda pesquisa → escrita → humanização em lote (gera drafts em revisão) | quando quiser gerar drafts |
+| `qa-draft` | 2.5 | Revisão humana de drafts: aprovar, pedir modificação ou editar direto | depois do lote, antes de publicar |
 | `research-topic` | 2 | Pesquisa a fundo e gera o brief | dentro do lote |
 | `write-post` | 2 | Escreve o draft do post a partir do brief | dentro do lote |
 | `critique-post` | 2 | Critica o draft antes dos ajustes | dentro do lote |

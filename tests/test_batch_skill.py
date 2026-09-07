@@ -319,7 +319,7 @@ def test_repeated_terminal_resume_preserves_completed_batch_files_and_metrics(tm
             "run_id": "run_001",
             "topic_id": "topic_c",
             "status": "completed",
-            "current_stage": "approval_humana",
+            "current_stage": "write-post",
             "completed_stages": CANONICAL_STAGES,
         },
     ],
@@ -448,8 +448,8 @@ def test_idempotency_and_persistence_contract_are_explicit():
         "humanize_review_1",
         "humanize_pass_2",
         "humanize_review_2",
-        "approval_humana",
     ]
+    assert "approval_humana" not in CANONICAL_STAGES
     assert "publicar-linkedin" not in CANONICAL_STAGES
     assert event_path("runs", "run_001") == Path("runs/run_001/events.yaml")
     assert state_path("runs", "run_001", "topic_c") == Path(
@@ -679,7 +679,7 @@ def test_approval_stage_sets_terminal_current_stage(tmp_path):
     assert state["status"] == "completed"
     assert manifest["queue"][0]["current_stage"] is None
     assert manifest["queue"][0]["status"] == "completed"
-    assert manifest["metrics"]["reviewer_coverage"] == 0.999
+    assert manifest["metrics"]["reviewer_coverage"] == pytest.approx(0.9988888889)
     assert manifest["metrics"]["human_writing_conformity"] == 1.0
     assert manifest["metrics"]["cycles_per_stage"]["research-topic"] == 1
     assert manifest["metrics"]["time_to_approval"].startswith("PT")

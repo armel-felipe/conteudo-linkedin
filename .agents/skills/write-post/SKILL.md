@@ -25,7 +25,7 @@ Escrever o post a partir do brief e da memória do autor. O writer NÃO pesquisa
 
 `content/drafts/<topic_id>.md` — o post pronto para revisão.
 
-> **Organização de arquivos:** o draft nasce e permanece em `content/drafts/`. O `approved` é um marco editorial lógico (fim do Bloco 2), NÃO uma pasta de destino: o arquivo não é movido para `content/approved/`. Ele só sai de `content/drafts/` quando for agendado/publicado (vai para `content/published/`) ou descartado por decisão humana (vai para `content/arquived/`).
+> **Organização de arquivos:** o draft nasce e permanece em `content/drafts/`. O `approved` é um marco editorial lógico que **o humano carimba no QA (`qa-draft`)**, NÃO uma pasta de destino e NÃO algo que o writer decide: o arquivo não é movido para `content/approved/`. Ele só sai de `content/drafts/` quando for agendado/publicado (vai para `content/published/`) ou descartado por decisão humana (vai para `content/arquived/`).
 
 ## Regras de escrita
 
@@ -79,4 +79,4 @@ Depois da correção no Gauntlet, executar obrigatoriamente duas passagens separ
 4. Verificar tamanho (900–1500 caracteres).
 5. Adicionar a seção `## Fontes` ao final do post, com as fontes usadas (título, URL, data) extraídas das evidências do brief.
 6. Submeter o draft ao Gauntlet com os 14 critérios e só então executar as duas passagens obrigatórias de `escrita-humana`, com review após cada passagem.
-7. Salvar em `content/drafts/<topic_id>.md` e atualizar o status do topic para `drafted` no arquivo `research/topics/topics_*.yaml` correspondente apenas após os gates passarem. O post permanece em `content/drafts/` mesmo após `approval_humana` — não mover para `content/approved/` (approved é marco lógico, não pasta).
+7. Salvar em `content/drafts/<topic_id>.md` e atualizar o status do topic para `drafted` no arquivo `research/topics/topics_*.yaml` correspondente apenas após os gates passarem. O draft **permanece `drafted`** — o writer não marca `approved` nem move o arquivo; isso cabe ao humano no QA (`qa-draft`).

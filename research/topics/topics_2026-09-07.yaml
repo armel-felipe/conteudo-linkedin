@@ -23,7 +23,7 @@ topics:
     originality: 7
     linkedin_fit: 9
     total: 78.0
-  status: approved
+  status: drafted
 - id: topic_20260907_02
   title: Governança de IA se prova por evidência operacional, não por política
   pillars:
@@ -50,7 +50,7 @@ topics:
     originality: 8
     linkedin_fit: 8
     total: 70.0
-  status: approved
+  status: drafted
 - id: topic_20260907_03
   title: O humano continua sendo o aprovador final do agente operacional
   pillars:
@@ -72,7 +72,7 @@ topics:
     originality: 8
     linkedin_fit: 9
     total: 76.5
-  status: approved
+  status: drafted
 - id: topic_20260907_04
   title: A última milha é uma decisão de margem, não de velocidade
   pillars:
@@ -95,4 +95,4 @@ topics:
     originality: 8
     linkedin_fit: 9
     total: 78.5
-  status: approved
+  status: drafted

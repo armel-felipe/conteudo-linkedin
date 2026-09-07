@@ -22,8 +22,11 @@ CANONICAL_STAGES = [
     "humanize_review_1",
     "humanize_pass_2",
     "humanize_review_2",
-    "approval_humana",
 ]
+# O lote termina em humanize_review_2: gera o draft em revisão (drafted).
+# A aprovação (approved) é decisão humana no QA (qa-draft) e acontece junto
+# com o agendamento; não é um stage do lote.
+TERMINAL_STAGE = "humanize_review_2"
 PERSISTENCE_ORDER = ["artifact", "result", "state.yaml", "event", "manifest"]
 DEFAULT_METRICS = {
     "queue_size": 0,
@@ -508,7 +511,7 @@ def _update_metrics(manifest, events, root):
         )
         for stage in committed_cycles
     }
-    approval = next((event for event in valid_events if event.get("stage") == "approval_humana"), None)
+    approval = next((event for event in valid_events if event.get("stage") == TERMINAL_STAGE), None)
     if approval:
         try:
             started = datetime.fromisoformat(manifest["created_at"])
@@ -779,7 +782,7 @@ def persist_stage(
         existing["events"].append(intent)
         _atomic_write(events, existing)
 
-    state["status"] = "completed" if stage == "approval_humana" else "running"
+    state["status"] = "completed" if stage == TERMINAL_STAGE else "running"
     if not artifact.exists():
         _atomic_write_bytes(artifact, str(artifact_content).encode())
     if not result_file.exists():
@@ -788,7 +791,7 @@ def persist_stage(
     if not review_file.exists():
         _atomic_write(review_file, review)
     state["completed_stages"] = [*state.get("completed_stages", []), stage]
-    state["current_stage"] = None if stage == "approval_humana" else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
+    state["current_stage"] = None if stage == TERMINAL_STAGE else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
     state["checkpoint"] = {
         "stage": stage, "cycle": cycle, "result": result,
         "review": review,
@@ -813,7 +816,7 @@ def persist_stage(
     manifest["persistence_order"] = PERSISTENCE_ORDER
     for item in manifest["queue"]:
         if item["topic_id"] == topic_id:
-            item["status"] = "completed" if stage == "approval_humana" else "running"
+            item["status"] = "completed" if stage == TERMINAL_STAGE else "running"
             item["current_stage"] = state["current_stage"]
     metrics = manifest.setdefault("metrics", {**DEFAULT_METRICS, "queue_size": len(manifest["queue"])})
     metrics["queue_size"] = len(manifest["queue"])

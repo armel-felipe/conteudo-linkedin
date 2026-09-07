@@ -7,7 +7,7 @@ description: Use quando um post em content/drafts/ tiver marco aprovado (approve
 
 ## Overview
 
-Core principle: levar conteúdo APROVADO (marco lógico `approved`) de `content/drafts/` ao LinkedIn via browser do OpenWork já logado, sem nova aprovação de texto e sem credenciais.
+Core principle: levar conteúdo APROVADO (marco lógico `approved`) de `content/drafts/` ao LinkedIn via browser do OpenWork já logado, sem nova aprovação de texto e sem credenciais. A aprovação é decidida no QA (`qa-draft`) e **dispara este agendamento**; aprovar e agendar são a mesma decisão processual.
 
 ## Quando Usar / Quando NÃO Usar
 

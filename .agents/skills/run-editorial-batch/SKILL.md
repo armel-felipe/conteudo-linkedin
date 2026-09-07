@@ -185,12 +185,12 @@ Processe um topic por vez. Para cada item, chame os stages normativos nesta orde
 ```text
 research-topic → brief_review_gauntlet → write-post → critique-post
 → correction_gauntlet → humanize_pass_1 → humanize_review_1
-→ humanize_pass_2 → humanize_review_2 → approval_humana
+→ humanize_pass_2 → humanize_review_2
 ```
 
 Cada stage usa executor e revisor separados. Cada Gauntlet executa no máximo 5 ciclos, só aprova com `coverage >= 0.99` e todos os critérios `>=9/10`; resposta inválida, artefato ausente ou falha de validação bloqueia o topic. `brief_review_gauntlet` exige duas fontes independentes quando disponíveis e conexão explícita com a experiência do autor. `critique-post` produz feedback; a correção acontece no `correction_gauntlet`. `humanize_pass_1` e `humanize_pass_2` são obrigatórios e cada um precisa de seu próprio review.
 
-O stage recebido deve ser igual ao `current_stage` persistido e todos os stages anteriores devem estar em `completed_stages`; execução fora de ordem é rejeitada. Depois de `approval_humana`, `state.yaml` e o item da fila passam a `completed`, `current_stage` passa a `null`.
+O stage recebido deve ser igual ao `current_stage` persistido e todos os stages anteriores devem estar em `completed_stages`; execução fora de ordem é rejeitada. Depois de `humanize_review_2` (stage terminal do lote), `state.yaml` e o item da fila passam a `completed`, `current_stage` passa a `null`. **O lote termina no draft em revisão (`drafted`); ele NÃO marca `approved`** — a aprovação é decisão humana no QA (`qa-draft`), que acontece junto com o agendamento.
 
 Se todos os stages de um topic já estiverem terminalizados com estado consistente, a retomada retorna o resultado estruturado `already_complete` e não executa callback, grava evento duplicado nem altera manifesto ou métricas. Quando a fila congelada não contém itens pendentes, o lote retorna `completed` estruturado. Estado `completed` incompleto ou divergente continua fail-closed como `completed_state_integrity`.
 
@@ -224,7 +224,7 @@ metrics:
   time_to_approval: "PT42M"
 ```
 
-The metric keys mean queue size, completed and blocked topics, cycles per stage, reviewer coverage, human-writing conformity, and elapsed time to human approval. `reviewer_coverage` is the arithmetic mean of `coverage` from every persisted review event in the run; `human_writing_conformity` is the arithmetic mean from only `humanize_review_1` and `humanize_review_2`; `cycles_per_stage` is the highest cycle number committed for each stage; and `time_to_approval` is the ISO-8601 duration from manifest `created_at` to the `approval_humana` commit timestamp, or `null` before approval. Metrics are updated in the manifest without changing the frozen queue.
+The metric keys mean queue size, completed and blocked topics, cycles per stage, reviewer coverage, human-writing conformity, and elapsed time to draft completion. `reviewer_coverage` is the arithmetic mean of `coverage` from every persisted review event in the run; `human_writing_conformity` is the arithmetic mean from only `humanize_review_1` and `humanize_review_2`; `cycles_per_stage` is the highest cycle number committed for each stage; and `time_to_approval` is the ISO-8601 duration from manifest `created_at` to the `humanize_review_2` commit timestamp, or `null` before the draft is complete. Metrics are updated in the manifest without changing the frozen queue.
 
 Se uma etapa falhar por execução ou revisão, registre o erro, fingerprint do artefato, último review, feedback e `cycle_count`, marque o topic como `blocked` e persista o checkpoint antes de continuar para o próximo item da fila. Ao retomar, preserve esses campos e recomece no mesmo `current_stage` sem zerar ciclos ou feedback. Uma falha individual não interrompe a rodada nem libera o topic para a etapa seguinte. Corrupção ou divergência de um estado já `completed` é terminal `completed_state_integrity`: não altera arquivos, métricas ou callbacks e não pode ser reclassificada como `blocked`. Ao final, o manifest deve registrar o resultado de todos os itens, inclusive `blocked`, e a aprovação humana continua sendo necessária antes de qualquer publicação.
 
@@ -258,12 +258,11 @@ stages:
   - humanize_review_1
   - humanize_pass_2
   - humanize_review_2
-  - approval_humana
 ```
 
 `publicar-linkedin` não faz parte da sequência e nunca é chamada por esta skill.
 
-Scheduling remains outside this batch and belongs to the separate LinkedIn publishing plan. The batch may finish with `approval_humana`, but publication or scheduling requires an explicit later call to `publicar-linkedin`.
+Scheduling remains outside this batch and belongs to the separate LinkedIn publishing plan. The batch finishes with `humanize_review_2` (draft em revisão); publication or scheduling requires an explicit later call to `publicar-linkedin`, preceded by human approval in the QA (`qa-draft`).
 
 ## Checklist Rápido
 
@@ -273,12 +272,13 @@ Scheduling remains outside this batch and belongs to the separate LinkedIn publi
 | Início | fila congelada em `runs/<run_id>/manifest.yaml` |
 | Cada etapa | artefato e estado persistidos antes de avançar |
 | Falha | `blocked` persistido; continuar para o próximo topic |
-| Fim | aprovação humana registrada; nenhuma publicação automática |
+| Fim | draft em revisão (`drafted`) registrado; nenhuma publicação automática |
 
 ## Erros Comuns
 
 - Processar topics em paralelo ou alterar a fila depois do congelamento.
 - Pesquisar um topic que não está `ready_for_research`.
-- Pular qualquer review, uma das duas passagens de `escrita-humana` ou a aprovação humana.
+- Pular qualquer review ou uma das duas passagens de `escrita-humana`.
+- Marcar `approved` dentro do lote — aprovação é decisão humana no QA (`qa-draft`).
 - Recomeçar do início em vez de retomar do checkpoint válido.
 - Chamar `publicar-linkedin` dentro da rodada.

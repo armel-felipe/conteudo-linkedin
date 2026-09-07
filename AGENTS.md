@@ -16,17 +16,28 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Saídas persistentes:** `research/signals/signals_*.yaml` (signals `discovered`/`clustered`), `research/topics/topics_*.yaml` (temas `candidate` e depois `ready_for_research`), `content/backlog.md` (ranqueado por score).
 - **Estado fim do bloco:** backlog com temas `ready_for_research`. **O bloco 1 não gera posts.**
 
-### Bloco 2 — Gerar o post (de tema a texto aprovado)
+### Bloco 2 — Gerar o post (de tema a draft em revisão)
 
-- **Objetivo:** transformar um tema `ready_for_research` em um post `approved`, em lote, com checkpoints e falha isolada.
+- **Objetivo:** transformar um tema `ready_for_research` em um **draft em revisão** (`drafted`), em lote, com checkpoints e falha isolada.
 - **Skill único de entrada:** `run-editorial-batch` (não invocar as etapas internas isoladamente numa rodada).
-- **Fluxo canônico por topic (em ordem obrigatória):** `research-topic` → `brief_review_gauntlet` → `write-post` → `critique-post` → `correction_gauntlet` → `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2` → `approval_humana`.
-- **Saídas persistentes:** `research/briefs/topic_*.md`, `content/drafts/topic_*.md`, `runs/<run_id>/manifest.yaml` + `state.yaml`/`events.yaml`/`reviews/`. O post **permanece em `content/drafts/`** mesmo após a aprovação.
-- **Estado fim do bloco:** post com marco editorial `approved` (arquivo ainda em `content/drafts/`). **O bloco 2 não publica, agenda nem move o arquivo.**
+- **Fluxo canônico por topic (em ordem obrigatória):** `research-topic` → `brief_review_gauntlet` → `write-post` → `critique-post` → `correction_gauntlet` → `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2`.
+- **Saídas persistentes:** `research/briefs/topic_*.md`, `content/drafts/topic_*.md`, `runs/<run_id>/manifest.yaml` + `state.yaml`/`events.yaml`/`reviews/`.
+- **Estado fim do bloco:** draft em `content/drafts/` com status `drafted`. **O bloco 2 NÃO marca `approved`** — aprovação é decisão humana no QA. E não publica, agenda nem move o arquivo.
+
+### Bloco 2.5 — QA (revisão humana dos drafts)
+
+- **Objetivo:** você ler cada draft e decidir: **aprovar** (com ou sem agenda), **pedir modificação**, ou **editar direto** e pedir ações ao agente.
+- **Skill:** `qa-draft` (revisão humana guiada).
+- **Entrada:** drafts em `content/drafts/` com status `drafted`.
+- **Saídas:**
+  - **Aprovar** → marca `approved` no topic; fica em `content/drafts/` (opcionalmente agenda na sequência, via Bloco 3).
+  - **Pedir modificação** → a instrução volta para correção (agente ajusta conforme pedido, repassa `escrita-humana` se pedido, revalida) e o draft permanece `drafted`.
+  - **Editar direto** → você edita o arquivo e informa ações ao agente (ex.: rodar `escrita-humana`, ajustar limite de caracteres); o agente executa e o draft permanece `drafted` até você aprovar.
+- **Estado fim do bloco:** drafts aprovados com marco `approved`.
 
 ### Bloco 3 — Publicar (texto aprovado para o LinkedIn)
 
-- **Objetivo:** publicar ou agendar um post aprovado no LinkedIn usando a sessão logada do browser do OpenWork.
+- **Objetivo:** publicar ou agendar um post `approved` no LinkedIn usando a sessão logada do browser do OpenWork.
 - **Skill único:** `publicar-linkedin`.
 - **Entrada:** posts com marco `approved` que ainda estão em `content/drafts/`. **Não entra post que já foi agendado** (já moveu para `published/`).
 - **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo; arquivo **movido literalmente** de `content/drafts/` para `content/published/` após a confirmação do agendamento/publicação.
@@ -34,9 +45,10 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 
 ### Regras dos blocos
 
-- **Fronteira rígida:** bloco 1 termina no backlog; bloco 2 termina em `approved`; bloco 3 termina no LinkedIn. Nenhum bloco chama o bloco seguinte automaticamente.
+- **Fronteira rígida:** bloco 1 termina no backlog; bloco 2 termina em `drafted`; bloco 2.5 (QA) marca `approved`; bloco 3 termina no LinkedIn. Nenhum bloco chama o bloco seguinte automaticamente.
 - **Operação em levas:** cada bloco é acionado por invocação explícita humana, quantas vezes necessário; não há automação do fluxo entre blocos.
 - **Seleção no bloco 2:** `--topics 1 | N | all | id1,id2` — sempre sobre temas `ready_for_research`.
+- **`approved` só é carimbado pelo humano (QA)**: o agente nunca marca `approved` por conta própria, nem no `run-editorial-batch`, nem no `write-post`.
 - **Nunca** publicar/agendar dentro do bloco 2 (`run-editorial-batch` não chama `publicar-linkedin`).
 
 ## Regras centrais
@@ -46,9 +58,9 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 3. **Pesquisa separada de redação**: quem pesquisa não escreve; quem escreve recebe briefing estruturado e NÃO pesquisa.
 4. **LinkedIn é fonte complementar**, não principal.
 5. **Posts**: 900–1500 caracteres / 150–250 palavras; esqueleto ABERTURA→SITUAÇÃO→APLICAÇÃO→PROBLEMA→DECISÃO→APRENDIZADO→PERGUNTA.
-6. **Todo post passa por `escrita-humana`** antes da aprovação.
+6. **Todo post passa por `escrita-humana`** antes de ser apresentado ao QA humano.
 7. **Nunca inventar dados** — todo fato do post tem origem no brief, com fonte/URL/data.
-8. **Todo post termina com `## Fontes`** — arquivos em `content/drafts/` e `content/approved/` devem terminar com uma seção `## Fontes` listando as fontes usadas (título, URL, data), herdadas do brief.
+8. **Todo post termina com `## Fontes`** — todo post em `content/drafts/` deve terminar com uma seção `## Fontes` listando as fontes usadas (título, URL, data), herdadas do brief.
 9. **Entrada de lote** — para executar uma rodada de um ou mais topics, usar `run-editorial-batch`; ele seleciona e congela a fila de `ready_for_research`, processa um topic por vez e persiste checkpoints.
 10. **Política Gauntlet** — briefs e posts passam pelo Gauntlet, com `coverage >= 0.99`, todos os critérios `>=9/10` e no máximo cinco ciclos; `hard_failures` sempre sobrepõem a aprovação agregada de 95%.
 11. **Falha isolada** — se um topic falhar, marcar somente esse item como `blocked`, persistir o checkpoint e continuar para o próximo item da fila; nunca liberar um item bloqueado para a etapa seguinte.
@@ -72,10 +84,10 @@ Cada arquivo de post fica em **exatamente uma** pasta de `content/`, e é **movi
 - `content/drafts/` — todo texto que o fluxo **gerou ou editou e ainda não foi agendado**. É a pasta de trabalho; um post pode sair daqui apenas para `published/` ou `arquived/`.
 - `content/published/` — texto **já agendado ou com publicação disparada** no LinkedIn (fim do Bloco 3).
 - `content/arquived/` — texto que você **descartou** do pipe (não será aproveitado). Só recebe arquivo por decisão explícita sua; começa e permanece vazia a menos que você descarte.
-- `approved` é um **marco editorial lógico** (fim do Bloco 2), NÃO uma pasta de destino física: o texto aprovado continua em `content/drafts/` até ser agendado.
+- `approved` é um **marco editorial lógico** (fim do Bloco 2.5), NÃO uma pasta de destino física. Aprovar **é a decisão de agendar**: o texto aprovado é movido de `content/drafts/` para `content/published/` no momento da aprovação. Não existe "approved pendente" em `drafts/`.
 
 **Regra de movimentação:** quando um post muda de fase, o arquivo é movido fisicamente:
-- **Agendar/publicar** → move de `content/drafts/` para `content/published/` (a aprovação editorial e o agendamento acontecem com o arquivo ainda em `drafts/`).
+- **Aprovar (= agendar/publicar)** → move de `content/drafts/` para `content/published/` no momento da aprovação (a decisão de aprovar já traz o agendamento junto).
 - **Descartar** → move de onde estiver para `content/arquived/` (apenas por decisão sua).
 
 O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Em qualquer momento de consulta: `published/` = agendados/disparados, `drafts/` = os demais, `arquived/` = descartados, `approved/` = vazia.

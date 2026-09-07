@@ -3,7 +3,7 @@
 Guia de todas as skills do projeto: objetivo, vínculo com o pipeline e como invocar.
 Referenciado pelo `AGENTS.md`.
 
-> **Blocos:** o pipeline opera em 3 blocos — **1 Pesquisar e escolher**, **2 Gerar o post**, **3 Publicar**. Veja `AGENTS.md` (§Blocos) e `README.md`.
+> **Blocos:** o pipeline opera em 3 blocos + 1 etapa de QA — **1 Pesquisar e escolher**, **2 Gerar o post (draft)**, **2.5 QA (aprovação humana)**, **3 Publicar**. Veja `AGENTS.md` (§Blocos) e `README.md`.
 
 ## Skills do pipeline (novas)
 
@@ -18,6 +18,7 @@ Referenciado pelo `AGENTS.md`.
 | `critique-post` | Criticar o draft antes da aprovação | Etapa 6 (ao publicar) | "critica o draft X" |
 | `gauntlet-loop` | Validar uma tarefa nova em ciclos isolados com gates determinísticos e bloqueio fail-closed | Procedimento transversal de revisão | "roda o gauntlet da tarefa X" |
 | `run-editorial-batch` | Selecionar e executar uma fila congelada de topics, sequencialmente, com checkpoints e bloqueio individual | Novo ponto de entrada para pesquisa e redação em lote | "roda um lote editorial com --topics N" |
+| `qa-draft` | Revisão humana de drafts: aprovar, pedir modificação ou editar direto antes do agendamento | Bloco 2.5, após os drafts e antes de publicar | "revisa os drafts", "aprova o topic X", "ajusta o draft X" |
 
 ## Skills mantidas (existentes)
 
