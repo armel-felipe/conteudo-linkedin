@@ -1,28 +1,28 @@
 ---
 name: publicar-linkedin
-description: Use quando um arquivo em content/approved/ precisar ser publicado ou agendado no LinkedIn pelo browser do OpenWork já logado, sem credenciais.
+description: Use quando um post em content/drafts/ tiver marco aprovado (approved) e precisar ser publicado ou agendado no LinkedIn pelo browser do OpenWork já logado, sem credenciais. Após confirmar o agendamento, move o arquivo para content/published/.
 ---
 
 # Publicar no LinkedIn (navegação assistida)
 
 ## Overview
 
-Core principle: levar conteúdo APROVADO de content/approved/ ao LinkedIn via browser do OpenWork já logado, sem nova aprovação de texto e sem credenciais.
+Core principle: levar conteúdo APROVADO (marco lógico `approved`) de `content/drafts/` ao LinkedIn via browser do OpenWork já logado, sem nova aprovação de texto e sem credenciais.
 
 ## Quando Usar / Quando NÃO Usar
 
-- Usar: arquivo em content/approved/ pronto para LinkedIn, envio "agora" ou agendado (dia/horário).
-- NÃO usar: conteúdo que ainda não está em approved/ (ex.: drafts, ideas), anexo automático de imagem (roadmap futuro), publicações corporativas/múltiplas contas.
+- Usar: post em `content/drafts/` com marco `approved` pronto para LinkedIn, envio "agora" ou agendado (dia/horário), e mover para `content/published/` após confirmação.
+- NÃO usar: conteúdo que ainda não tem marco editorial `approved` (ex.: drafts em revisão), anexo automático de imagem (roadmap futuro), publicações corporativas/múltiplas contas.
 
 ## Invocação (opção A — por argumento)
 
-- "Publica content/approved/<arquivo>.md agora"
-- "Publica content/approved/<arquivo>.md amanhã às 9h"
-- Validar que o arquivo EXISTE em content/approved/.
+- "Publica content/drafts/<arquivo>.md agora"
+- "Publica content/drafts/<arquivo>.md amanhã às 9h"
+- Validar que o arquivo EXISTE em content/drafts/ e que tem marco `approved`.
 
 ## Fluxo (passos numerados)
 
-1. Localizar arquivo em content/approved/ (valida existência; se não existir, parar e informar).
+1. Localizar arquivo em content/drafts/ (valida existência e marco approved; se não existir ou não tiver aprovação, parar e informar).
 2. Ler o arquivo Markdown e converter para texto LinkedIn (opção B): remover `# ` de título, converter/remover `**`/`__`/`*` sem vazar literal, manter quebras de linha, emojis e hashtags (`#palavra` preservadas).
 3. Observar primeiro a rota MCP Chrome DevTools, sem mutação: abrir o browser do OpenWork já logado (openwork_execute browser.open_url → linkedin.com/feed), localizar o target `linkedin.com` e registrar rota, resultado e evidência. Nunca iniciar por Playwright.
 4. Se MCP Chrome DevTools falhar antes de qualquer mutação confirmada, registrar o motivo e usar Playwright somente como `playwright_fallback` (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) com `OPENWORK_BROWSER_CDP_URL` quando necessário. O script usa `chromium.connectOverCDP`, seleciona somente um target `linkedin.com`, reporta URL/título/estado visual e falha fechado em `about:blank` ou ausência de target; não clica nem publica. Screenshot só pode ser solicitado com `OPENWORK_BROWSER_SCREENSHOT_PATH` apontando explicitamente para um caminho temporário.
@@ -61,7 +61,7 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 
 ## Ponto de espera (único)
 
-- Texto em approved/ já está aprovado → NÃO pedir nova confirmação textual.
+- Texto em `content/drafts/` com marco `approved` já está aprovado → NÃO pedir nova confirmação textual.
 - Envio "agora": PAUSA obrigatória para anexo manual de imagem; concluir só ao receber comando.
 - Agendado: não há nova aprovação textual; a validação visual do resumo, da prévia final e da publicação em "Publicações agendadas" é obrigatória antes de registrar sucesso.
 
@@ -85,7 +85,7 @@ Para uma divergência pós-agendamento, localizar a publicação existente na li
 
 Antes de registrar, preencher `docs/schemas/linkedin-scheduling-checklist.yaml`. O gate é literal e fail-closed: `scheduled_list_confirmed` e `timestamp_registered` devem ser booleanos `true`, nunca strings truthy como `"pass"` ou `"fail"`. O receipt deve ser válido, `summary_confirmed` e `confirmation_received` devem estar confirmados, `requested_timestamp` e `displayed_timestamp` devem ser não vazios e exatamente iguais, e `failure_state` deve ser `null`. Se qualquer estado for `not_run`, `simulated`, `blocked` ou falho, não registrar o timestamp.
 
-Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arquivo>.md`) um bloco no final:
+Após agendar com sucesso, anotar no arquivo do post (em `content/drafts/<arquivo>.md`) um bloco no final:
 
 ```markdown
 <!-- agendado: 2026-09-01T09:00 America/Sao_Paulo -->
@@ -97,16 +97,17 @@ Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arqu
 
 ## Movimentação do arquivo (OBRIGATÓRIA após confirmação)
 
-A confirmação em "Publicações agendadas" conclui a publicação/agendamento do arquivo. Nesse momento, **mover literalmente** o arquivo de `content/approved/` para `content/published/`:
+A confirmação em "Publicações agendadas" conclui a publicação/agendamento do arquivo. Nesse momento, **mover literalmente** o arquivo de `content/drafts/` para `content/published/`:
 
 ```bash
-git mv content/approved/<arquivo>.md content/published/<arquivo>.md
+git mv content/drafts/<arquivo>.md content/published/<arquivo>.md
 # caso o arquivo não esteja rastreado (não versionado), usar `mv` simples:
-# mv content/approved/<arquivo>.md content/published/<arquivo>.md
+# mv content/drafts/<arquivo>.md content/published/<arquivo>.md
 ```
 
 - O bloco `<!-- agendado: ... -->` registrado acima **acompanha o arquivo** na movimentação (fica em `content/published/<arquivo>.md`).
-- O estado correto de cada pasta é sempre: `approved/` só com posts ainda não publicados/agendados; `published/` só com posts já agendados ou com publicação disparada.
+- A aprovação editorial é um marco lógico (`approved`), não uma pasta: o post vem de `content/drafts/`, nunca de `content/approved/`.
+- O estado correto de cada pasta é sempre: `drafts/` = posts ainda não agendados; `published/` = posts já agendados ou com publicação disparada; `arquived/` = descartados (decisão humana); `approved/` = vazia.
 - Um arquivo de post vive em **exatamente uma** pasta de `content/` por vez.
 
 ## Protocolo browser dry-run (rodadas 4 e 5)
@@ -189,11 +190,11 @@ Para reagendamento, a sequência é `existing_post_menu → alter_schedule → d
 
 ## Erros comuns (Common Mistakes)
 
-- Colar Markdown cru (`**`, `__`, `*`, `# ` de título) — deve converter antes; hashtags `#palavra` são preservadas e não são erro.
-- Pedir nova aprovação de texto — o arquivo em approved/ já é aprovado.
-- Pular a pausa no envio "agora" — a pausa é obrigatória (anexo manual de imagem).
-- Tentar autenticar — usar a sessão já logada.
-- Não validar que o arquivo está em approved/ — bloquear se não estiver.
+ - Colar Markdown cru (`**`, `__`, `*`, `# ` de título) — deve converter antes; hashtags `#palavra` são preservadas e não são erro.
+ - Pedir nova aprovação de texto — o arquivo em `content/drafts/` com marco `approved` já é aprovado.
+ - Pular a pausa no envio "agora" — a pausa é obrigatória (anexo manual de imagem).
+ - Tentar autenticar — usar a sessão já logada.
+ - Não validar que o arquivo está em `content/drafts/` e com marco `approved` — bloquear se não estiver.
 - Agendar sem confirmar o valor exibido no seletor — o LinkedIn pode manter data/hora padrão; confirmar antes de clicar em "Agendar".
 - Concluir como sucesso sem verificar "Ver publicações agendadas" — o agendamento pode ter falhado silenciosamente.
 - Usar Playwright antes de tentar MCP Chrome DevTools, ou tratar o fallback visual como evidência ausente.

@@ -21,15 +21,15 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Objetivo:** transformar um tema `ready_for_research` em um post `approved`, em lote, com checkpoints e falha isolada.
 - **Skill único de entrada:** `run-editorial-batch` (não invocar as etapas internas isoladamente numa rodada).
 - **Fluxo canônico por topic (em ordem obrigatória):** `research-topic` → `brief_review_gauntlet` → `write-post` → `critique-post` → `correction_gauntlet` → `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2` → `approval_humana`.
-- **Saídas persistentes:** `research/briefs/topic_*.md`, `content/drafts/topic_*.md`, `runs/<run_id>/manifest.yaml` + `state.yaml`/`events.yaml`/`reviews/`, e por fim `content/approved/topic_*.md`.
-- **Estado fim do bloco:** arquivo em `content/approved/`. **O bloco 2 não publica nem agenda.**
+- **Saídas persistentes:** `research/briefs/topic_*.md`, `content/drafts/topic_*.md`, `runs/<run_id>/manifest.yaml` + `state.yaml`/`events.yaml`/`reviews/`. O post **permanece em `content/drafts/`** mesmo após a aprovação.
+- **Estado fim do bloco:** post com marco editorial `approved` (arquivo ainda em `content/drafts/`). **O bloco 2 não publica, agenda nem move o arquivo.**
 
 ### Bloco 3 — Publicar (texto aprovado para o LinkedIn)
 
 - **Objetivo:** publicar ou agendar um post aprovado no LinkedIn usando a sessão logada do browser do OpenWork.
 - **Skill único:** `publicar-linkedin`.
-- **Entrada:** somente arquivos em `content/approved/`. **Não entra post de `drafts/`.**
-- **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo; arquivo **movido literalmente** de `content/approved/` para `content/published/` após a confirmação do agendamento/publicação.
+- **Entrada:** posts com marco `approved` que ainda estão em `content/drafts/`. **Não entra post que já foi agendado** (já moveu para `published/`).
+- **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo; arquivo **movido literalmente** de `content/drafts/` para `content/published/` após a confirmação do agendamento/publicação.
 - **Estado fim do bloco:** publicado ou agendado com confirmação na lista; arquivo em `content/published/`.
 
 ### Regras dos blocos
@@ -67,14 +67,18 @@ Ver `mapa.md` — guia de todas as skills (objetivo, vínculo, invocação).
 
 ## Organização de posts em content/
 
-Cada arquivo de post fica em **exatamente uma** pasta de `content/`, e é **movido literalmente** (git mv / mv) quando o estado do fluxo evolui:
+Cada arquivo de post fica em **exatamente uma** pasta de `content/`, e é **movido literalmente** (git mv / mv) quando o estado do fluxo evolui. As pastas refletem a **fase física no pipe**:
 
-- `content/drafts/` — texto que o fluxo **gerou**, ainda precisa de revisão.
-- `content/approved/` — texto **selecionado do draft, revisado e escalado para a fila de agendamento**. Não precisa ainda estar agendado. (fim do Bloco 2)
-- `content/published/` — texto **já agendado ou com publicação disparada** no LinkedIn. (fim do Bloco 3)
-- `content/arquived/` — texto que **não seguirá mais no pipe** por qualquer razão; não será reaproveitado.
+- `content/drafts/` — todo texto que o fluxo **gerou ou editou e ainda não foi agendado**. É a pasta de trabalho; um post pode sair daqui apenas para `published/` ou `arquived/`.
+- `content/published/` — texto **já agendado ou com publicação disparada** no LinkedIn (fim do Bloco 3).
+- `content/arquived/` — texto que você **descartou** do pipe (não será aproveitado). Só recebe arquivo por decisão explícita sua; começa e permanece vazia a menos que você descarte.
+- `approved` é um **marco editorial lógico** (fim do Bloco 2), NÃO uma pasta de destino física: o texto aprovado continua em `content/drafts/` até ser agendado.
 
-**Regra de movimentação:** quando um post sobe de estado (draft → approved → published) ou é arquivado, o arquivo é movido fisicamente para a pasta correspondente. O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Publicar ou agendar move o arquivo de `approved/` para `published/`; arquivar move de onde estiver para `arquived/`.
+**Regra de movimentação:** quando um post muda de fase, o arquivo é movido fisicamente:
+- **Agendar/publicar** → move de `content/drafts/` para `content/published/` (a aprovação editorial e o agendamento acontecem com o arquivo ainda em `drafts/`).
+- **Descartar** → move de onde estiver para `content/arquived/` (apenas por decisão sua).
+
+O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Em qualquer momento de consulta: `published/` = agendados/disparados, `drafts/` = os demais, `arquived/` = descartados, `approved/` = vazia.
 
 ## Segurança
 

@@ -75,7 +75,7 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 - **critique-post** — crítica o rascunho (clareza, originalidade, tom humano, risco de alucinação, clichês de IA…).
 - **correction_gauntlet** — corrige o rascunho conforme a crítica.
 - **humanize_pass_1 / review_1** e **humanize_pass_2 / review_2** — duas passadas obrigatórias de escrita humana.
-- **approval_humana** — você aprova o texto; ele vai para `content/approved/topic_*.md`.
+- **approval_humana** — você aprova o texto; ele recebe o marco editorial `approved`, mantendo-se em `content/drafts/topic_*.md`.
 
 **Regras que valem para você ao operar o bloco 2:**
 
@@ -84,7 +84,7 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 - O lote **nunca publica nem agenda**. Ele termina em `approved`.
 - Só entram temas com `status: ready_for_research`.
 
-**Saída do bloco:** post aprovado em `content/approved/`. **Este bloco não publica.**
+**Saída do bloco:** post com marco editorial `approved` (arquivo ainda em `content/drafts/`). **Este bloco não publica.**
 
 ## Bloco 3 — Publicar (texto aprovado para o LinkedIn)
 
@@ -95,13 +95,13 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 **Como operar (invocação):**
 
 ```text
-Publique content/approved/topic_X.md agora
-Agende content/approved/topic_X.md para 2026-09-10 às 09:00 (horário de São Paulo)
+Publique content/drafts/topic_X.md agora
+Agende content/drafts/topic_X.md para 2026-09-10 às 09:00 (horário de São Paulo)
 ```
 
-**Entrada:** somente arquivos em `content/approved/`. **Nunca** um post de `drafts/`.
+**Entrada:** post em `content/drafts/` com marco `approved`. **Nunca** um post já agendado (que já moveu para `published/`).
 
-**Saída:** post publicado ou agendado no LinkedIn, com confirmação visual na lista; o horário é registrado no arquivo como `<!-- agendado: ... -->`; itens já publicados são marcados em `content/published/`.
+**Saída:** post publicado ou agendado no LinkedIn, com confirmação visual na lista; o horário é registrado no arquivo como `<!-- agendado: ... -->`; o arquivo **move** de `content/drafts/` para `content/published/`. `approved` é marco editorial (não pasta) e `content/approved/` permanece vazia.
 
 **Regras:**
 
@@ -124,13 +124,12 @@ discovered → clustered → candidate → ready_for_research → researched
 - `research/topics/` — os temas e scores (`candidate` → `ready_for_research`)
 - `content/backlog.md` — oportunidades ranqueadas
 - `research/briefs/` — briefs de pesquisa
-- `content/drafts/` — posts em elaboração
-- `content/approved/` — posts selecionados do draft, revisados e escalados para a fila de agendamento
+- `content/drafts/` — posts em elaboração (todo texto ainda não agendado, mantém-se aqui mesmo após o marco editorial `approved`)
 - `content/published/` — posts já agendados ou com publicação disparada
-- `content/arquived/` — posts que não seguirão mais no pipe
+- `content/arquived/` — posts descartados do pipe por decisão humana (começa vazia)
 - `runs/` — estado, checkpoints, reviews e métricas das rodadas de lote
 
-**Regra de movimentação:** cada post vive em **exatamente uma** pasta de `content/`. Ao mudar de estado, o arquivo é **movido literalmente** (git mv / mv): `draft → approved → published`, ou para `arquived/` quando o post não segue mais no pipe. O histórico de markers (`<!-- agendado: ... -->`) acompanha o arquivo.
+**Regra de movimentação:** cada post vive em **exatamente uma** pasta de `content/`. `approved` é um **marco editorial lógico** (fim do Bloco 2), não pasta física: o texto continua em `content/drafts/` até ser agendado. Ao mudar de fase, o arquivo é **movido literalmente** (git mv / mv): `draft → published` quando o Bloco 3 agenda/publica, ou `→ arquived/` quando você descarta o post. O histórico de markers (`<!-- agendado: ... -->`) acompanha o arquivo.
 
 ## Skills envolvidas e o que fazem
 
