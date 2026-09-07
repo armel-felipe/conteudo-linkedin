@@ -3,6 +3,8 @@
 Guia de todas as skills do projeto: objetivo, vínculo com o pipeline e como invocar.
 Referenciado pelo `AGENTS.md`.
 
+> **Blocos:** o pipeline opera em 3 blocos — **1 Pesquisar e escolher**, **2 Gerar o post**, **3 Publicar**. Veja `AGENTS.md` (§Blocos) e `README.md`.
+
 ## Skills do pipeline (novas)
 
 | Skill | Objetivo | Vínculo | Invocação |

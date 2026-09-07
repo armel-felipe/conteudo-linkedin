@@ -4,6 +4,41 @@
 
 Pipeline agentico manual de conteúdo para LinkedIn. Fluxo: frentes → sinais → debates → temas → oportunidades → tese → evidências → contexto do autor → post.
 
+## Blocos
+
+O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco tem fronteira nítida, saída persistente própria e é acionado por invocações específicas. **Um bloco não atravessa o outro.**
+
+### Bloco 1 — Pesquisar e escolher (gera ideias e a fila)
+
+- **Objetivo:** descobrir o que está acontecendo, agrupar em temas, pontuar e formar o backlog de oportunidades `ready_for_research`.
+- **Skills (fluxo canônico):** `discover-signals` → `analyze-discussions` (opcional, sob demanda) → `cluster-signals` → `score-opportunities`.
+- **Ferramenta de pesquisa do bloco:** skill `last30days` (primária).
+- **Saídas persistentes:** `research/signals/signals_*.yaml` (signals `discovered`/`clustered`), `research/topics/topics_*.yaml` (temas `candidate` e depois `ready_for_research`), `content/backlog.md` (ranqueado por score).
+- **Estado fim do bloco:** backlog com temas `ready_for_research`. **O bloco 1 não gera posts.**
+
+### Bloco 2 — Gerar o post (de tema a texto aprovado)
+
+- **Objetivo:** transformar um tema `ready_for_research` em um post `approved`, em lote, com checkpoints e falha isolada.
+- **Skill único de entrada:** `run-editorial-batch` (não invocar as etapas internas isoladamente numa rodada).
+- **Fluxo canônico por topic (em ordem obrigatória):** `research-topic` → `brief_review_gauntlet` → `write-post` → `critique-post` → `correction_gauntlet` → `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2` → `approval_humana`.
+- **Saídas persistentes:** `research/briefs/topic_*.md`, `content/drafts/topic_*.md`, `runs/<run_id>/manifest.yaml` + `state.yaml`/`events.yaml`/`reviews/`, e por fim `content/approved/topic_*.md`.
+- **Estado fim do bloco:** arquivo em `content/approved/`. **O bloco 2 não publica nem agenda.**
+
+### Bloco 3 — Publicar (texto aprovado para o LinkedIn)
+
+- **Objetivo:** publicar ou agendar um post aprovado no LinkedIn usando a sessão logada do browser do OpenWork.
+- **Skill único:** `publicar-linkedin`.
+- **Entrada:** somente arquivos em `content/approved/`. **Não entra post de `drafts/`.**
+- **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo aprovado; `content/published/` marcando o que já saiu.
+- **Estado fim do bloco:** publicado ou agendado com confirmação na lista.
+
+### Regras dos blocos
+
+- **Fronteira rígida:** bloco 1 termina no backlog; bloco 2 termina em `approved`; bloco 3 termina no LinkedIn. Nenhum bloco chama o bloco seguinte automaticamente.
+- **Operação em levas:** cada bloco é acionado por invocação explícita humana, quantas vezes necessário; não há automação do fluxo entre blocos.
+- **Seleção no bloco 2:** `--topics 1 | N | all | id1,id2` — sempre sobre temas `ready_for_research`.
+- **Nunca** publicar/agendar dentro do bloco 2 (`run-editorial-batch` não chama `publicar-linkedin`).
+
 ## Regras centrais
 
 1. **Nunca começar por "sobre o que escrever?"** — começar por "o que está acontecendo?" e "onde existe debate?".

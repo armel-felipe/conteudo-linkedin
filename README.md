@@ -1,309 +1,193 @@
-# Conteúdo LinkedIn — Pipeline de Inteligência de Conteúdo
+# Conteúdo LinkedIn — Pipeline de inteligência de conteúdo
 
-Pipeline agentico manual para transformar pesquisa em posts relevantes no LinkedIn.
+Pipeline agentico **manual** que transforma pesquisa em posts relevantes no LinkedIn, operado por você em **levas**. Você aciona cada etapa — e às vezes cada post dentro de uma etapa — de forma explícita; nada roda sozinho.
 
-O projeto começa pelo que está acontecendo e onde existe debate. Só depois escolhe uma oportunidade, pesquisa o tema, escreve e revisa o post.
+O projeto começa pelo que está acontecendo e onde existe debate, não por "sobre o que escrever".
 
-```text
-frentes → sinais → debates → temas → oportunidades → tese → evidências
-→ contexto do autor → post → revisão → aprovação → publicação
-```
+## Modelo de 3 blocos
 
-## Estado atual
-
-Este é o MVP manual. **Ainda não existe uma CLI própria nem scripts Python do pipeline.** As etapas são executadas pelo agente/OpenWork a partir das skills em `.agents/skills/`, e cada etapa salva um artefato no workspace.
-
-O pipeline não publica automaticamente. A publicação é feita pela skill `publicar-linkedin`, usando a sessão já autenticada do browser do OpenWork.
-
-## Pré-requisitos
-
-- OpenWork/OpenCode com acesso a este workspace.
-- Skill `last30days` disponível em `.agents/skills/last30days/`.
-- Python 3.12+ para executar o engine do `last30days` quando necessário.
-- `PyYAML` apenas para validar os arquivos YAML: `pip install pyyaml`.
-- Sessão do LinkedIn já autenticada no browser do OpenWork, somente para publicar.
-
-### Configuração inicial
-
-Se ainda não houver um `.env` local:
-
-```bash
-cp .env.example .env
-```
-
-O `.env.example` contém o comando portátil da pesquisa:
-
-```env
-LAST30DAYS_COMMAND=python3 ".agents/skills/last30days/scripts/last30days.py" --emit=compact --days=30
-```
-
-O `.env` é local e nunca deve ser commitado. Credenciais opcionais de fontes ficam somente nele.
-
-## Onde configurar o projeto
-
-Antes da primeira rodada, confira:
-
-| Arquivo | Função |
-|---|---|
-| `config/frentes.yaml` | Frentes, prioridades, keywords e perguntas de pesquisa |
-| `config/sources.yaml` | Fontes disponíveis e pesos |
-| `config/authors.yaml` | Autores para acompanhar; pode começar vazio |
-| `config/scoring.yaml` | Critérios e pesos do ranking |
-| `memory/professional_experience.md` | Experiências que podem fundamentar os posts |
-| `memory/opinions.md` | Opiniões e posições do autor |
-| `memory/writing_style.md` | Voz, estrutura, tamanho e restrições de escrita |
-
-As memórias atuais são rascunhos e devem ser revisadas pelo autor antes de serem tratadas como definitivas.
-
-## Como rodar o pipeline
-
-As frases abaixo são as invocações usadas no OpenWork. O agente deve ler a skill correspondente, executar somente aquela etapa e salvar o artefato indicado.
-
-### Ponto de entrada atual: lote editorial
-
-Para executar pesquisa e redação de vários topics, use `run-editorial-batch`. A skill seleciona somente topics `ready_for_research`, congela a fila em `runs/<run_id>/manifest.yaml`, processa um topic por vez e marca uma falha individual como `blocked` antes de continuar.
+O pipeline é dividido em **3 blocos lógicos**. Cada bloco é uma fase com fronteira nítida, saída própria e invocação manual. Um bloco não chama o próximo automaticamente.
 
 ```text
-Rode run-editorial-batch --topics 1
-Rode run-editorial-batch --topics 5
-Rode run-editorial-batch --topics all
-Rode run-editorial-batch --topics topic_20260831_01,topic_20260831_03
+┌────────────────────────┬──────────────────────────┬────────────────────────┐
+│  BLOCO 1               │   BLOCO 2                │   BLOCO 3              │
+│  Pesquisar e escolher  │   Gerar o post           │   Publicar             │
+│                        │                          │                        │
+│  sinais → temas        │  tema → brief → draft    │  aprovado → LinkedIn   │
+│  → oportunidades       │  → post aprovado         │  (publica ou agenda)   │
+└────────────────────────┴──────────────────────────┴────────────────────────┘
+   gera o backlog            gera texto aprovado          publica no LinkedIn
 ```
 
-O lote retoma do último checkpoint válido e nunca publica automaticamente. `orquestrador-runtime` permanece disponível apenas como legado e não é o ponto de entrada do fluxo novo.
-
-Cada etapa grava seu artefato, estado e evento; cada resultado de revisor é preservado por ciclo. Na retomada, somente etapas com artefato válido e review aprovado são puladas. Um topic aprovado nunca é reexecutado automaticamente. Um topic `blocked` retoma no mesmo estágio com fingerprint, review, feedback e `cycle_count` preservados. O manifesto também registra `queue_size`, `completed`, `blocked`, `cycles_per_stage`, `reviewer_coverage`, `human_writing_conformity` e `time_to_approval`; as três últimas métricas são, respectivamente, média de todos os `coverage`, média dos dois reviews `humanize_review_*` e duração ISO-8601 entre criação do manifesto e commit de `approval_humana`.
-
-### 1. Descobrir sinais — diariamente
-
-**Pedido ao agente:**
+### Fluxo de ponta a ponta
 
 ```text
-Rode discover-signals para as cinco frentes do projeto.
+frentes → sinais → temas → oportunidades → brief → draft → aprovação humana → publicação/agendamento
 ```
 
-Para uma rodada mais focada:
+## Bloco 1 — Pesquisar e escolher (gera ideias)
+
+**O que faz:** descobre o que está acontecendo e onde há debate, agrupa em temas, pontua e monta o backlog de oportunidades prontas para virar post.
+
+**Fluxo canônico do bloco:**
+
+```
+discover-signals → (analyze-discussions, opcional) → cluster-signals → score-opportunities
+```
+
+**Como operar (invocações que você faz no OpenWork):**
+
+| Ação (leva) | Como invocar | O que acontece |
+|---|---|---|
+| Descobrir sinais | `Rode discover-signals para as cinco frentes` | Coleta 20–50 sinais por frente e salva em `research/signals/signals_YYYY-MM-DD.yaml`. Usa a skill `last30days` como principal fonte. |
+| Aprofundar um debate *(opcional)* | `Analise o debate do signal X` | Adiciona um bloco de discussão a um signal promissor. |
+| Agrupar em temas | `Rode cluster-signals` | Agrupa sinais do mesmo fenômeno em temas e salva em `research/topics/topics_YYYY-MM-DD.yaml`. |
+| Pontuar o backlog | `Rode score-opportunities` | Dá nota 0–100 a cada tema e ordena o backlog em `content/backlog.md`. |
+
+**Saída do bloco:** backlog com temas `status: ready_for_research`. **Este bloco não escreve posts.**
+
+## Bloco 2 — Gerar o post (de tema a texto aprovado)
+
+**O que faz:** pega temas `ready_for_research` do backlog, pesquisa a fundo cada um, escreve o post, revisa e humaniza até a aprovação — em lote, com checkpoints e falha isolada (se um tema falha, os outros seguem).
+
+**Skill única:** `run-editorial-batch`. Você não chama as etapas internas isoladamente numa rodada.
+
+**Como operar (invocação):**
 
 ```text
-Rode discover-signals somente para a frente ia_aplicada.
+Rode run-editorial-batch --topics 1            # só o melhor tema elegível
+Rode run-editorial-batch --topics 5            # os 5 melhores
+Rode run-editorial-batch --topics all          # todos os prontos
+Rode run-editorial-batch --topics id1,id2      # temas específicos, nessa ordem
 ```
 
-**Entrada:** `config/frentes.yaml`, `config/sources.yaml` e a pesquisa `last30days`.
+**Fluxo canônico por tema (executado pelo lote, em ordem obrigatória):**
 
-**Saída:** `research/signals/signals_YYYY-MM-DD.yaml`, com aproximadamente 20–50 sinais por execução.
+```
+research-topic → brief_review_gauntlet → write-post → critique-post
+→ correction_gauntlet → humanize_pass_1 → humanize_review_1
+→ humanize_pass_2 → humanize_review_2 → approval_humana
+```
 
-Cada signal deve ter fonte, URL, data, observação, debate, evidências, possível ângulo, conexão com o autor e status `discovered`.
+- **research-topic** — pesquisa a fundo e gera o `research/briefs/topic_*.md` (fatos, números, argumentos dos dois lados, incertezas, fontes com URL e data).
+- **brief_review_gauntlet** — gate: exige ≥2 fontes independentes e conexão com a experiência do autor.
+- **write-post** — escreve o rascunho em `content/drafts/topic_*.md` (900–1500 caracteres, estrutura editorial, seção `## Fontes`). **Não pesquisa** — só usa o brief.
+- **critique-post** — crítica o rascunho (clareza, originalidade, tom humano, risco de alucinação, clichês de IA…).
+- **correction_gauntlet** — corrige o rascunho conforme a crítica.
+- **humanize_pass_1 / review_1** e **humanize_pass_2 / review_2** — duas passadas obrigatórias de escrita humana.
+- **approval_humana** — você aprova o texto; ele vai para `content/approved/topic_*.md`.
 
-Para a frente **IA Aplicada**, a pesquisa verifica também:
+**Regras que valem para você ao operar o bloco 2:**
 
-- quem usa IA em produção e para quê;
-- ganhos relatados em tempo, custo, qualidade ou receita;
-- aplicações que falharam;
-- pontos em que a decisão humana continua indispensável;
-- competências exigidas dos líderes;
-- automação versus aumento da capacidade das equipes;
-- casos reais versus marketing.
+- Cada gate (Gauntlet) usa até **5 ciclos** e aprova só com `coverage ≥ 0.99` e todos os critérios `≥ 9/10`. Falha → o tema vira `blocked` e **o lote segue para o próximo** (não para tudo).
+- Há **checkpoints persistentes** em `runs/<run_id>/` a cada etapa — dá para retomar de onde parou.
+- O lote **nunca publica nem agenda**. Ele termina em `approved`.
+- Só entram temas com `status: ready_for_research`.
 
-### 2. Aprofundar um debate — opcional
+**Saída do bloco:** post aprovado em `content/approved/`. **Este bloco não publica.**
 
-Use quando um signal tiver conflito, posições divergentes ou potencial especial.
+## Bloco 3 — Publicar (texto aprovado para o LinkedIn)
 
-**Pedido ao agente:**
+**O que faz:** publica ou agenda um post aprovado no LinkedIn, usando a sessão já logada do browser do OpenWork. **Sem credenciais** — só a sessão do browser.
+
+**Skill única:** `publicar-linkedin`.
+
+**Como operar (invocação):**
 
 ```text
-Analise o debate do signal signal_YYYYMMDD_001 usando analyze-discussions.
+Publique content/approved/topic_X.md agora
+Agende content/approved/topic_X.md para 2026-09-10 às 09:00 (horário de São Paulo)
 ```
 
-**Entrada:** um signal em `research/signals/`.
+**Entrada:** somente arquivos em `content/approved/`. **Nunca** um post de `drafts/`.
 
-**Saída:** bloco `discussion:` no signal, com pergunta central, posição A, posição B, desacordo, pergunta sem resposta e oportunidade de conteúdo.
+**Saída:** post publicado ou agendado no LinkedIn, com confirmação visual na lista; o horário é registrado no arquivo como `<!-- agendado: ... -->`; itens já publicados são marcados em `content/published/`.
 
-### 3. Agrupar sinais em temas — duas vezes por semana
+**Regras:**
 
-**Pedido ao agente:**
+- Rota do browser: **MCP Chrome DevTools → Playwright (fallback) → screenshot/visão → stop**. MCP primeiro; Playwright só se MCP falhar antes de qualquer mutação.
+- Agendar exige confirmar data e hora, refazer o horário após trocar a data, conferir prévia e confirmar em "Publicações agendadas".
+- Nunca abrir um novo composer para reagendar uma publicação existente (evita duplicata) — use `Alterar agenda`.
+- A aprovação editorial (bloco 2) é separada da publicação (bloco 3).
 
-```text
-Rode cluster-signals sobre os signals ainda não agrupados.
-```
-
-**Entrada:** `research/signals/signals_*.yaml`.
-
-**Saída:** `research/topics/topics_YYYY-MM-DD.yaml`.
-
-Signals agrupados recebem status `clustered`. Cada topic nasce com status `candidate` e contém os sinais relacionados, a pergunta central, uma tese possível e a conexão com o autor.
-
-### 4. Pontuar oportunidades — duas vezes por semana
-
-**Pedido ao agente:**
-
-```text
-Rode score-opportunities sobre os topics candidatos.
-```
-
-**Entrada:** `research/topics/topics_*.yaml` e `config/scoring.yaml`.
-
-**Saída:** `content/backlog.md`, ordenado por score.
-
-Cada topic recebe nota de 0 a 10 em sete critérios:
-
-```text
-freshness       15%
-relevance       20%
-debate          15%
-evidence        10%
-author_fit      20%
-originality     10%
-linkedin_fit    10%
-```
-
-A soma ponderada é multiplicada por 10, gerando score final de 0 a 100. Os melhores topics recebem status `ready_for_research` no arquivo `research/topics/topics_*.yaml`.
-
-### 5. Execução editorial — somente pelo lote
-
-Para uma rodada, não invoque as etapas editoriais abaixo isoladamente: escolha os topics via `run-editorial-batch`, que congela a fila, executa a sequência completa e registra checkpoints. Pedidos isolados continuam permitidos fora de uma rodada batch, para trabalho sob demanda em um único topic.
-
-**Pedido ao agente:**
-
-```text
-Rode `run-editorial-batch --topics topic_YYYYMMDD_01`.
-```
-
-**Entrada:** topic escolhido, signals relacionados, `last30days` e busca web manual.
-
-**Saída:** `research/briefs/topic_YYYYMMDD_01.md`.
-
-O brief deve conter fatos, números, estudos, argumentos favoráveis e contrários, incertezas, conexão com a experiência do autor, ângulos possíveis e riscos de afirmações não verificadas. Toda evidência precisa ter fonte, URL e data.
-
-Depois dessa etapa, revise o brief. Se faltar evidência ou contexto, peça uma nova pesquisa antes de escrever.
-
-### 6. Contrato das etapas do lote
-
-Só execute depois que o brief estiver pronto e revisado.
-
-Dentro do lote, as etapas são chamadas nesta ordem: `research-topic` → `brief_review_gauntlet` → `write-post` → `critique-post` → `correction_gauntlet` → `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2` → `approval_humana`.
-
-**Entrada:** `research/briefs/topic_YYYYMMDD_01.md` e os três arquivos em `memory/`.
-
-**Saída:** `content/drafts/topic_YYYYMMDD_01.md`.
-
-O post deve ter:
-
-- 900–1500 caracteres;
-- 150–250 palavras;
-- texto + imagem prevista para anexo manual;
-- uma ideia principal;
-- abertura forte e específica;
-- situação real;
-- ferramenta ou aplicação específica;
-- problema encontrado;
-- decisão tomada;
-- aprendizado operacional;
-- pergunta final.
-
-O writer não faz pesquisa nova. Todo fato precisa estar no brief. O arquivo deve terminar com `## Fontes`, listando título, URL e data das fontes usadas.
-
-### 7. Artefatos produzidos pelo lote
-
-O lote persiste `runs/<run_id>/manifest.yaml` e `runs/<run_id>/topics/<topic_id>/state.yaml`, além dos artefatos editoriais de cada etapa.
-
-Fora de uma rodada batch, também é permitido pedir `critique-post` isoladamente para um draft.
-
-A crítica verifica clareza, originalidade, credibilidade, tom humano, densidade, relevância, consistência, evidências, risco de alucinação e clichês de IA.
-
-O agente deve apontar problemas específicos e sugerir correções, mas não substituir o texto inteiro automaticamente.
-
-### 8. Revisar com escrita humana — obrigatório
-
-Depois da crítica e dos ajustes necessários, o lote executa duas passagens independentes:
-
-Fora de uma rodada batch, também é permitido pedir `escrita-humana` isoladamente para um draft.
-
-Essa revisão preserva sua voz, remove padrões de texto genérico e verifica novamente clareza, naturalidade, fontes, tamanho e estrutura.
-
-### 9. Aprovar
-
-Leia o draft revisado. Só depois da sua aprovação o arquivo pode ir para `content/approved/`.
-
-O arquivo aprovado deve manter:
-
-- o texto final;
-- a seção `## Fontes` no final;
-- as fontes herdadas do brief;
-- nenhuma afirmação sem origem rastreável.
-
-### 10. Publicar ou agendar no LinkedIn
-
-**Publicação imediata:**
-
-```text
-Publique content/approved/topic_YYYYMMDD_01.md agora.
-```
-
-**Agendamento:**
-
-```text
-Agende content/approved/topic_YYYYMMDD_01.md para 2026-09-10 às 09:00, horário de São Paulo.
-```
-
-A skill `publicar-linkedin` usa a sessão logada do browser. Para agendamento, ela confirma data e hora no seletor, verifica o post em “Ver publicações agendadas” e registra o horário no arquivo:
-
-```markdown
-<!-- agendado: 2026-09-10T09:00 America/Sao_Paulo -->
-```
-
-A imagem continua sendo anexada manualmente quando necessário. A aprovação editorial é separada da operação de publicação/agendamento: somente um arquivo em `content/approved/` pode entrar nessa etapa.
-
-Na publicação pelo browser, a rota é `MCP Chrome DevTools → Playwright (fallback) → screenshot + visão nativa → image-analyzer(native_failed) → stop`. MCP deve ser tentado primeiro; Playwright só pode ser usado com `playwright_fallback` quando MCP falhar antes de uma mutação confirmada. Registre rota, razão, resultado e evidência. O fallback visual ocorre somente depois das duas rotas de controle e não substitui evidência. Em mutação ambígua, pare em fail-closed, não repita e não abra novo composer. O agendamento exige seleção explícita de data e horário, nova seleção do horário após trocar a data, resumo visual antes de `Avançar`, prévia final antes de `Agendar` e confirmação em `Publicações agendadas`. Para qualquer divergência pós-agendamento, use a publicação existente e `... → Alterar agenda`, nunca crie duplicata. O timestamp só é registrado no arquivo aprovado depois da confirmação na lista, sem nova aprovação textual.
-
-O validador puro dos eventos observados está em `scheduling_contract.py`; o fallback de screenshot é condicional, imagem ilegível encerra o fluxo sem registrar timestamp e o reagendamento nunca usa `new_composer`.
-
-## Sequência resumida
-
-```text
-1. discover-signals
-2. analyze-discussions (opcional)
-3. cluster-signals
-4. score-opportunities
-5. `run-editorial-batch`
-6. aprovação humana
-7. `publicar-linkedin` (somente após aprovação, fora do lote)
-```
-
-Dentro de `run-editorial-batch`, não pule a revisão do brief, a crítica, a correção Gauntlet, as duas revisões com `escrita-humana` nem a aprovação humana. `orquestrador-runtime` continua legado e não deve ser usado como alternativa.
-
-O agendamento permanece separado do lote e pertence ao plano de publicação do LinkedIn. Só chame `publicar-linkedin` depois da aprovação humana e por solicitação explícita.
-
-## Estados dos artefatos
+## Estado dos artefatos do pipeline
 
 ```text
 discovered → clustered → candidate → ready_for_research → researched
 → drafted → approved → published → archived
 ```
 
-Os estados dos topics ficam em `research/topics/topics_*.yaml`. Os arquivos de posts ficam em `content/drafts/`, `content/approved/` e `content/published/`.
-
-## Estrutura
-
-- `config/` — frentes, fontes, autores e scoring
-- `research/signals/` — sinais coletados
-- `research/topics/` — agrupamentos e oportunidades
-- `research/briefs/` — briefs de pesquisa
+- `research/signals/` — os sinais (`discovered` → `clustered`)
+- `research/topics/` — os temas e scores (`candidate` → `ready_for_research`)
 - `content/backlog.md` — oportunidades ranqueadas
+- `research/briefs/` — briefs de pesquisa
 - `content/drafts/` — posts em elaboração
-- `content/approved/` — posts aprovados
-- `content/published/` — posts publicados
-- `memory/` — experiência, opiniões e estilo
-- `.agents/skills/` — skills do pipeline
-- `editorial_batch.py` — contratos reutilizáveis de seleção e persistência do batch; não é uma CLI própria
-- `docs/roadmap.md` — ações futuras
-- `mapa.md` — guia de todas as skills
-- `AGENTS.md` — contrato de operação
+- `content/approved/` — posts aprovados (prontos para publicar)
+- `content/published/` — posts já publicados
+- `runs/` — estado, checkpoints, reviews e métricas das rodadas de lote
 
-## Skills e documentação
+## Skills envolvidas e o que fazem
 
-Consulte `mapa.md` para saber o objetivo, o vínculo e a invocação de cada skill. Consulte `AGENTS.md` antes de alterar o fluxo.
+Cada skill é invocada por frase no OpenWork. O agente lê a skill e executa só aquela etapa.
 
-O roadmap está em `docs/roadmap.md`. Ele controla melhorias futuras como configurar X, melhorar a busca web, adicionar scripts, logs e automação.
+| Skill | Bloco | O que faz | Quando invocar |
+|---|---|---|---|
+| `last30days` | 1 | Pesquisa o que se discute nos últimos 30 dias em Reddit, HN, YouTube, TikTok e mais | dentro do `discover-signals` (principal) |
+| `discover-signals` | 1 | Descobre 20–50 sinais por frente e persiste em `research/signals/` | diariamente |
+| `analyze-discussions` | 1 | Aprofunda o debate de um signal promissor | opcional, sob demanda |
+| `cluster-signals` | 1 | Agrupa sinais em temas com pergunta central e tese | 2×/semana |
+| `score-opportunities` | 1 | Pontua 0–100 cada tema e ordena o backlog | 2×/semana |
+| `run-editorial-batch` | 2 | Roda pesquisa → escrita → humanização → aprovação em lote | quando quiser gerar posts |
+| `research-topic` | 2 | Pesquisa a fundo e gera o brief | dentro do lote |
+| `write-post` | 2 | Escreve o draft do post a partir do brief | dentro do lote |
+| `critique-post` | 2 | Critica o draft antes dos ajustes | dentro do lote |
+| `gauntlet-loop` | 2 | Validar tarefas com gates determinísticos e bloqueio fail-closed | revisão transversal |
+| `escrita-humana` | 2 | Humaniza o texto preservando sua voz | dentro do lote (2 passadas) |
+| `publicar-linkedin` | 3 | Publica/agenda post aprovado no LinkedIn via browser logado | sempre após aprovação |
+| `visao-nativa-primeiro` | — | Política visual (visão nativa antes de image-analyzer) | tarefas visuais |
+| `orquestrador-runtime` | — | **LEGADO** — não usar no fluxo novo | nunca |
+
+Consulte `mapa.md` para o objetivo, o vínculo e a invocação detalhados de cada skill.
+
+## Pré-requisitos
+
+- OpenWork/OpenCode com acesso a este workspace.
+- Skill `last30days` disponível em `.agents/skills/last30days/`.
+- Python 3.12+ para executar o engine do `last30days`.
+- `PyYAML` para validar os arquivos YAML: `pip install pyyaml`.
+- Sessão do LinkedIn já autenticada no browser do OpenWork — **somente** para o bloco 3.
+
+### Configuração inicial
+
+```bash
+cp .env.example .env
+```
+
+O `.env` é local e nunca deve ser commitado. O `.env.example` traz o comando portátil da pesquisa `last30days`.
+
+## Onde configurar o projeto
+
+| Arquivo | Função |
+|---|---|
+| `config/frentes.yaml` | Frentes, prioridades, keywords e perguntas de pesquisa |
+| `config/sources.yaml` | Fontes disponíveis e pesos |
+| `config/authors.yaml` | Autores para acompanhar |
+| `config/scoring.yaml` | Critérios e pesos do ranking |
+| `memory/professional_experience.md` | Experiências que fundamentam os posts |
+| `memory/opinions.md` | Opiniões e posições do autor |
+| `memory/writing_style.md` | Voz, estrutura, tamanho e restrições de escrita |
+
+> As memórias são rascunhos e devem ser revisadas por você antes de serem tratadas como definitivas.
+
+## Sequência resumida por bloco
+
+```text
+Bloco 1: discover-signals → (analyze) → cluster-signals → score-opportunities  → backlog
+Bloco 2: run-editorial-batch --topics N                                           → approved
+Bloco 3: publicar-linkedin                                                         → LinkedIn
+```
+
+O roadmap está em `docs/roadmap.md`. O guia completo das skills está em `mapa.md`. O contrato de operação está em `AGENTS.md`.
 
 ## Segurança
 
