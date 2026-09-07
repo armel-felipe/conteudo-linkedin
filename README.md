@@ -105,10 +105,13 @@ Agende content/approved/topic_X.md para 2026-09-10 às 09:00 (horário de São P
 
 **Regras:**
 
-- Rota do browser: **MCP Chrome DevTools → Playwright (fallback) → screenshot/visão → stop**. MCP primeiro; Playwright só se MCP falhar antes de qualquer mutação.
+- Rota do browser, em ordem: **MCP Chrome DevTools → Playwright (`playwright_fallback`) → screenshot → visão → stop**. MCP é a rota inicial; Playwright só pode ser usado como `playwright_fallback` quando MCP falhar antes de uma mutação confirmada.
+- **Registrar** em cada execução a rota escolhida e o **motivo**: registro de rota, razão, resultado e evidência.
+- O fallback visual (screenshot + visão) ocorre **depois das duas rotas** de controle e não substitui evidência; em mutação ambígua, pare em **fail-closed**, não repita.
 - Agendar exige confirmar data e hora, refazer o horário após trocar a data, conferir prévia e confirmar em "Publicações agendadas".
 - Nunca abrir um novo composer para reagendar uma publicação existente (evita duplicata) — use `Alterar agenda`.
 - A aprovação editorial (bloco 2) é separada da publicação (bloco 3).
+- O timestamp só é registrado no arquivo aprovado depois da confirmação na lista, sem nova aprovação textual.
 
 ## Estado dos artefatos do pipeline
 

@@ -1,95 +1,114 @@
-date: "2026-09-06"
+date: '2026-09-06'
 status: inconclusive
-purpose: "Comparar scores congelados com decisões editoriais e qualidade observada em artefatos persistidos."
+purpose: Comparar scores congelados com decisões editoriais e qualidade observada
+  em artefatos persistidos.
 method:
-  scoring_source: "research/topics/topics_scored_2026-09-06.yaml"
+  scoring_source: research/topics/topics_scored_2026-09-06.yaml
   decision_sources:
-    - "research/topics/topics_scored_2026-09-06.yaml"
-    - "content/backlog.md"
+  - research/topics/topics_scored_2026-09-06.yaml
+  - content/backlog.md
   quality_sources:
-    - "research/briefs/topic_20260901_03.md"
-    - "research/briefs/topic_20260901_04.md"
-    - "research/audits/source-quality-2026-09-06.yaml"
-  rule: "Classificar somente com base em score, status, briefs e auditoria de fontes persistidos; ausência de evidência comparável permanece inconclusiva."
+  - research/briefs/topic_20260901_03.md
+  - research/briefs/topic_20260901_04.md
+  - research/audits/source-quality-2026-09-06.yaml
+  rule: Classificar somente com base em score, status, briefs e auditoria de fontes
+    persistidos; ausência de evidência comparável permanece inconclusiva.
   excluded_signals:
-    - "LinkedIn engagement"
+  - LinkedIn engagement
 sample_paths:
-  - "research/topics/topics_scored_2026-09-06.yaml"
-  - "content/backlog.md"
-  - "research/briefs/topic_20260901_03.md"
-  - "research/briefs/topic_20260901_04.md"
-  - "research/audits/source-quality-2026-09-06.yaml"
-sample_fingerprint: "sha256:cd98547ef067b760997ae745ba661c3762aa9f4c9696fd99e161889ce75cf7b8"
+- research/topics/topics_scored_2026-09-06.yaml
+- content/backlog.md
+- research/briefs/topic_20260901_03.md
+- research/briefs/topic_20260901_04.md
+- research/audits/source-quality-2026-09-06.yaml
+sample_fingerprint: sha256:724f18558918c60376a4c82c159f0e8db3be3e53dbfd7566e08578865d1feb31
 fingerprint_history:
-  - frozen_at: "2026-09-06"
-    fingerprint: "sha256:09a8624dbd8441478bd5092586bf8f1c01aaef604fa090a427de726c2cbc2541"
-  - reason: "Amostra evoluiu após o congelamento: topic_20260901_04 passou a approved no topics_scored_2026-09-06.yaml e uma nova rodada editorial (07/09) adicionou 4 temas ao content/backlog.md. Fingerprint re-registrado no estado atual."
+- frozen_at: '2026-09-06'
+  fingerprint: sha256:09a8624dbd8441478bd5092586bf8f1c01aaef604fa090a427de726c2cbc2541
+- reason: 'Amostra evoluiu após o congelamento: topic_20260901_04 passou a approved
+    no topics_scored_2026-09-06.yaml e uma nova rodada editorial (07/09) adicionou
+    4 temas ao content/backlog.md. Fingerprint re-registrado no estado atual.'
+- frozen_at: '2026-09-07'
+  reason: Backlog reduzido aos temas ainda elegíveis após a rodada do Bloco 2 (topics
+    de 07/09 viraram approved). Fingerprint re-registrado.
 topics:
-  - id: topic_20260901_01
-    score_predicted: 67.5
-    editorial_decision: inconclusive
-    score_status: approved
-    backlog_status: ready_for_research
-    quality_observed: unresolved
-    classification: inconclusive
-    reason: "O score está approved, mas o backlog permanece ready_for_research; a divergência de status e a ausência de brief ou auditoria de fontes tornam a comparação inconclusiva."
-    evidence_refs:
-      - "research/topics/topics_scored_2026-09-06.yaml:2-27"
-      - "content/backlog.md:3-15"
-  - id: topic_20260901_02
-    score_predicted: 69.75
-    editorial_decision: inconclusive
-    score_status: approved
-    backlog_status: ready_for_research
-    quality_observed: not_observed
-    classification: inconclusive
-    reason: "O score está approved, mas o backlog permanece ready_for_research; a ausência de brief ou auditoria de fontes não prova qualidade fraca, portanto não sustenta false_positive."
-    evidence_refs:
-      - "research/topics/topics_scored_2026-09-06.yaml:28-51"
-      - "content/backlog.md:3-15"
-  - id: topic_20260901_03
-    score_predicted: 65.7
-    editorial_decision: inconclusive
-    score_status: approved
-    backlog_status: ready_for_research
-    quality_observed: strong_verified_mechanisms
-    classification: inconclusive
-    reason: "O score está approved, mas o backlog permanece ready_for_research; embora o brief verifique mecanismos técnicos, não há decisão editorial reconciliada nem resultado independente para confirmar acerto preditivo."
-    evidence_refs:
-      - "research/topics/topics_scored_2026-09-06.yaml:52-74"
-      - "research/briefs/topic_20260901_03.md:17-36"
-      - "research/briefs/topic_20260901_03.md:68-81"
-  - id: topic_20260901_04
-    score_predicted: 63.63
-    editorial_decision: inconclusive
-    score_status: approved
-    backlog_status: ready_for_research
-    quality_observed: weak_public_evidence
-    classification: inconclusive
-    reason: "O score está approved, mas o backlog permanece ready_for_research; as limitações do brief não resolvem a divergência nem fornecem evidência forte verificável para caracterizar false_negative."
-    evidence_refs:
-      - "research/topics/topics_scored_2026-09-06.yaml:75-98"
-      - "research/briefs/topic_20260901_04.md:15-20"
-      - "research/briefs/topic_20260901_04.md:91-114"
-      - "research/audits/source-quality-2026-09-06.yaml:18-85"
-  - id: topic_20260901_05
-    score_predicted: 58.75
-    editorial_decision: ready_for_research
-    score_status: ready_for_research
-    backlog_status: ready_for_research
-    quality_observed: not_observed
-    classification: inconclusive
-    reason: "O score é o menor da amostra, mas o tópico ainda está ready_for_research e não possui brief ou auditoria de fontes observável; não há base persistida para afirmar qualidade forte ou fraca."
-    evidence_refs:
-      - "research/topics/topics_scored_2026-09-06.yaml:99-120"
-      - "content/backlog.md:59-71"
+- id: topic_20260901_01
+  score_predicted: 67.5
+  editorial_decision: inconclusive
+  score_status: approved
+  backlog_status: ready_for_research
+  quality_observed: unresolved
+  classification: inconclusive
+  reason: O score está approved, mas o backlog permanece ready_for_research; a divergência
+    de status e a ausência de brief ou auditoria de fontes tornam a comparação inconclusiva.
+  evidence_refs:
+  - research/topics/topics_scored_2026-09-06.yaml:2-27
+  - content/backlog.md:3-15
+- id: topic_20260901_02
+  score_predicted: 69.75
+  editorial_decision: inconclusive
+  score_status: approved
+  backlog_status: ready_for_research
+  quality_observed: not_observed
+  classification: inconclusive
+  reason: O score está approved, mas o backlog permanece ready_for_research; a ausência
+    de brief ou auditoria de fontes não prova qualidade fraca, portanto não sustenta
+    false_positive.
+  evidence_refs:
+  - research/topics/topics_scored_2026-09-06.yaml:28-51
+  - content/backlog.md:3-15
+- id: topic_20260901_03
+  score_predicted: 65.7
+  editorial_decision: inconclusive
+  score_status: approved
+  backlog_status: ready_for_research
+  quality_observed: strong_verified_mechanisms
+  classification: inconclusive
+  reason: O score está approved, mas o backlog permanece ready_for_research; embora
+    o brief verifique mecanismos técnicos, não há decisão editorial reconciliada nem
+    resultado independente para confirmar acerto preditivo.
+  evidence_refs:
+  - research/topics/topics_scored_2026-09-06.yaml:52-74
+  - research/briefs/topic_20260901_03.md:17-36
+  - research/briefs/topic_20260901_03.md:68-81
+- id: topic_20260901_04
+  score_predicted: 63.63
+  editorial_decision: inconclusive
+  score_status: approved
+  backlog_status: ready_for_research
+  quality_observed: weak_public_evidence
+  classification: inconclusive
+  reason: O score está approved, mas o backlog permanece ready_for_research; as limitações
+    do brief não resolvem a divergência nem fornecem evidência forte verificável para
+    caracterizar false_negative.
+  evidence_refs:
+  - research/topics/topics_scored_2026-09-06.yaml:75-98
+  - research/briefs/topic_20260901_04.md:15-20
+  - research/briefs/topic_20260901_04.md:91-114
+  - research/audits/source-quality-2026-09-06.yaml:18-85
+- id: topic_20260901_05
+  score_predicted: 58.75
+  editorial_decision: ready_for_research
+  score_status: ready_for_research
+  backlog_status: ready_for_research
+  quality_observed: not_observed
+  classification: inconclusive
+  reason: O score é o menor da amostra, mas o tópico ainda está ready_for_research
+    e não possui brief ou auditoria de fontes observável; não há base persistida para
+    afirmar qualidade forte ou fraca.
+  evidence_refs:
+  - research/topics/topics_scored_2026-09-06.yaml:99-120
+  - content/backlog.md:59-71
 summary:
   false_positive_topics: []
   false_negative_topics: []
   inconclusive_topics:
-    - topic_20260901_01
-    - topic_20260901_02
-    - topic_20260901_03
-    - topic_20260901_04
-    - topic_20260901_05
-  conclusion: "As divergências entre score_status e backlog_status afetam quatro tópicos e tornam suas decisões editoriais inconclusivas; o tópico 5 tem status coincidente, mas permanece inconclusivo na classificação por ausência de brief ou auditoria e qualidade não observada."
+  - topic_20260901_01
+  - topic_20260901_02
+  - topic_20260901_03
+  - topic_20260901_04
+  - topic_20260901_05
+  conclusion: As divergências entre score_status e backlog_status afetam quatro tópicos
+    e tornam suas decisões editoriais inconclusivas; o tópico 5 tem status coincidente,
+    mas permanece inconclusivo na classificação por ausência de brief ou auditoria
+    e qualidade não observada.
