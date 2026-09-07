@@ -41,14 +41,80 @@ fallback**.
 - [x] Criar scripts Python determinísticos para scoring e clustering; artefatos
   gerados em `research/topics/topics_scored_2026-09-06.yaml` e
   `research/topics/clusters_2026-09-06.yaml`.
-- [ ] Executar a matriz de cenários de agendamento somente quando existir uma
-  publicação real e houver autorização explícita.
+- [x] Executar um cenário real de novo agendamento de publicação com autorização
+  explícita: `topic_20260901_03` confirmado para 08/09/2026 às 10:00 (BRT), via
+  MCP Chrome DevTools, com confirmação na lista de publicações agendadas.
+- [x] Matriz de agendamento validada: novo agendamento hoje às
+  22:00 e reagendamento da mesma publicação para 10/09/2026 às 10:00 foram
+  confirmados na lista; os dois cenários negativos foram validados pelos
+  contratos locais, sem mutação adicional no LinkedIn.
 
 ### P2 — Evolução do sistema
 
-- [ ] Criar automação recorrente após os gates P0/P1 estarem estáveis.
-- [ ] Ajustar periodicamente as frentes conforme métricas de engajamento e posicionamento.
-- [ ] Revisar fontes e pesos de scoring com base na qualidade observada.
+#### P2.1 — Automação recorrente
+
+- [~] Definir o escopo mínimo da rodada automática: descoberta de sinais,
+  clusterização e seleção de topics `ready_for_research`.
+- [~] Definir frequência, timezone, modelo e local dos artefatos persistentes.
+- [x] Definir os gates que permanecem humanos: aprovação do brief, escrita,
+  humanização e autorização de publicação/agendamento.
+- [!] Não criar nem ativar uma Automation enquanto a execução depender de o
+  OpenWork Desktop, o runner e o workspace permanecerem disponíveis. A
+  limitação foi registrada; não há automação ativa.
+- [ ] Executar um piloto com uma fila congelada e verificar manifest, checkpoints,
+  falha isolada e retomada.
+- [ ] Registrar o resultado do piloto, incluindo tempo, cobertura e falhas.
+
+**Decisão atual:** P2.1 está adiado. O sistema de Automations disponível não
+oferece, neste momento, garantia suficiente de execução independente do Desktop
+e do workspace. Retomar somente quando houver um runner hospedado/independente,
+ou quando a limitação for explicitamente aceita.
+
+#### P2.2 — Aprendizado por métricas — excluído
+
+- [!] Excluído do plano ativo: a coleta manual ou assistida de métricas não
+  demonstrou benefício proporcional ao custo e à complexidade.
+- [x] Registrar a decisão de não criar planilha, rotina de coleta ou nota
+  qualitativa obrigatória para cada post.
+
+#### P2.3 — Scoring e fontes
+
+- [x] Auditar a qualidade das fontes por tipo, independência, recência,
+  verificabilidade e conexão com a experiência do autor.
+- [x] Comparar score previsto com decisões e qualidade observadas; o resultado
+  preditivo permanece inconclusivo.
+- [x] Propor alterações de pesos somente com amostra e justificativa documentadas;
+  a decisão de 2026-09-06 foi `inconclusive`, sem alteração.
+- [x] Rodar scoring antigo e novo em paralelo antes de substituir a versão ativa;
+  a comparação permaneceu inconclusiva.
+- [x] Registrar a decisão, a data, a justificativa, as limitações e o impacto
+  deliberadamente mantido em `research/audits/scoring-decision-2026-09-06.md`.
+
+**Decisão P2.3 (2026-09-06):** `inconclusive` / `keep_current`. A amostra de
+cinco tópicos não tem resultados comparáveis, apresenta `author_fit: 0` em todos
+os itens e a alternativa troca apenas as posições 2 e 3. Os pesos ativos e a
+fórmula permanecem inalterados. Nova alteração ou experimento alternativo exige
+aprovação humana explícita.
+
+#### Critérios de saída do P2
+
+- [ ] Uma automação piloto executada com aprovação humana e sem publicação
+  automática.
+- [x] Uma revisão de frentes e pesos baseada em evidência, não em impressão
+  isolada.
+- [x] Cada decisão registra o que foi aprendido, o que mudou e o que foi
+  deliberadamente mantido.
+
+### Decisões e limitações do P2
+
+- [x] Excluir o P2.2 de métricas de posts: muitas métricas, medição manual e
+  baixo vínculo comprovado com decisões de construção de conteúdo criariam
+  trabalho operacional sem aprendizado confiável.
+- [x] Não automatizar o pipeline editorial por enquanto: a dependência de
+  Desktop/runner/workspace torna a execução diária pouco confiável para este
+  projeto.
+- [ ] Reavaliar a automação quando a plataforma oferecer execução hospedada ou
+  um runner independente com estado e logs persistentes.
 
 ## O que já foi feito
 
@@ -116,9 +182,9 @@ post_action_confirmation: not_run
 Status auxiliar: `not_run: criação não executada por segurança`; evidência
 `simulated: contrato/teste`.
 
-### Matriz de agendamento — pendente
+### Matriz de agendamento — validada
 
-Quando P1-D for autorizada, a matriz deverá cobrir exatamente:
+Quando novos cenários P1-D forem autorizados, a matriz deverá cobrir exatamente:
 
 - new schedule with different date and time;
 - new schedule for today with explicit date and time;
@@ -126,12 +192,32 @@ Quando P1-D for autorizada, a matriz deverá cobrir exatamente:
 - wrong summary detected before Avançar;
 - scheduled post missing from the scheduled list.
 
-Nenhum caso será executado no post do incidente. Cada caso precisa de
-evidência, receipt e confirmação do estado final antes de persistir qualquer
-timestamp.
-Os casos mutantes ainda não foram executados.
+Os cenários de nova publicação com data/hora explícitas e de reagendamento de
+publicação existente foram executados com `topic_20260901_04`. Cada caso
+precisa de evidência, receipt e confirmação do estado final antes de persistir
+qualquer timestamp. O post do incidente não foi utilizado.
+Os dois cenários negativos ainda não foram executados no browser, pois isso exigiria
+criar uma condição artificial ou arriscar uma mutação desnecessária; os gates
+correspondentes foram cobertos por testes locais determinísticos.
+Os testes locais dos gates de resumo divergente e ausência na lista passaram
+(`106 passed`); não houve mutação adicional no LinkedIn.
 
 Operational gates: summary divergence blocks Avançar; confirmation/list absence blocks registration; never duplicate.
+
+### Aprendizados acumulados
+
+- [x] Agendamento exige confirmar data e hora depois de mudar a data; o LinkedIn
+  pode manter o horário anterior silenciosamente.
+- [x] Reagendamento deve usar `Alterar agenda` na publicação existente; abrir um
+  novo composer cria risco de duplicata.
+- [x] A confirmação visual na lista de publicações agendadas é o gate independente
+  mais forte; toast isolado não basta para registrar timestamp.
+- [x] Fontes comerciais e painéis sustentam a existência de um debate, mas não
+  comprovam adoção industrial, escala ou resultado operacional.
+- [x] A automação editorial precisa congelar a fila e persistir checkpoints para
+  que uma falha de um topic não contamine os demais.
+- [ ] Revisar estes aprendizados após o primeiro piloto de automação e após uma
+  nova amostra comparável de decisões editoriais e qualidade de fontes.
 
 ### Integrações
 
@@ -142,7 +228,8 @@ Operational gates: summary divergence blocks Avançar; confirmation/list absence
 ## Documentos e planos de referência
 
 - [x] `docs/superpowers/plans/2026-09-06-mcp-first-browser-automation.md` — implementação MCP-first concluída.
-- [~] `docs/superpowers/plans/2026-09-01-linkedin-scheduling.md` — publicação e agendamento; matriz mutante ainda pendente.
+- [x] `docs/superpowers/plans/2026-09-01-linkedin-scheduling.md` — publicação,
+  agendamento e validação determinística dos cenários negativos concluídos.
 - [x] `docs/browser-route-contract.md` — contrato compartilhado de navegador.
 - [x] `.agents/skills/publicar-linkedin/SKILL.md` — regras operacionais do LinkedIn.
 - [x] `AGENTS.md` — contrato geral do projeto.

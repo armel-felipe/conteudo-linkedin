@@ -1,56 +1,97 @@
-# Relatório da correção final
+# P2.3 Whole-Branch IMPORTANT Fix Report
 
-## Findings corrigidos
+Date: 2026-09-06
 
-- `runBrowserCheck()` preserva `mutation_confirmed` e `observed_state` quando o
-  adapter Playwright retorna ambiguidade ou lança durante uma inspeção iniciada;
-  esses caminhos terminam em `ambiguous_mutation` e não podem ser sucesso.
-- `validate_receipt()` e `can_register_timestamp()` exigem tentativa MCP,
-  histórico ordenado de rotas, motivo para cada rota, estado observado,
-  evidência de verificação e confirmação pós-ação. Receipts reais exigem
-  confirmação pós-ação diferente de `not_run`.
-- O receipt do roadmap e o receipt do relatório usam o schema completo e YAML
-  válido. A alegação de `real_existing_post` foi removida: não há prova de ação
-  browser-real nesta rodada, portanto o cenário está como `not_run`.
-- Os testes passaram a executar o fluxo com adapters injetados e a carregar os
-  receipts documentados como YAML antes de validá-los semanticamente.
+## Changes
 
-## Verificação
+- `score_opportunities.py`: extracted shared weight-map validation and made
+  `run_scoring(topics, weights)` reject empty/invalid maps, negative or
+  non-numeric values, sums different from `1.0`, and criteria that differ from
+  the topic sample. The persisted `scores.total` field is excluded from the
+  criteria comparison.
+- `tests/test_score_opportunities.py`: added invalid-map regression coverage.
+- `research/audits/scoring-parallel-2026-09-06.yaml`: added the explicit
+  alternative hypothesis, evidence references to existing audits, and the
+  explicit diagnostic-only/rejected-as-operational-change decision.
+- `docs/roadmap.md`: replaced the claim of observed post results with the
+  formulation that decisions and observed quality were compared and predictive
+  results remain inconclusive.
 
-- `npm test`: 17 passed.
-- `python3 -m pytest tests/test_scheduling_skill.py tests/test_browser_route_contract.py tests/test_browser_route_documentation.py -q`: 98 passed.
-- `python3 -m pytest tests -q`: 258 passed, 1 failed em
-  `tests/test_run_contracts.py::test_runtime_runs_are_ignored_but_keep_file_is_tracked`.
-  A falha exige `runs/*` em `.gitignore`; `.gitignore` não foi alterado.
-- `git diff --check`: passou.
+No active weights, signals, posts, schedules, or metrics were changed by this
+fix.
 
-## Concerns
+## Verification
 
-- Não foi executada ação no LinkedIn nem foi inventada evidência browser-real.
-- A falha restante da suíte completa é externa a esta correção e permanece
-  explicitamente bloqueada pela instrução de preservar `.gitignore`.
+Command:
 
-## Correções deste review
+```text
+PYTHONPATH=. pytest -q tests/test_score_opportunities.py::test_run_scoring_rejects_invalid_weight_maps
+```
 
-- Exceções e retornos MCP ambíguos preservam estado observado, terminam em
-  `ambiguous_mutation`/`stop` e não constroem nem executam Playwright.
-- `main` aceita adapter MCP ou factory injetados; o default registra
-  `mcp_adapter_unconfigured` e não contém credenciais.
-- `can_register_timestamp` aceita somente `real_existing_post`, exige gates pós-
-  ação completos e compara os timestamps recebidos com os valores do receipt.
-- O filtro de dados sensíveis percorre recursivamente dicionários, chaves,
-  listas, tuplas e conjuntos.
-- A cobertura documental verifica regras comportamentais de mutação, incluindo
-  `fail_closed`, não repetição, não avanço e ausência de duplicata.
-- `validate_dry_run_events()` mantém o fluxo MCP-only válido e exige
-  `playwright_fallback` antes de `playwright_attempt` quando o branch Playwright
-  é usado.
+Output before implementation (expected RED):
 
-## Verificação desta correção
+```text
+FFFF                                                                     [100%]
+4 failed in 0.04s
+```
 
-- `npm test`: 22 passed.
-- `python3 -m pytest tests/test_scheduling_skill.py tests/test_browser_route_contract.py tests/test_browser_route_documentation.py -q`: 114 passed.
-- `python3 -m pytest tests -q`: 274 passed, 1 failed baseline em
-  `tests/test_run_contracts.py::test_runtime_runs_are_ignored_but_keep_file_is_tracked`,
-  que exige `runs/*` em `.gitignore`; `.gitignore` foi preservado.
-- `git diff --check`: passou.
+Command:
+
+```text
+PYTHONPATH=. pytest -q tests/test_p2_3_audits.py tests/test_score_opportunities.py
+```
+
+Output:
+
+```text
+.............                                                            [100%]
+13 passed in 0.07s
+```
+
+Command:
+
+```text
+PYTHONPATH=. pytest -q
+```
+
+Output:
+
+```text
+292 passed, 2 failed in 3.88s
+```
+
+The two failures are:
+
+```text
+tests/test_scheduling_checklist.py::test_checklist_registration_gate_has_explicit_types_and_failure_state
+tests/test_scheduling_skill.py::test_manual_scheduling_matrix_and_receipt_are_non_sensitive_and_complete
+```
+
+They concern existing scheduling changes outside this fix: the checklist has
+`timestamp_registered: True`, and the current roadmap does not contain the
+expected `"não foram executados"` wording. Neither was changed here.
+
+Command:
+
+```text
+git diff --check
+```
+
+Output: no output; exit code `0`.
+
+Command:
+
+```text
+git diff -- config/scoring.yaml; shasum -a 256 config/scoring.yaml
+```
+
+Output:
+
+```text
+4db37649eef7ce7e1e29cfd18db9e3e8d471b337173308eb4ec3ddbe7b9f08ef  config/scoring.yaml
+```
+
+## Status
+
+P2.3 IMPORTANT findings addressed. Focused tests pass. Full suite is not fully
+green because of the two unrelated pre-existing scheduling test failures above.

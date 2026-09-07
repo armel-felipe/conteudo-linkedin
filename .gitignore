@@ -10,3 +10,5 @@ __pycache__/
 .superpowers/sdd/
 runs/*
 !runs/.gitkeep
+node_modules/
+*.pyc

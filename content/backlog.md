@@ -1,5 +1,61 @@
 # Content Backlog
 
+## 78.5 — A última milha é uma decisão de margem, não de velocidade
+
+Pilares: Logística, last mile e experiência do cliente
+
+Tese: O teste econômico da IA na entrega é se ela muda o custo unitário da última milha — porque é ali que a promessa vira experiência e a margem vira resultado.
+
+Por que agora: Serve Robotics (CEO Ali Kashani) reenquadra o last mile como problema de margem — entrega urbana pode custar até US$10 por pedido, com robôs potencialmente a US$1 — e a discussão do setor gira em torno de embalagem, experiência e custo final como definidores da percepção do cliente.
+
+Evidências disponíveis: 2
+
+Experiência pessoal relacionada: Alta
+
+Status: ready_for_research
+
+## 78 — A maturidade de um agente se prova depois do deploy
+
+Pilares: IA Aplicada
+
+Tese: O indicador de maturidade de um agente não é a demo nem a conclusão da tarefa, mas o resultado de negócio e como o sistema é avaliado e corrigido depois do deploy.
+
+Por que agora: Post com 590 likes/116 comentários afirma que produção exige mais que LLM+ferramentas; a discussão separa "completar a tarefa" de "acertar o resultado" e pergunta como avaliar agentes após entrarem em produção.
+
+Evidências disponíveis: 4
+
+Experiência pessoal relacionada: Média
+
+Status: ready_for_research
+
+## 76.5 — O humano continua sendo o aprovador final do agente operacional
+
+Pilares: IA Aplicada
+
+Tese: O melhor indicador de um agente operacional é a taxa em que ele reconhece seus próprios limites e pede ajuda, não a autonomia que exibe.
+
+Por que agora: O caso mais votado de agente útil que "ficou" foi um que varre inbox/Slack e rascunha resposta para aprovação humana; o contraste entre hype e valor prático é o debate central da semana.
+
+Evidências disponíveis: 3
+
+Experiência pessoal relacionada: Média
+
+Status: ready_for_research
+
+## 70 — Governança de IA se prova por evidência operacional, não por política
+
+Pilares: Riscos, compliance e resiliência
+
+Tese: Não falta política nem framework; falta a camada operacional que prova, no encanamento, que a regra está sendo cumprida e que cria consequências quando é violada.
+
+Por que agora: R/grc relata auditor que exigiu prova de que a IA estava segura e a organização não tinha resposta; o debate distingue política (fácil) de evidência de operação (difícil) e trata o inventário de IA como contingente vivo.
+
+Evidências disponíveis: 6
+
+Experiência pessoal relacionada: Baixa
+
+Status: ready_for_research
+
 ## 69.75 — O teste de um agente é sobreviver ao último quilômetro
 
 Pilares: IA Aplicada

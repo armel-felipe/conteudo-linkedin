@@ -1,0 +1,336 @@
+signals:
+  - id: signal_20260907_001
+    title: "Agentes são fáceis de demonstrar; produção é o filtro real"
+    pillars: [ia_aplicada]
+    source:
+      type: linkedin
+      publisher: Shalini Goyal (LinkedIn)
+      url: "https://www.linkedin.com/posts/goyalshalini_ai-agents-are-easy-to-demo-production-is-activity-7497919085356367872-3IEy"
+      published_at: "2026-08-25"
+    observation: "Post com forte engajamento (590 likes, 116 comentários) afirma que um agente em produção precisa de muito mais que um LLM ligado a ferramentas: precisa de workflow que planeje, aja, valide, recupere e escale."
+    debate:
+      side_a: "A distância entre demo e produção é o gargalo central da adoção de agentes."
+      side_b: "O mercado exagera a diferença; ferramentas de orquestração já cobrem o gap."
+    evidence:
+      - "O post lista os requisitos de um agente de produção: planejar, agir, validar, recuperar e escalar."
+      - "TikTok da nepa_ai reforça que um modelo geral falha quando empurrado para produção, mostrando o gap entre demos e sistemas reais."
+    possible_angle: "O teste de um agente não é conversar, é a taxa de conclusão em fluxos transacionais reais."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 10, debate: 9, evidence: 6, author_fit: 0, originality: 7, linkedin_fit: 10}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_002
+    title: "Agente pode concluir a tarefa perfeitamente e ainda errar o resultado"
+    pillars: [ia_aplicada]
+    source:
+      type: instagram
+      publisher: mycpe_one (Instagram)
+      url: "https://www.instagram.com/reel/DcYVTHwgkiZ/"
+      published_at: "2026-08-23"
+    observation: "Post sobre 'intent engineering' argumenta que dar à IA o contexto certo ainda não diz qual resultado importa; o problema migra de prompt engineering para definir a intenção de negócio."
+    debate:
+      side_a: "O gap perigoso é que saber a tarefa e ter os dados não diz à IA qual resultado importa."
+      side_b: "O prompt engineering ainda domina; a intenção é resolvível com mais contexto e políticas."
+    evidence:
+      - "A discussão distingue completar a tarefa tecnicamente de acertar o resultado de negócio."
+      - "Instagram de ankitgupta.ai complementa: workflows poderosos não começam com melhores prompts, mas com melhor acesso à informação."
+    possible_angle: "Medir o resultado, não a execução, é o que separa um agente útil de um que só 'termina' a tarefa."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 10, debate: 9, evidence: 5, author_fit: 0, originality: 9, linkedin_fit: 10}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_003
+    title: "A decisão de avaliar um agente depois que entra em produção fica em aberto"
+    pillars: [ia_aplicada]
+    source:
+      type: reddit
+      publisher: r/AI_Agents
+      url: "https://www.reddit.com/r/AI_Agents/comments/1w4e3ji/what_ai_agents_are_actually_worth_running_for/"
+      published_at: "2026-09-01"
+    observation: "Threads em r/AI_Agents discutem como avaliar agentes após a entrada em produção, em contraste com o hype de demos e o foco em avaliação pré-deploy."
+    debate:
+      side_a: "A maioria mede o agente antes de publicar; o que importa é como ele se comporta em produção."
+      side_b: "Avaliação contínua é cara e pouco padronizada; a maioria das equipes ainda opera na confiança inicial."
+    evidence:
+      - "A pergunta 'How are people evaluating AI agents after they go into production?' apareceu entre os itens da frente."
+      - "Threads separadas listam agentes realmente úteis para uso real, contrastando hype com valor prático."
+    possible_angle: "A maturidade de um agente se mede por quem o opera e como o avalia depois do deploy, não pela demo."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 10, debate: 9, evidence: 6, author_fit: 0, originality: 8, linkedin_fit: 10}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_004
+    title: "Agentes úteis na prática são simples e deixam a decisão humana no fim"
+    pillars: [ia_aplicada]
+    source:
+      type: reddit
+      publisher: r/AI_Agents (u/HTxBarbz)
+      url: "https://www.reddit.com/r/AI_Agents/comments/1vytnh6/what_is_one_ai_agent_workflow_that_sounds_simple/"
+      published_at: "2026-08-26"
+    observation: "O caso mais votado de agente útil que 'ficou': varre inbox/Slack por mensagens com pergunta sem resposta há 24h, abre uma tarefa e rascunha uma resposta de duas linhas para o humano aprovar."
+    debate:
+      side_a: "Agentes simples que reduzem fricção e deixam aprovação humana rendem valor real e duradouro."
+      side_b: "Muitos 'agentes' são só workflows ou cron jobs renomeados; o hype infla o que é trivial."
+    evidence:
+      - "Comentário de u/HTxBarbz (15 upvotes) relata um agente de varredura com rascunho para aprovação."
+      - "Comentário sarcástico rival (11 upvotes) critica 'cron job checando webhook' chamado de agente revolucionário."
+    possible_angle: "O valor de um agente operacional está em reduzir a busca, preservando o humano como aprovador final."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 9, debate: 9, evidence: 7, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_005
+    title: "A falha de governança mais perigosa de um agente é invisível"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: linkedin
+      publisher: LinkedIn (kh001)
+      url: "https://www.linkedin.com/posts/kh001_aigovernance-corporategovernance-operationalresilience-activity-7499092560653557760-ELrY"
+      published_at: "2026-08-28"
+    observation: "Post argumenta que um agente pode ter credenciais válidas, o funcionário que o dirige pode ter autoridade válida e a organização ter políticas e controles, e ainda assim existir uma falha de governança que ninguém vê."
+    debate:
+      side_a: "Credenciais válidas e políticas existentes não impedem falhas de governança em agentes."
+      side_b: "Ter credenciais, autoridade e políticas já é suficiente para operar com controle."
+    evidence:
+      - "O post descreve a combinação de credenciais válidas, autoridade e políticas coexistindo com a ausência de controle efetivo."
+      - "TikTok de stradimarkai reforça que agentes superam os controles de governança, segurança e compliance."
+    possible_angle: "Governança de agente se prova por evidência de operação, não por ter políticas aprovadas."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 10, debate: 9, evidence: 6, author_fit: 0, originality: 9, linkedin_fit: 10}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_006
+    title: "A política de governança de IA é a parte fácil; a evidência de que opera é a difícil"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: reddit
+      publisher: r/AI_Governance
+      url: "https://www.reddit.com/r/AI_Governance/comments/1w53z9q/anyone_else_struggling_with_ai_compliance/"
+      published_at: "2026-09-02"
+    observation: "Usuário argumenta que a política é fácil, mas provar que ela opera exige tratar o inventário de IA como uma população de controle viva, usando evidências de fontes já existentes (SSO/IAM, ambientes cloud, fornecedores aprovados)."
+    debate:
+      side_a: "Governança real vem de evidências operacionais, não de documentos e questionários."
+      side_b: "Inventários e políticas estruturados já são a base suficiente de conformidade."
+    evidence:
+      - "O comentário recomenda usar fontes existentes (SSO/IAM, nuvem, lista de fornecedores, procurement) como evidência viva."
+      - "Thread paralela em r/grc relata auditor que pediu prova de que a IA estava segura 'ontem' e a organização ficou sem resposta."
+    possible_angle: "Sem inventário vivo e trilha de evidência, uma organização não sabe se uma política de IA está de fato sendo cumprida."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 10, debate: 9, evidence: 7, author_fit: 0, originality: 9, linkedin_fit: 9}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_007
+    title: "Não falta framework de IA; falta integração entre eles"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: linkedin
+      publisher: Brian Peister (LinkedIn)
+      url: "https://www.linkedin.com/posts/brianpeister_we-dont-have-an-ai-framework-shortage-we-activity-7497807661090988033-op_n"
+      published_at: "2026-08-25"
+    observation: "Post afirma que não há escassez de frameworks (NIST AI RMF, ISO/IEC 42001, EU AI Act) e sim um problema de integração entre eles na operação."
+    debate:
+      side_a: "Há frameworks de sobra; o gargalo é operacionalizá-los de forma integrada."
+      side_b: "Cada framework cobre uma parte e a falta de padrão único é o problema real."
+    evidence:
+      - "O post mapeia NIST AI RMF para estruturação de risco, ISO/IEC 42001 para sistema de gestão e EU AI Act para regulação."
+      - "Rasmussen (pai do GRC) reforça que a governança fica tão importante quanto a inovação conforme a IA se incorpora."
+    possible_angle: "O valor está em integrar frameworks no encanamento, não em buscar mais um framework."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_008
+    title: "Um framework de IA só é executável quando deixa de ser documento e cria consequências"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: reddit
+      publisher: r/AI_Governance
+      url: "https://www.reddit.com/r/AI_Governance/comments/1vslpnf/what_does_an_enforceable_ai_governance_framework/"
+      published_at: "2026-08-19"
+    observation: "Discussão conclui que um framework se torna executável quando para de ser um documento e começa a gerar consequências; se um modelo pode violar uma política sem ser notado, é 'governance theatre'."
+    debate:
+      side_a: "Sem controles que blokam a violação de política, o framework é teatro de governança."
+      side_b: "Documentar a política já é um passo legítimo antes de automatizar os controles."
+    evidence:
+      - "O comentário destaca a camada operacional ausente entre o framework e os sistemas reais."
+      - "O mesmo subreddit vê governança de IA como maior do que gestão de risco de modelo (MRM)."
+    possible_angle: "A falta da camada operacional entre política e sistema é o que separa intenção de controle."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 10, debate: 9, evidence: 6, author_fit: 0, originality: 9, linkedin_fit: 10}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_009
+    title: "A produção mais útil não é a que roda sem supervisão, mas a que sabe seus limites"
+    pillars: [ia_aplicada]
+    source:
+      type: web
+      publisher: r/AI_Agents (via reddit.com)
+      url: "https://www.reddit.com/r/AI_Agents/comments/1vsa315/ai_agents_real_production_success_or_mostly_hype/"
+      published_at: "2026-08-19"
+    observation: "Discussão sobre sucesso real vs hype conclui que os sistemas mais úteis em produção não são os que operam totalmente sem supervisão, mas os que lidam com parte do workflow e sabem quando estão fora de seus limites."
+    debate:
+      side_a: "O valor de produção vem de agentes que reconhecem seus limites e escalam ao humano."
+      side_b: "Sem autonomia alta, muitos agentes entregam pouco além de automação convencional."
+    evidence:
+      - "O comentário destaca que agentes úteis sabem quando estão fora de seus limites de atuação."
+      - "A infraestrutura de agentes é apontada como fonte de valor real de produção em empresa."
+    possible_angle: "O melhor indicador de um agente operacional é a taxa em que ele pede ajuda ao humano."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 9, debate: 9, evidence: 6, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_010
+    title: "Robôs de entrega redefinem o last mile como problema de margem, não de velocímetro"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: tiktok
+      publisher: themoneymapai (TikTok)
+      url: "https://www.tiktok.com/@themoneymapai/video/7677298594155711757"
+      published_at: "2026-08-23"
+    observation: "Serve Robotics (CEO Ali Kashani) defende parar de mover 'burritos de meio quilo em carros de duas toneladas'; entrega urbana pode custar até US$10 por pedido e robôs poderiam baixar para US$1."
+    debate:
+      side_a: "A história real de IA em entrega é compressão de margem, comércio local e novo modelo de trabalho."
+      side_b: "Robôs de última milha ainda enfrentam custo de frota, regulatório e escala que limitam o ganho."
+    evidence:
+      - "CEO cita custo de entrega urbana de até US$10 por pedido, com potencial de US$1 com robôs."
+      - "Sinal paralelo no mesmo cluster reforça que o problema do last mile é margem, não velocidade."
+    possible_angle: "O teste econômico da IA em entrega é se ela muda o custo unitário da última milha."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 0, originality: 8, linkedin_fit: 7}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_011
+    title: "Last mile é onde a promessa do cliente vira experiência; entrega rápida sozinha não basta"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: linkedin
+      publisher: LinkedIn (usamaj)
+      url: "https://www.linkedin.com/posts/usamaj_lastmile-logistics-customerexperience-activity-7499711261119717376-0nbL"
+      published_at: "2026-08-30"
+    observation: "Post (12 likes, 3 comentários) afirma que velocidade inútil se a embalagem é ruim; empresas gastam milhões em caminhões rápidos mas falham na experiência final."
+    debate:
+      side_a: "A última etapa, não a mais longa, costuma ser a mais difícil e cara da entrega."
+      side_b: "Velocidade ainda é o fator dominante da satisfação do cliente no e-commerce."
+    evidence:
+      - "O post defende que embalagem e experiência final anulam o esforço feito em velocidade."
+      - "Encyclopedia do setor (racklify) lista mudanças táticas além de caminhões: checkout, fulfillment, comunicação, retornos."
+    possible_angle: "O custo do last mile é alto justamente porque é a etapa que define a percepção de qualidade."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 7, debate: 7, evidence: 5, author_fit: 0, originality: 7, linkedin_fit: 7}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_012
+    title: "Líder de operações que continua em toda decisão para de operar e passa a operar pelo projeto"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: keven.g.pmp.mba (TikTok)
+      url: "https://www.tiktok.com/@keven.g.pmp.mba/video/7682653517949046029"
+      published_at: "2026-09-07"
+    observation: "Post afirma que projetos falham por ninguém ter posse da execução; o líder presente em toda decisão, todo gargalo, todo incêndio está rodando o projeto em vez de o negócio."
+    debate:
+      side_a: "Líder que não delega posse de execução vira gargalo e limita o crescimento da operação."
+      side_b: "Manter-se próximo das decisões é o que garante qualidade e coerência da operação."
+    evidence:
+      - "O post associa falha de execução à ausência de posse clara, e não a má ideia."
+      - "Post paralelo de liderança (LikedIn) diz que o desafio com mais responsabilidade é continuar conectado sem possuir toda decisão."
+    possible_angle: "O limite do líder não é envolver-se menos, é aprender a ficar conectado sem ser o dono de toda decisão."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 4, author_fit: 0, originality: 7, linkedin_fit: 8}
+    created_at: "2026-09-07"
+    status: discovered
+
+  - id: signal_20260907_013
+    title: "Construtor visual de agentes sem código traz avaliação embutida para perto da criação"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: thedailyai.news (TikTok)
+      url: "https://www.tiktok.com/@thedailyai.news/video/7681704274962812191"
+      published_at: "2026-09-04"
+    observation: "OpenAI apresentou o Agent Builder, ferramenta visual para conectar nós e construir workflows de IA sem código, com evals embutidos para testar e entender como os agentes se comportam."
+    debate:
+      side_a: "Ferramentas visuais com evals embutidos baixam a barreira e trazem avaliação para o fluxo."
+      side_b: "Sem código pode esconder a complexidade de governança, testes e produção que ainda existem."
+    evidence:
+      - "O anúncio descreve conexão de nós, templates e evals embutidos para teste."
+      - "Ferramentas paralelas (Docker Sandboxes, OpenAgent) reforçam o movimento de ambientes de testes isolados para agentes."
+    possible_angle: "Avaliar o agente durante a construção pode ser o sinal de que a operação está começando a tratar agentes como sistemas."
+    author_connection: ""
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 5, author_fit: 0, originality: 7, linkedin_fit: 8}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_014
+    title: "Segurança de agentes vira produto; rodadas de investimento confirmam o movimento"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: web
+      publisher: TechCrunch (via Techmeme)
+      url: "https://techcrunch.com/2026/09/02/hiddenlayer-nabs-100m-as-enterprises-rush-to-secure-their-ai-deployments/"
+      published_at: "2026-09-02"
+    observation: "HiddenLayer, que faz ferramentas de segurança para proteger modelos, agentes e workflows, levantou US$100M em Série B liderada pela Delta-v Capital, em meio à corrida das empresas para proteger deployments de IA."
+    debate:
+      side_a: "Segurança de agentes é um mercado real e crescente, com capital validando a necessidade."
+      side_b: "Investimento em segurança não comprova adoção operacional nem elimina o risco subjacente."
+    evidence:
+      - "O aporte de US$100M foi relatado pelo TechCrunch/Techmeme."
+      - "A plataforma é posicionada como ferramenta de segurança específica para modelos, agentes e workflows de IA."
+    possible_angle: "O dinheiro está apostando que operar agentes com segurança é um problema distinto e urgente."
+    author_connection: ""
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 7, author_fit: 0, originality: 8, linkedin_fit: 8}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_015
+    title: "Agentes residentes já operam fluxos de negócio; confiança vira o tema central"
+    pillars: [ia_aplicada]
+    source:
+      type: youtube
+      publisher: RETCON (YouTube)
+      url: "https://www.youtube.com/watch?v=iQwduiopbGY"
+      published_at: "2026-04-01"
+    observation: "Painel sobre a primeira onda de 'agentes residentes' menciona que já estão ativos em multifamily (leasing e atendimento ao inquilino), com confiança, workflows e futuro das operações como temas centrais das conversas."
+    debate:
+      side_a: "Agentes que operam fluxos de negócio exigem desenhar confiança e escalonamento desde o início."
+      side_b: "Casos como leasing ainda mostram alcance limitado e dependem de supervisão humana intensa."
+    evidence:
+      - "O painel cita conversas com clientes e deployments ao vivo de agentes residentes."
+      - "O GM relata AI lidando com plataformas de atendimento ao inquilino em produção."
+    possible_angle: "Quando um agente atende cliente final, a confiança e o caminho de escalonamento definem o sucesso operacional."
+    author_connection: ""
+    scores: {freshness: 6, relevance: 8, debate: 8, evidence: 5, author_fit: 0, originality: 8, linkedin_fit: 8}
+    created_at: "2026-09-07"
+    status: clustered
+
+  - id: signal_20260907_016
+    title: "Autonomizar aumenta a necessidade de definir o que o agente pode fazer sozinho"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: instagram
+      publisher: centizeninc (Instagram)
+      url: "https://www.instagram.com/reel/DcOI1CVjW6r/"
+      published_at: "2026-08-19"
+    observation: "Post afirma que agentes se movem rapidamente da experimentação para fluxos reais de negócio, executando tarefas, interagindo com sistemas e modificando dados, o que exige definir o que podem fazer de forma independente e o que exige aprovação humana."
+    debate:
+      side_a: "Mais autonomia exige governança explícita de limites e aprovação."
+      side_b: "Ferramentas de orquestração já oferecem controle suficiente para autonomia segura."
+    evidence:
+      - "O post liga o aumento de capacidade à necessidade crescente de governança."
+      - "Reforça que as organizações precisam definir limites de ação e níveis de autonomia."
+    possible_angle: "O que um agente pode decidir sozinho é uma decisão de operação, não apenas de modelo."
+    author_connection: ""
+    scores: {freshness: 7, relevance: 9, debate: 8, evidence: 4, author_fit: 0, originality: 8, linkedin_fit: 9}
+    created_at: "2026-09-07"
+    status: clustered

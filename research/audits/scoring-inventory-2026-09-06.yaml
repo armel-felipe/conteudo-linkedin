@@ -1,0 +1,38 @@
+date: "2026-09-06"
+formula_path: score_opportunities.py
+formula_reference: "score_opportunities.py:39-55 (score_topic)"
+weights_source: config/scoring.yaml
+formula: "score = round(sum(scores[criterion] * weights[criterion]) * 10, 2)"
+criteria:
+  - freshness
+  - relevance
+  - debate
+  - evidence
+  - author_fit
+  - originality
+  - linkedin_fit
+weights:
+  freshness: 0.15
+  relevance: 0.2
+  debate: 0.15
+  evidence: 0.1
+  author_fit: 0.2
+  originality: 0.1
+  linkedin_fit: 0.1
+inputs:
+  - config/scoring.yaml
+  - score_opportunities.py
+  - research/topics/topics_scored_2026-09-06.yaml
+  - research/signals/signals_2026-09-01.yaml
+sample_paths:
+  - research/topics/topics_scored_2026-09-06.yaml
+  - research/signals/signals_2026-09-01.yaml
+sample_fingerprint: sha256:98c55232bb92331e1875912b06890cc3b0ad08afc7d4b8cf14829c3e4b87044b
+reproduction: "Python: hashlib.sha256(); update with read_bytes() for each sample_paths entry in listed order, without separators; compare hexdigest to sample_fingerprint."
+conclusion: "The executable formula is score_topic in score_opportunities.py; config/scoring.yaml remains the source of the active weights. The frozen sample fingerprint reproduces exactly."
+limitations:
+  missing_criteria: []
+  missing_data:
+    - "All five frozen topics have author_fit: 0 and author_connection: weak."
+    - "The sample contains signals with heterogeneous evidence quality; no evidence completeness threshold is part of the active scoring formula."
+  fingerprint_method: SHA-256 of the ordered raw bytes of sample_paths concatenated without separators.

@@ -1,0 +1,118 @@
+date: "2026-09-06"
+status: inconclusive
+purpose: "Comparar o scoring ativo com uma alternativa sobre a mesma amostra congelada, sem alterar os pesos ativos."
+hypothesis: "Dar mais peso a evidence e relevance, reduzindo freshness, author_fit e linkedin_fit, priorizaria topics com evidência mais forte sem degradar a decisão editorial."
+evidence_refs:
+  - "research/audits/source-quality-2026-09-06.yaml:18-85"
+  - "research/audits/scoring-comparison-2026-09-06.yaml:23-91"
+  - "research/audits/scoring-decision-2026-09-06.md:29-47"
+alternative_decision: reject_alternative
+alternative_decision_reason: "A amostra e a qualidade observada são insuficientes para testar a hipótese preditivamente; a alternativa é apenas diagnóstica e é rejeitada como mudança operacional."
+method:
+  interface: "score_opportunities.py:61-64 (run_scoring)"
+  sample_path: "research/topics/topics_scored_2026-09-06.yaml"
+  sample_topic_ids:
+    - topic_20260901_01
+    - topic_20260901_02
+    - topic_20260901_03
+    - topic_20260901_04
+    - topic_20260901_05
+  input_values: "scores por criterio persistidos no sample_path; nenhum valor foi coletado ou alterado"
+  ordering: "score total decrescente; empate resolvido por id crescente"
+  rank_delta_convention: "current_rank - alternative_rank"
+  excluded_metrics:
+    - "LinkedIn engagement"
+    - "metricas de desempenho"
+current_weights:
+  freshness: 0.15
+  relevance: 0.20
+  debate: 0.15
+  evidence: 0.10
+  author_fit: 0.20
+  originality: 0.10
+  linkedin_fit: 0.10
+alternative_weights:
+  freshness: 0.05
+  relevance: 0.25
+  debate: 0.15
+  evidence: 0.35
+  author_fit: 0.05
+  originality: 0.10
+  linkedin_fit: 0.05
+same_sample: true
+sample_fingerprint: "sha256:df42334e58ce9a26222a768eb7bad4242833508b608992ffda7d2f8e8ddb0843"
+current_ranking:
+  - rank: 1
+    id: topic_20260901_02
+    score: 69.75
+  - rank: 2
+    id: topic_20260901_01
+    score: 67.5
+  - rank: 3
+    id: topic_20260901_03
+    score: 65.7
+  - rank: 4
+    id: topic_20260901_04
+    score: 63.63
+  - rank: 5
+    id: topic_20260901_05
+    score: 58.75
+alternative_ranking:
+  - rank: 1
+    id: topic_20260901_02
+    score: 75.12
+  - rank: 2
+    id: topic_20260901_03
+    score: 72.7
+  - rank: 3
+    id: topic_20260901_01
+    score: 72.5
+  - rank: 4
+    id: topic_20260901_04
+    score: 68.0
+  - rank: 5
+    id: topic_20260901_05
+    score: 63.25
+movements:
+  - id: topic_20260901_02
+    current_rank: 1
+    alternative_rank: 1
+    rank_delta: 0
+    score_delta: 5.37
+    causing_criteria:
+      positive: [evidence, relevance]
+      negative: [freshness, linkedin_fit]
+  - id: topic_20260901_01
+    current_rank: 2
+    alternative_rank: 3
+    rank_delta: -1
+    score_delta: 5.0
+    causing_criteria:
+      positive: [evidence, relevance]
+      negative: [freshness, linkedin_fit]
+  - id: topic_20260901_03
+    current_rank: 3
+    alternative_rank: 2
+    rank_delta: 1
+    score_delta: 7.0
+    causing_criteria:
+      positive: [evidence, relevance]
+      negative: [freshness, linkedin_fit]
+  - id: topic_20260901_04
+    current_rank: 4
+    alternative_rank: 4
+    rank_delta: 0
+    score_delta: 4.37
+    causing_criteria:
+      positive: [evidence, relevance]
+      negative: [freshness, linkedin_fit]
+  - id: topic_20260901_05
+    current_rank: 5
+    alternative_rank: 5
+    rank_delta: 0
+    score_delta: 4.5
+    causing_criteria:
+      positive: [evidence, relevance]
+      negative: [freshness, linkedin_fit]
+recommendation: inconclusive
+recommendation_reason: "A alternativa produz uma troca adjacente entre os topicos 1 e 3, mas a amostra e pequena, os scores de author_fit sao zero em todos os itens e nao ha metricas de resultado. A alternativa e apenas diagnostica e rejeitada como mudanca operacional; nao ha base para substituir os pesos ativos. Qualquer teste futuro deve ser separado e explicitamente aprovado."

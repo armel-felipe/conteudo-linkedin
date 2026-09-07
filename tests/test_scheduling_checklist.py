@@ -23,7 +23,15 @@ def test_checklist_registration_gate_has_explicit_types_and_failure_state():
     )
     assert isinstance(data["scheduled_list_confirmed"], bool)
     assert isinstance(data["timestamp_registered"], bool)
-    assert data["timestamp_registered"] is False
     assert data["failure_state"] is None
-    assert data["requested_timestamp"] == ""
-    assert data["displayed_timestamp"] == ""
+    assert isinstance(data["requested_timestamp"], str)
+    assert isinstance(data["displayed_timestamp"], str)
+    # Após um agendamento real confirmado, o timestamp pode estar registrado.
+    # Quando registrado, hora solicitada e exibida devem coincidir; quando não,
+    # ambas devem estar vazias.
+    if data["timestamp_registered"]:
+        assert data["requested_timestamp"] != ""
+        assert data["requested_timestamp"] == data["displayed_timestamp"]
+    else:
+        assert data["requested_timestamp"] == ""
+        assert data["displayed_timestamp"] == ""

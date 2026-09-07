@@ -1,0 +1,170 @@
+date: "2026-09-06"
+status: complete
+scope:
+  topic_id: topic_20260901_04
+  topic_sources:
+    - signal_20260901_002
+    - signal_20260901_006
+    - signal_20260901_016
+    - signal_20260901_017
+  representative_sample:
+    - signal_20260901_001
+    - signal_20260901_003
+    - signal_20260901_009
+    - signal_20260901_013
+    - signal_20260901_020
+  selection_note: "Inclui todas as fontes referenciadas pelo topic e uma amostra de webinar, painel, comunidade, pesquisa e artefato tecnico do arquivo de signals."
+method_note: "Classificacao baseada somente nos campos source, observation, evidence e nos metadados presentes no arquivo de signals; nao houve verificacao externa, transcricao nova ou inferencia de metodologia ausente."
+sources:
+  - source_id: signal_20260901_002
+    type: panel
+    independence: medium
+    recency: high
+    verifiability: limited
+    topic_connection: direct
+    quality: medium
+    verification:
+      title: "IA generativa ainda aparece como minoria no mundo industrial"
+      url: "https://www.youtube.com/watch?v=cmDUMERqyEE"
+      date: "2026-08-13"
+    justification: "O registro identifica um painel e preserva duas afirmacoes atribuidas ao conteudo, incluindo a proporcao abaixo de 5%."
+    limitations:
+      - "Nao ha metodologia, denominador, amostra ou transcricao do painel no signal."
+      - "A afirmacao quantitativa nao foi confirmada fora do material registrado."
+    inference_risk: high
+
+  - source_id: signal_20260901_006
+    type: secondary_reporting
+    independence: medium
+    recency: high
+    verifiability: limited
+    topic_connection: indirect_limited
+    quality: low
+    verification:
+      title: "Plataformas logísticas estão tentando resolver a causa raiz, não apenas um vertical"
+      url: "https://www.instagram.com/reel/Dcj3RQPip43/"
+      date: "2026-08-27"
+    justification: "A publicacao resume uma plataforma de logistica e inventario, mas a conexao com manufatura e indireta e limitada: o signal nao identifica contexto fabril, processo de chao de fabrica ou decisao industrial."
+    limitations:
+      - "Nao ha dados de desempenho, caso nomeado, baseline ou metodo de avaliacao."
+      - "O signal nao informa se o conteudo e de fornecedor, cliente ou reportagem."
+    inference_risk: high
+
+  - source_id: signal_20260901_016
+    type: panel
+    independence: medium
+    recency: medium
+    verifiability: limited
+    topic_connection: direct
+    quality: medium
+    verification:
+      title: "Manufatura debate usos industriais enquanto a adoção ainda é pequena"
+      url: "https://www.youtube.com/watch?v=QjRLO-CBuFc"
+      date: "2026-08-04"
+    justification: "O registro identifica um painel da ARC Advisory Group e conserva pontos sobre engenharia, operacoes, operadores e cronogramas."
+    limitations:
+      - "Nao ha transcricao, lista de participantes, metodologia ou medidas de adocao."
+      - "O registro nao permite separar experiencia observada de opiniao dos participantes."
+    inference_risk: medium
+
+  - source_id: signal_20260901_017
+    type: vendor_marketing
+    independence: low
+    recency: medium
+    verifiability: low
+    topic_connection: indirect_limited
+    quality: low
+    verification:
+      title: "Procurement entra no discurso de IA agentic, mas os casos ainda são promocionais"
+      url: "https://www.instagram.com/reel/Db75inlEY4X/"
+      date: "2026-08-12"
+    justification: "O anuncio trata de procurement e supply chain, mas a conexao com manufatura e indireta e limitada: nao ha caso fabril, processo industrial ou resultado operacional verificavel no signal."
+    limitations:
+      - "Nao ha demonstracao verificavel, cliente identificado, baseline ou resultado."
+      - "A coleta registrou pedido de link ou arquivo para transcricao, sem conteudo adicional verificavel."
+    inference_risk: very_high
+
+  - source_id: signal_20260901_001
+    type: panel
+    independence: medium
+    recency: high
+    verifiability: limited
+    topic_connection: indirect
+    quality: medium
+    verification:
+      title: "IA + ERP tenta levar a decisão proativa para dentro do sistema operacional"
+      url: "https://www.youtube.com/watch?v=tAgK-BVydig"
+      date: "2026-08-26"
+    justification: "O registro descreve um webinar e preserva a pergunta sobre usar um painel dentro do sistema conhecido."
+    limitations:
+      - "Nao ha estudo comparativo, dados de adocao, participantes ou transcricao."
+      - "A conexao com manufatura e indireta; o signal fala de operacoes, financas e supply chain."
+    inference_risk: medium
+
+  - source_id: signal_20260901_003
+    type: panel
+    independence: medium
+    recency: high
+    verifiability: limited
+    topic_connection: indirect
+    quality: medium
+    verification:
+      title: "O dado humano continua sendo o árbitro de exceções na supply chain"
+      url: "https://www.youtube.com/watch?v=6hRNp9HiROs"
+      date: "2026-08-17"
+    justification: "A fonte e uma discussao do Center for Supply Chain Studies e o signal atribui ao programa a distincao entre matching e validacao humana."
+    limitations:
+      - "Nao ha transcricao completa, desenho de pesquisa ou evidencia quantitativa."
+      - "A aplicacao especifica a manufatura nao esta demonstrada no registro."
+    inference_risk: medium
+
+  - source_id: signal_20260901_009
+    type: community_discussion
+    independence: high
+    recency: high
+    verifiability: medium
+    topic_connection: indirect
+    quality: medium
+    verification:
+      title: "Empresas pedem exemplos de automações que continuam em produção"
+      url: "https://news.ycombinator.com/item?id=49373445"
+      date: "2026-08-20"
+    justification: "O item e uma discussao comunitaria verificavel por URL e registra uma pergunta sobre automacoes mantidas em producao, nao uma medicao de mercado."
+    limitations:
+      - "Nao ha amostra representativa, criterio de selecao dos participantes ou taxa de sucesso."
+      - "A ausencia de relatos nao pode ser convertida em ausencia de casos."
+    inference_risk: high
+
+  - source_id: signal_20260901_013
+    type: primary_research
+    independence: high
+    recency: high
+    verifiability: high
+    topic_connection: indirect
+    quality: high
+    verification:
+      title: "Pesquisa recente trata envenenamento de artefatos textuais em pipelines de IA"
+      url: "https://arxiv.org/abs/2608.15913v1"
+      date: "2026-08-16"
+    justification: "O registro aponta para uma versao identificada de artigo no arXiv e resume o objeto tecnico e os artefatos analisados."
+    limitations:
+      - "O signal nao registra resultados experimentais, baseline, avaliacao por pares ou limites do estudo."
+      - "A relacao com decisao industrial e uma aplicacao interpretativa, nao uma conclusao do registro."
+    inference_risk: medium
+
+  - source_id: signal_20260901_020
+    type: primary_artifact
+    independence: high
+    recency: high
+    verifiability: high
+    topic_connection: indirect
+    quality: medium
+    verification:
+      title: "Observabilidade começa a ser tratada como infraestrutura de agentes"
+      url: "https://github.com/oven-sh/bun/pull/39965"
+      date: "2026-08-21"
+    justification: "O URL aponta para um pull request verificavel, com objeto tecnico especifico: tracing nativo com OpenTelemetry."
+    limitations:
+      - "Um pull request demonstra mudanca proposta e revisao, nao impacto operacional medido."
+      - "Nao ha dados de uso, comparacao ou evidencia de que o artefato seja aplicado a agentes."
+    inference_risk: medium

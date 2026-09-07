@@ -1,0 +1,98 @@
+topics:
+- id: topic_20260907_01
+  title: A maturidade de um agente se prova depois do deploy
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260907_001
+  - signal_20260907_002
+  - signal_20260907_003
+  - signal_20260907_013
+  central_question: Como separar a impressão de uma demonstração da maturidade de
+    um agente operando em produção?
+  possible_thesis: O indicador de maturidade de um agente não é a demo nem a conclusão
+    da tarefa, mas o resultado de negócio e como o sistema é avaliado e corrigido
+    depois do deploy.
+  author_connection: medium
+  scores:
+    freshness: 9
+    relevance: 9
+    debate: 9
+    evidence: 7
+    author_fit: 5
+    originality: 7
+    linkedin_fit: 9
+    total: 78.0
+  status: ready_for_research
+- id: topic_20260907_02
+  title: Governança de IA se prova por evidência operacional, não por política
+  pillars:
+  - riscos_compliance_resiliencia
+  signals:
+  - signal_20260907_005
+  - signal_20260907_006
+  - signal_20260907_007
+  - signal_20260907_008
+  - signal_20260907_014
+  - signal_20260907_016
+  central_question: O que faz uma política de IA deixar de ser documento e passar
+    a operar de verdade?
+  possible_thesis: Não falta política nem framework; falta a camada operacional que
+    prova, no encanamento, que a regra está sendo cumprida e que cria consequências
+    quando é violada.
+  author_connection: weak
+  scores:
+    freshness: 9
+    relevance: 7
+    debate: 9
+    evidence: 7
+    author_fit: 3
+    originality: 8
+    linkedin_fit: 8
+    total: 70.0
+  status: ready_for_research
+- id: topic_20260907_03
+  title: O humano continua sendo o aprovador final do agente operacional
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260907_004
+  - signal_20260907_009
+  - signal_20260907_015
+  central_question: Quando um agente operacional deve parar e pedir a decisão ao humano?
+  possible_thesis: O melhor indicador de um agente operacional é a taxa em que ele
+    reconhece seus próprios limites e pede ajuda, não a autonomia que exibe.
+  author_connection: medium
+  scores:
+    freshness: 8
+    relevance: 9
+    debate: 9
+    evidence: 6
+    author_fit: 5
+    originality: 8
+    linkedin_fit: 9
+    total: 76.5
+  status: ready_for_research
+- id: topic_20260907_04
+  title: A última milha é uma decisão de margem, não de velocidade
+  pillars:
+  - logistica_last_mile_cx
+  signals:
+  - signal_20260907_010
+  - signal_20260907_011
+  central_question: Por que o custo da última milha continua alto mesmo com mais tecnologia
+    de entrega?
+  possible_thesis: O teste econômico da IA na entrega é se ela muda o custo unitário
+    da última milha — porque é ali que a promessa vira experiência e a margem vira
+    resultado.
+  author_connection: strong
+  scores:
+    freshness: 7
+    relevance: 9
+    debate: 8
+    evidence: 5
+    author_fit: 8
+    originality: 8
+    linkedin_fit: 9
+    total: 78.5
+  status: ready_for_research

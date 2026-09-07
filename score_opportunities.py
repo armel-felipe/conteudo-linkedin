@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 import os
 from typing import Any
@@ -10,21 +11,29 @@ from typing import Any
 import yaml
 
 
-def load_scoring_config(path: Path) -> dict[str, float]:
-    data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
-    weights = data.get("weights")
+def _validate_weights(weights: dict[str, float]) -> dict[str, float]:
     if not isinstance(weights, dict) or not weights:
         raise ValueError("weights must be a non-empty mapping")
     normalized: dict[str, float] = {}
     for criterion, value in weights.items():
         if not isinstance(criterion, str) or not criterion:
             raise ValueError("weights criteria must be named")
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value < 0
+        ):
             raise ValueError("weights values must be non-negative numbers")
         normalized[criterion] = float(value)
     if abs(sum(normalized.values()) - 1.0) > 1e-9:
         raise ValueError("weights must sum to 1.0")
     return normalized
+
+
+def load_scoring_config(path: Path) -> dict[str, float]:
+    data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+    return _validate_weights(data.get("weights"))
 
 
 def score_topic(topic: dict[str, Any], weights: dict[str, float]) -> dict[str, Any]:
@@ -56,6 +65,18 @@ def score_topics(topics: list[dict[str, Any]], weights: dict[str, float]) -> lis
         seen.add(topic_id)
         result.append(score_topic(topic, weights))
     return result
+
+
+def run_scoring(topics: list[dict[str, Any]], weights: dict[str, float]) -> list[dict[str, Any]]:
+    """Score an explicit sample and return a deterministic ranking."""
+    normalized = _validate_weights(weights)
+    for topic in topics:
+        scores = topic.get("scores") if isinstance(topic, dict) else None
+        criteria = set(scores) - {"total"} if isinstance(scores, dict) else set()
+        if criteria != set(normalized):
+            raise ValueError("weights criteria must match topic criteria")
+    scored = score_topics(topics, normalized)
+    return sorted(scored, key=lambda topic: (-topic["scores"]["total"], topic["id"]))
 
 
 def _atomic_dump(path: Path, data: dict[str, Any]) -> None:
