@@ -25,6 +25,8 @@ Escrever o post a partir do brief e da memória do autor. O writer NÃO pesquisa
 
 `content/drafts/<topic_id>.md` — o post pronto para revisão.
 
+> **Organização de arquivos:** o draft nasce em `content/drafts/`. Quando o post é aprovado (`approval_humana`), ele é **movido literalmente** (git mv) de `content/drafts/` para `content/approved/`. Um arquivo de post vive em exatamente uma pasta de `content/` por vez.
+
 ## Regras de escrita
 
 - Tamanho: 900–1500 caracteres / 150–250 palavras.
@@ -77,4 +79,4 @@ Depois da correção no Gauntlet, executar obrigatoriamente duas passagens separ
 4. Verificar tamanho (900–1500 caracteres).
 5. Adicionar a seção `## Fontes` ao final do post, com as fontes usadas (título, URL, data) extraídas das evidências do brief.
 6. Submeter o draft ao Gauntlet com os 14 critérios e só então executar as duas passagens obrigatórias de `escrita-humana`, com review após cada passagem.
-7. Salvar em `content/drafts/<topic_id>.md` e atualizar o status do topic para `drafted` no arquivo `research/topics/topics_*.yaml` correspondente apenas após os gates passarem.
+7. Salvar em `content/drafts/<topic_id>.md` e atualizar o status do topic para `drafted` no arquivo `research/topics/topics_*.yaml` correspondente apenas após os gates passarem. Após `approval_humana`, mover o arquivo para `content/approved/<topic_id>.md` (ver "Saída").

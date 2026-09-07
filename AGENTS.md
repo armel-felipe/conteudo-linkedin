@@ -29,8 +29,8 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Objetivo:** publicar ou agendar um post aprovado no LinkedIn usando a sessão logada do browser do OpenWork.
 - **Skill único:** `publicar-linkedin`.
 - **Entrada:** somente arquivos em `content/approved/`. **Não entra post de `drafts/`.**
-- **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo aprovado; `content/published/` marcando o que já saiu.
-- **Estado fim do bloco:** publicado ou agendado com confirmação na lista.
+- **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo; arquivo **movido literalmente** de `content/approved/` para `content/published/` após a confirmação do agendamento/publicação.
+- **Estado fim do bloco:** publicado ou agendado com confirmação na lista; arquivo em `content/published/`.
 
 ### Regras dos blocos
 
@@ -62,8 +62,19 @@ Ver `mapa.md` — guia de todas as skills (objetivo, vínculo, invocação).
 
 - `config/` — frentes, sources, authors, scoring
 - `research/signals/`, `research/topics/`, `research/briefs/` — artefatos de pesquisa
-- `content/` — backlog, drafts, approved, published
+- `content/` — backlog, drafts, approved, published, arquived
 - `memory/` — experiência, opiniões, estilo de escrita
+
+## Organização de posts em content/
+
+Cada arquivo de post fica em **exatamente uma** pasta de `content/`, e é **movido literalmente** (git mv / mv) quando o estado do fluxo evolui:
+
+- `content/drafts/` — texto que o fluxo **gerou**, ainda precisa de revisão.
+- `content/approved/` — texto **selecionado do draft, revisado e escalado para a fila de agendamento**. Não precisa ainda estar agendado. (fim do Bloco 2)
+- `content/published/` — texto **já agendado ou com publicação disparada** no LinkedIn. (fim do Bloco 3)
+- `content/arquived/` — texto que **não seguirá mais no pipe** por qualquer razão; não será reaproveitado.
+
+**Regra de movimentação:** quando um post sobe de estado (draft → approved → published) ou é arquivado, o arquivo é movido fisicamente para a pasta correspondente. O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Publicar ou agendar move o arquivo de `approved/` para `published/`; arquivar move de onde estiver para `arquived/`.
 
 ## Segurança
 

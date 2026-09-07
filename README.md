@@ -125,9 +125,12 @@ discovered → clustered → candidate → ready_for_research → researched
 - `content/backlog.md` — oportunidades ranqueadas
 - `research/briefs/` — briefs de pesquisa
 - `content/drafts/` — posts em elaboração
-- `content/approved/` — posts aprovados (prontos para publicar)
-- `content/published/` — posts já publicados
+- `content/approved/` — posts selecionados do draft, revisados e escalados para a fila de agendamento
+- `content/published/` — posts já agendados ou com publicação disparada
+- `content/arquived/` — posts que não seguirão mais no pipe
 - `runs/` — estado, checkpoints, reviews e métricas das rodadas de lote
+
+**Regra de movimentação:** cada post vive em **exatamente uma** pasta de `content/`. Ao mudar de estado, o arquivo é **movido literalmente** (git mv / mv): `draft → approved → published`, ou para `arquived/` quando o post não segue mais no pipe. O histórico de markers (`<!-- agendado: ... -->`) acompanha o arquivo.
 
 ## Skills envolvidas e o que fazem
 

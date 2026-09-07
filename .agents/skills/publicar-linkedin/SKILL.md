@@ -95,6 +95,20 @@ Após agendar com sucesso, anotar no arquivo do post (em `content/approved/<arqu
 - Se o arquivo já tiver um bloco `<!-- agendado: ... -->` anterior, substituir pelo novo.
 - Isso garante rastreabilidade de "o que está agendado para quando" sem depender de memória de conversa.
 
+## Movimentação do arquivo (OBRIGATÓRIA após confirmação)
+
+A confirmação em "Publicações agendadas" conclui a publicação/agendamento do arquivo. Nesse momento, **mover literalmente** o arquivo de `content/approved/` para `content/published/`:
+
+```bash
+git mv content/approved/<arquivo>.md content/published/<arquivo>.md
+# caso o arquivo não esteja rastreado (não versionado), usar `mv` simples:
+# mv content/approved/<arquivo>.md content/published/<arquivo>.md
+```
+
+- O bloco `<!-- agendado: ... -->` registrado acima **acompanha o arquivo** na movimentação (fica em `content/published/<arquivo>.md`).
+- O estado correto de cada pasta é sempre: `approved/` só com posts ainda não publicados/agendados; `published/` só com posts já agendados ou com publicação disparada.
+- Um arquivo de post vive em **exatamente uma** pasta de `content/` por vez.
+
 ## Protocolo browser dry-run (rodadas 4 e 5)
 
 Quando a finalidade for produzir evidência sem mutar o LinkedIn, executar
