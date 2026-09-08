@@ -37,6 +37,10 @@ Revisão humana de drafts do pipeline. O autor decide o destino de cada draft em
 
 Aprovar e agendar são **a mesma decisão processual**. Não existe "approved pendente de agendamento".
 
+- **Antes de agendar, verificar conflitos** rodando `python scheduling_registry.py --check`. Isso lê os markers `<!-- agendado: ... -->` de todos os posts e detecta:
+  - **Conflito de horário**: dois posts no mesmo horário (ex.: tentar agendar para 10/09 10:00 quando outro post já ocupa esse horário).
+  - **Conflito de conteúdo**: o mesmo texto agendado duas vezes.
+  - Se houver conflito, **não agendar**; propor ao autor outro horário ou outro post.
 - Marcar o topic como `approved` no arquivo `research/topics/topics_*.yaml`.
 - Disparar o agendamento via Bloco 3 (`publicar-linkedin`) com a data/hora informada.
 - Após a confirmação do agendamento, **mover literalmente** o arquivo de `content/drafts/` para `content/published/` (git mv / mv), registrando o marker `<!-- agendado: ... -->`.
