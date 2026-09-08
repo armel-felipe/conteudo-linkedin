@@ -16,27 +16,25 @@ const {
 
 const page = (url) => ({ url: () => url });
 
-test('declares MCP Chrome DevTools before Playwright', () => {
+test('declares Playwright as the primary route', () => {
   assert.deepEqual(browserRouteOrder(), [
-    'mcp_chrome_devtools',
-    'playwright_fallback',
+    'playwright',
+    'screenshot+nativa',
+    'image-analyzer',
     'stop',
   ]);
 });
 
-test('logs MCP-first browser execution without calling Playwright', async () => {
-  const logPath = path.join(os.tmpdir(), `browser-${Date.now()}-mcp.jsonl`);
+test('logs Playwright-first browser execution', async () => {
+  const logPath = path.join(os.tmpdir(), `browser-${Date.now()}-pw.jsonl`);
   const result = await runBrowserCheck({
-    mcpAdapterFactory: async () => ({
+    playwrightAdapter: {
       inspect: async () => ({ ok: true, report: { visual_state: 'public_page' } }),
-    }),
-    playwrightAdapterFactory: async () => {
-      throw new Error('must not be called');
     },
     logPath,
     runId: 'browser-run-1',
   });
-  assert.equal(result.effective_route, 'mcp_chrome_devtools');
+  assert.equal(result.effective_route, 'playwright');
   assert.equal(result.events[0].event, 'started');
   assert.equal(result.events.at(-1).event, 'completed');
 });
@@ -44,35 +42,35 @@ test('logs MCP-first browser execution without calling Playwright', async () => 
 test('logs fallback reason and never logs adapter secrets', async () => {
   const logPath = path.join(os.tmpdir(), `browser-${Date.now()}-fallback.jsonl`);
   const result = await runBrowserCheck({
-    mcpAdapterFactory: async () => ({
+    playwrightAdapter: {
       inspect: async () => ({
         ok: false,
-        reason: 'mcp_unavailable',
+        reason: 'playwright_unavailable',
         details: { api_key: 'secret' },
       }),
-    }),
-    playwrightAdapterFactory: async () => ({
+    },
+    visualAdapter: {
       inspect: async () => ({ ok: true, report: { visual_state: 'ok' } }),
-    }),
+    },
     logPath,
     runId: 'browser-run-2',
   });
-  assert.equal(result.effective_route, 'playwright_fallback');
-  assert.equal(result.route_reasons.mcp_chrome_devtools, 'mcp_unavailable');
+  assert.equal(result.effective_route, 'screenshot+nativa');
+  assert.equal(result.route_reasons.playwright, 'playwright_unavailable');
   assert.equal(JSON.stringify(result.events).includes('secret'), false);
 });
 
-test('uses Playwright fallback when MCP is unavailable before mutation', () => {
+test('uses visual fallback when Playwright is unavailable before mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
-    mcpAttempt: { ok: false, reason: 'mcp_unavailable' },
-    playwrightAttempt: { ok: true, report: { visual_state: {} } },
+    playwrightAttempt: { ok: false, reason: 'playwright_unavailable' },
+    visualAttempt: { ok: true, report: { visual_state: {} } },
   }), {
-    attempted_routes: ['mcp_chrome_devtools', 'playwright_fallback'],
-    effective_route: 'playwright_fallback',
-    reason: 'mcp_unavailable',
+    attempted_routes: ['playwright', 'screenshot+nativa'],
+    effective_route: 'screenshot+nativa',
+    reason: 'playwright_unavailable',
     route_reasons: {
-      mcp_chrome_devtools: 'mcp_unavailable',
-      playwright_fallback: 'playwright_success',
+      playwright: 'playwright_unavailable',
+      'screenshot+nativa': 'visual_success',
     },
     observed_state: {},
   });
@@ -80,52 +78,48 @@ test('uses Playwright fallback when MCP is unavailable before mutation', () => {
 
 test('stops after an ambiguous possible mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
-    mcpAttempt: { ok: false, reason: 'mcp_failed' },
+    playwrightAttempt: { ok: false, reason: 'playwright_failed' },
   }), {
-    attempted_routes: ['mcp_chrome_devtools'],
+    attempted_routes: ['playwright'],
     effective_route: 'stop',
-    reason: 'mcp_failed',
-    route_reasons: { mcp_chrome_devtools: 'mcp_failed' },
+    reason: 'playwright_failed',
+    route_reasons: { playwright: 'playwright_failed' },
     observed_state: null,
   });
 });
 
 test('does not permit fallback after a confirmed mutation', () => {
   assert.deepEqual(resolveBrowserRoute({
-    mcpAttempt: { ok: false, reason: 'mcp_failed', mutation_confirmed: true },
+    playwrightAttempt: { ok: false, reason: 'playwright_failed', mutation_confirmed: true },
   }), {
-    attempted_routes: ['mcp_chrome_devtools'],
+    attempted_routes: ['playwright'],
     effective_route: 'stop',
     reason: 'ambiguous_mutation',
-    route_reasons: { mcp_chrome_devtools: 'ambiguous_mutation' },
+    route_reasons: { playwright: 'ambiguous_mutation' },
     observed_state: null,
     mutation_confirmed: true,
   });
 });
 
-test('runs an injected MCP adapter before the Playwright fallback', async () => {
+test('runs an injected Playwright adapter as the primary route', async () => {
   const calls = [];
   const report = { url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
   const result = await runBrowserCheck({
-    mcpAdapter: {
+    playwrightAdapter: {
       inspect: async () => {
-        calls.push('mcp');
+        calls.push('playwright');
         return { ok: true, report };
       },
     },
-    playwrightAdapterFactory: async () => {
-      calls.push('playwright-factory');
-      throw new Error('Playwright must not be constructed');
-    },
   });
 
-  assert.deepEqual(calls, ['mcp']);
+  assert.deepEqual(calls, ['playwright']);
   const { log_path: logPath, events, ...core } = result;
   assert.deepEqual(core, {
-    attempted_routes: ['mcp_chrome_devtools'],
-    effective_route: 'mcp_chrome_devtools',
-    reason: 'mcp_success',
-    route_reasons: { mcp_chrome_devtools: 'mcp_success' },
+    attempted_routes: ['playwright'],
+    effective_route: 'playwright',
+    reason: 'playwright_success',
+    route_reasons: { playwright: 'playwright_success' },
     observed_state: report.visual_state,
     report,
   });
@@ -133,31 +127,30 @@ test('runs an injected MCP adapter before the Playwright fallback', async () => 
   assert.deepEqual(events.map((event) => event.event), ['started', 'completed']);
 });
 
-test('uses a controlled Playwright fallback only after an injected MCP failure', async () => {
+test('uses visual fallback only after an injected Playwright failure', async () => {
   const calls = [];
   const report = { url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
   const result = await runBrowserCheck({
-    mcpAdapter: {
+    playwrightAdapter: {
       inspect: async () => {
-        calls.push('mcp');
-        return { ok: false, reason: 'mcp_unavailable', mutation_confirmed: false };
+        calls.push('playwright');
+        return { ok: false, reason: 'playwright_unavailable', mutation_confirmed: false };
       },
     },
-    playwrightAdapterFactory: async () => {
-      calls.push('playwright-factory');
-      return { inspect: async () => { calls.push('playwright'); return report; } };
+    visualAdapter: {
+      inspect: async () => { calls.push('visual'); return report; },
     },
   });
 
-  assert.deepEqual(calls, ['mcp', 'playwright-factory', 'playwright']);
+  assert.deepEqual(calls, ['playwright', 'visual']);
   const { log_path: logPath, events, ...core } = result;
   assert.deepEqual(core, {
-    attempted_routes: ['mcp_chrome_devtools', 'playwright_fallback'],
-    effective_route: 'playwright_fallback',
-    reason: 'mcp_unavailable',
+    attempted_routes: ['playwright', 'screenshot+nativa'],
+    effective_route: 'screenshot+nativa',
+    reason: 'playwright_unavailable',
     route_reasons: {
-      mcp_chrome_devtools: 'mcp_unavailable',
-      playwright_fallback: 'playwright_success',
+      playwright: 'playwright_unavailable',
+      'screenshot+nativa': 'visual_success',
     },
     observed_state: report.visual_state,
     report,
@@ -169,15 +162,14 @@ test('uses a controlled Playwright fallback only after an injected MCP failure',
 test('stops and preserves ambiguous state when Playwright inspection returns it', async () => {
   const observedState = { mutation: 'possibly_sent', composer: 'unknown' };
   const result = await runBrowserCheck({
-    mcpAdapter: { inspect: async () => ({ ok: false, reason: 'mcp_unavailable' }) },
-    playwrightAdapterFactory: async () => ({
+    playwrightAdapter: {
       inspect: async () => ({
         ok: false,
         reason: 'post_action_state_unknown',
         mutation_confirmed: true,
         observed_state: observedState,
       }),
-    }),
+    },
   });
 
   assert.equal(result.effective_route, 'stop');
@@ -192,8 +184,7 @@ test('stops and preserves ambiguous state when Playwright adapter throws', async
     observed_state: { mutation: 'possibly_sent' },
   });
   const result = await runBrowserCheck({
-    mcpAdapter: { inspect: async () => ({ ok: false, reason: 'mcp_unavailable' }) },
-    playwrightAdapterFactory: async () => ({ inspect: async () => { throw error; } }),
+    playwrightAdapter: { inspect: async () => { throw error; } },
   });
 
   assert.equal(result.effective_route, 'stop');
@@ -202,104 +193,104 @@ test('stops and preserves ambiguous state when Playwright adapter throws', async
   assert.deepEqual(result.observed_state, error.observed_state);
 });
 
-test('fails closed on an ambiguous MCP exception without constructing Playwright', async () => {
-  let playwrightConstructed = false;
-  const error = Object.assign(new Error('MCP disconnected after action'), {
+test('fails closed on an ambiguous Playwright exception without visual fallback', async () => {
+  let visualConstructed = false;
+  const error = Object.assign(new Error('Playwright disconnected after action'), {
     ambiguous: true,
     observed_state: { mutation: 'possibly_sent' },
   });
   const result = await runBrowserCheck({
-    mcpAdapter: { inspect: async () => { throw error; } },
-    playwrightAdapterFactory: async () => {
-      playwrightConstructed = true;
-      throw new Error('must not construct Playwright');
+    playwrightAdapter: { inspect: async () => { throw error; } },
+    visualAdapter: {
+      inspect: async () => {
+        visualConstructed = true;
+        return { ok: true };
+      },
     },
   });
 
-  assert.equal(playwrightConstructed, false);
+  assert.equal(visualConstructed, false);
   assert.equal(result.effective_route, 'stop');
   assert.equal(result.reason, 'ambiguous_mutation');
   assert.equal(result.mutation_confirmed, true);
   assert.deepEqual(result.observed_state, error.observed_state);
 });
 
-test('fails closed on an ambiguous MCP return without constructing Playwright', async () => {
-  let playwrightConstructed = false;
+test('fails closed on an ambiguous Playwright return without visual fallback', async () => {
+  let visualConstructed = false;
   const result = await runBrowserCheck({
-    mcpAdapter: {
+    playwrightAdapter: {
       inspect: async () => ({
         ok: false,
         ambiguous: true,
-        reason: 'mcp_result_ambiguous',
+        reason: 'playwright_result_ambiguous',
         observed_state: { mutation: 'unknown' },
       }),
     },
-    playwrightAdapterFactory: async () => {
-      playwrightConstructed = true;
-      return { inspect: async () => ({ ok: true }) };
+    visualAdapter: {
+      inspect: async () => {
+        visualConstructed = true;
+        return { ok: true };
+      },
     },
   });
 
-  assert.equal(playwrightConstructed, false);
+  assert.equal(visualConstructed, false);
   assert.equal(result.reason, 'ambiguous_mutation');
   assert.deepEqual(result.observed_state, { mutation: 'unknown' });
 });
 
-test('fails closed on an MCP ambiguous_mutation reason without constructing Playwright', async () => {
-  let playwrightConstructed = false;
+test('fails closed on an ambiguous_mutation reason without visual fallback', async () => {
+  let visualConstructed = false;
   const result = await runBrowserCheck({
-    mcpAdapter: {
+    playwrightAdapter: {
       inspect: async () => ({
         ok: false,
         reason: 'ambiguous_mutation',
         observed_state: { mutation: 'unknown' },
       }),
     },
-    playwrightAdapterFactory: async () => {
-      playwrightConstructed = true;
-      return { inspect: async () => ({ ok: true }) };
+    visualAdapter: {
+      inspect: async () => {
+        visualConstructed = true;
+        return { ok: true };
+      },
     },
   });
 
-  assert.equal(playwrightConstructed, false);
+  assert.equal(visualConstructed, false);
   assert.equal(result.reason, 'ambiguous_mutation');
   assert.equal(result.effective_route, 'stop');
   assert.deepEqual(result.observed_state, { mutation: 'unknown' });
 });
 
-test('main accepts an injected MCP adapter through the operational entrypoint', async () => {
+test('main accepts an injected Playwright adapter through the operational entrypoint', async () => {
   const previousLog = console.log;
   const logs = [];
   console.log = (value) => logs.push(JSON.parse(value));
   try {
     const result = await main({
-      mcpAdapter: {
+      playwrightAdapter: {
         inspect: async () => ({ ok: true, report: { visual_state: { ready_state: 'complete' } } }),
       },
-      playwrightAdapterFactory: async () => {
-        throw new Error('must not construct Playwright');
-      },
     });
-    assert.equal(result.effective_route, 'mcp_chrome_devtools');
+    assert.equal(result.effective_route, 'playwright');
     assert.deepEqual(logs, [result]);
   } finally {
     console.log = previousLog;
   }
 });
 
-test('main accepts an injected MCP adapter factory through the operational entrypoint', async () => {
+test('main accepts an injected Playwright adapter factory through the operational entrypoint', async () => {
   let factoryCalls = 0;
   const result = await main({
-    mcpAdapterFactory: async () => {
+    playwrightAdapterFactory: async () => {
       factoryCalls += 1;
       return { inspect: async () => ({ ok: true }) };
     },
-    playwrightAdapterFactory: async () => {
-      throw new Error('must not construct Playwright');
-    },
   });
   assert.equal(factoryCalls, 1);
-  assert.equal(result.effective_route, 'mcp_chrome_devtools');
+  assert.equal(result.effective_route, 'playwright');
 });
 
 function fixturePage(url) {
@@ -413,7 +404,7 @@ test('documents visual fallback downstream of the selected browser route', () =>
 test('keeps the visual fallback order explicit', () => {
   assert.deepEqual(visualFallbackOrder(), [
     'screenshot+nativa',
-    'image-analyzer:native_failed',
+    'image-analyzer',
     'stop',
   ]);
 });

@@ -6,8 +6,8 @@ Legenda: `[x]` concluído · `[~]` parcialmente validado · `[ ]` pendente · `[
 
 O pipeline editorial já possui descoberta, agrupamento, scoring manual, pesquisa,
 brief, redação, humanização e gates de aprovação. O contrato de automação de
-navegador agora prioriza **MCP Chrome DevTools** e usa **Playwright somente como
-fallback**.
+navegador agora prioriza **Playwright** como rota primária, com **screenshot +
+visão nativa** e **image-analyzer** como fallback visual.
 
 Última verificação do `main`:
 
@@ -24,9 +24,9 @@ fallback**.
 - [x] Oficializar as alterações locais em commit.
 - [x] Integrar o branch MCP-first ao `main`.
 - [x] Adicionar `runs/*` ao `.gitignore`.
-- [x] Validar o contrato de rota: MCP Chrome DevTools → Playwright fallback → stop.
-- [x] Comprovar uma execução browser-real via MCP Chrome DevTools em página pública
-  do LinkedIn, com navegação e snapshot somente leitura; não houve Playwright nem mutação.
+- [x] Validar o contrato de rota: Playwright → screenshot + visão nativa → image-analyzer → stop.
+- [x] Comprovar uma execução browser-real via Playwright em página pública
+  do LinkedIn, com navegação e snapshot somente leitura; não houve mutação.
 - [x] Registrar o incidente de agendamento: o post foi publicado em 05/09/2026
   às 21:45, em vez de ser reagendado para 07/09 às 10:00. Não é mais possível
   reagendar uma publicação já realizada.
@@ -43,7 +43,7 @@ fallback**.
   `research/topics/clusters_2026-09-06.yaml`.
 - [x] Executar um cenário real de novo agendamento de publicação com autorização
   explícita: `topic_20260901_03` confirmado para 08/09/2026 às 10:00 (BRT), via
-  MCP Chrome DevTools, com confirmação na lista de publicações agendadas.
+  Playwright, com confirmação na lista de publicações agendadas.
 - [x] Matriz de agendamento validada: novo agendamento hoje às
   22:00 e reagendamento da mesma publicação para 10/09/2026 às 10:00 foram
   confirmados na lista; os dois cenários negativos foram validados pelos
@@ -138,19 +138,19 @@ aprovação humana explícita.
 - [x] Implementação integrada em `scripts/linkedin_browser_check.js` e
   `scheduling_contract.py`.
 
-### Evidência P0.1 — MCP Chrome DevTools
+### Evidência P0.1 — Playwright (rota primária)
 
-- [x] O MCP navegou até `https://www.linkedin.com/` e capturou um snapshot real.
-- [x] A página estava deslogada; a evidência comprova a rota MCP, mas não uma sessão autenticada.
+- [x] O Playwright navegou até `https://www.linkedin.com/` e capturou o estado real.
+- [x] A página estava deslogada; a evidência comprova a rota Playwright, mas não uma sessão autenticada.
 - [x] Nenhum clique, preenchimento, publicação ou agendamento foi executado.
-- [x] A execução usou `mcp_chrome_devtools`; Playwright não foi chamado.
+- [x] A execução usou `playwright`; MCP Chrome DevTools não é usado neste fluxo.
 
 ### Política de rota e evidência
 
-A sequência normativa é MCP Chrome DevTools → Playwright
-`playwright_fallback` → screenshot e visão nativa → `stop`. O screenshot e a
-visão nativa acontecem depois das duas rotas de controle; em caso de falha, o
-fluxo termina com `stop` e fail-closed.
+A sequência normativa é Playwright → screenshot e visão nativa → `image-analyzer`
+→ `stop`. O screenshot e a visão nativa acontecem depois das duas rotas de
+controle; se o modelo não tiver visão nativa ou ela falhar, delega-se ao
+`image-analyzer`; em caso de falha, o fluxo termina com `stop` e fail-closed.
 Cada operação registra a rota, o motivo e a evidência observada.
 
 ### Receipt estruturada
@@ -170,12 +170,12 @@ scheduled_list: not_run
 timestamp_registered: not_run
 duplicate_created: false
 route_attempted:
-  - mcp_chrome_devtools
-mcp_attempted: true
+  - playwright
+playwright_attempted: true
 route_reasons:
-  mcp_chrome_devtools: ausência de sessão autenticada para ação mutante
+  playwright: ausência de sessão autenticada para ação mutante
 observed_state: public_page_read_only
-verification_evidence: snapshot MCP da página pública
+verification_evidence: snapshot Playwright da página pública
 post_action_confirmation: not_run
 ```
 

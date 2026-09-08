@@ -13,22 +13,21 @@ FILES = (
 )
 
 
-def test_browser_docs_use_mcp_before_playwright():
+def test_browser_docs_use_playwright_before_visual_fallback():
     for path in FILES:
         text = path.read_text()
-        mcp = text.index("MCP Chrome DevTools")
-        playwright = text.index("Playwright", mcp)
+        playwright = text.index("Playwright")
         screenshot = text.lower().index("screenshot", playwright)
         stop = text.lower().index("stop", screenshot)
 
-        assert mcp < playwright < screenshot < stop, path
-        assert "playwright_fallback" in text, path
+        assert playwright < screenshot < stop, path
+        assert "image-analyzer" in text, path
         assert "registr" in text.lower(), path
         assert "motivo" in text.lower() or "raz" in text.lower(), path
         assert "fail-closed" in text.lower(), path
         assert not re.search(
-            r"(?:primeir[ao]\s+(?:tentativa|rota)|tentar\s+primeiro)\D{0,30}Playwright|"
-            r"Playwright\s+(?:é|e)\s+(?:a\s+)?(?:primeira|rota\s+inicial)",
+            r"(?:primeir[ao]\s+(?:tentativa|rota)|tentar\s+primeiro)\D{0,30}MCP|"
+            r"MCP\s+(?:é|e)\s+(?:a\s+)?(?:primeira|rota\s+inicial)",
             text,
             re.IGNORECASE,
         ), path
@@ -54,9 +53,9 @@ def test_roadmap_receipt_uses_canonical_route_identifiers():
     receipt = yaml.safe_load(receipt_text)
     assert receipt["route"] == "stop"
     assert receipt["fallback"] == "none"
-    assert receipt["route_attempted"] == ["mcp_chrome_devtools"]
-    assert receipt["mcp_attempted"] is True
-    assert receipt["route_reasons"]["mcp_chrome_devtools"]
+    assert receipt["route_attempted"] == ["playwright"]
+    assert receipt["playwright_attempted"] is True
+    assert receipt["route_reasons"]["playwright"]
     assert receipt["observed_state"]
     assert receipt["verification_evidence"]
     assert receipt["post_action_confirmation"] == "not_run"
@@ -74,10 +73,11 @@ def test_docs_retain_critical_linkedin_safety_rules():
 
 def test_linkedin_skill_uses_canonical_browser_events():
     text = Path(".agents/skills/publicar-linkedin/SKILL.md").read_text()
-    assert "mcp_chrome_devtools_attempt" in text
-    assert "playwright_fallback" in text
     assert "playwright_attempt" in text
-    assert "playwright_fallback_if_needed" not in text
+    assert "screenshot_fallback_if_needed" in text
+    assert "image-analyzer" in text
+    assert "mcp_chrome_devtools_attempt" not in text
+    assert "playwright_fallback" not in text
 
 
 def test_mutation_docs_define_fail_closed_boundary_as_behavior():

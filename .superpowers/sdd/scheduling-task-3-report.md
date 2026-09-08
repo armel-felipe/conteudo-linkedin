@@ -17,10 +17,10 @@ evidence_status: simulated
 route: stop
 fallback: none
 route_attempted:
-  - mcp_chrome_devtools
-mcp_attempted: true
+  - playwright
+playwright_attempted: true
 route_reasons:
-  mcp_chrome_devtools: execução não realizada; receipt apenas simulado
+  playwright: execução não realizada; receipt apenas simulado
 observed_state:
   status: not_run
 verification_evidence: contrato e testes locais; nenhuma evidência browser-real

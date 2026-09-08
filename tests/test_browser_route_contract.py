@@ -10,14 +10,15 @@ def contract_text():
 
 def test_contract_declares_exact_route_sequence():
     text = contract_text()
-    assert "MCP Chrome DevTools → Playwright (fallback) → stop" in text
+    assert "Playwright → screenshot + visão nativa → image-analyzer → stop" in text
 
 
 def test_contract_names_normative_routes_and_safe_stop():
     text = contract_text()
     for phrase in (
-        "mcp_chrome_devtools",
-        "playwright_fallback",
+        "playwright",
+        "screenshot+nativa",
+        "image-analyzer",
         "ambiguous_mutation",
         "fail-closed",
         "nunca abrir novo composer",
@@ -64,7 +65,8 @@ def test_contract_separates_read_and_mutation_rules():
     text = contract_text()
     read_section = text[text.index("## Leitura e inspeção") : text.index("## Publicar")]
     mutation_section = text[text.index("## Publicar") : text.index("## Registro mínimo")]
-    assert "mcp_chrome_devtools" in read_section
-    assert "playwright_fallback" in read_section
+    assert "playwright" in read_section
+    assert "screenshot+nativa" in read_section
+    assert "image-analyzer" in read_section
     assert "confirmar o alvo" in mutation_section
     assert "após o envio, verificar o estado" in mutation_section

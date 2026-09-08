@@ -131,7 +131,7 @@ Agende content/drafts/topic_X.md para 2026-09-10 às 09:00 (horário de São Pau
 
 **Regras:**
 
-- Rota do browser, em ordem: **MCP Chrome DevTools → Playwright (`playwright_fallback`) → screenshot → visão → stop**. MCP é a rota inicial; Playwright só pode ser usado como `playwright_fallback` quando MCP falhar antes de uma mutação confirmada.
+- Rota do browser, em ordem: **Playwright → screenshot + visão nativa → image-analyzer → stop**. Playwright é a rota primária; se o modelo não tiver visão nativa ou ela falhar, delega-se ao `image-analyzer` com o screenshot.
 - **Registrar** em cada execução a rota escolhida e o **motivo**: registro de rota, razão, resultado e evidência.
 - O fallback visual (screenshot + visão) ocorre **depois das duas rotas** de controle e não substitui evidência; em mutação ambígua, pare em **fail-closed**, não repita.
 - Agendar exige confirmar data e hora, refazer o horário após trocar a data, conferir prévia e confirmar em "Publicações agendadas".

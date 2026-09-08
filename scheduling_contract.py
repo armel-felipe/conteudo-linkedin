@@ -6,7 +6,7 @@ from execution_log import ExecutionLogger
 _COMMON = (
     "approved_file",
     "markdown_converted",
-    "mcp_chrome_devtools_attempt",
+    "playwright_attempt",
 )
 
 _SUCCESS = (
@@ -23,7 +23,7 @@ _SUCCESS = (
 )
 
 _VISUAL_BRANCHES = {
-    "playwright": ("playwright_fallback", "playwright_attempt"),
+    "playwright": (),
     "no_native_vision": ("image-analyzer:reason=no_native_vision",),
     "native_failed": (
         "screenshot_fallback_if_needed",
@@ -46,19 +46,19 @@ _RECEIPT_FIELDS = (
     "timestamp_registered",
     "duplicate_created",
     "route_attempted",
-    "mcp_attempted",
+    "playwright_attempted",
     "route_reasons",
     "observed_state",
     "verification_evidence",
     "post_action_confirmation",
 )
 _RECEIPT_FALLBACK_FIELDS = {
-    "mcp_failure",
+    "playwright_failure",
     "fallback_reason",
 }
 
-_RECEIPT_ROUTES = {"mcp_chrome_devtools", "playwright_fallback", "stop"}
-_RECEIPT_FALLBACKS = {"none", "playwright_fallback"}
+_RECEIPT_ROUTES = {"playwright", "screenshot+nativa", "image-analyzer", "stop"}
+_RECEIPT_FALLBACKS = {"none", "screenshot+nativa", "image-analyzer"}
 _EVIDENCE_STATUSES = {
     "real_non_destructive",
     "real_existing_post",
@@ -94,22 +94,6 @@ def _validate_exact(events, expected):
 
 def validate_schedule_events(events, route):
     observed = tuple(events)
-    playwright_indexes = [
-        index for index, event in enumerate(observed) if "playwright" in event
-    ]
-    if playwright_indexes:
-        mcp_index = next(
-            (
-                index
-                for index, event in enumerate(observed)
-                if event == "mcp_chrome_devtools_attempt"
-            ),
-            None,
-        )
-        if mcp_index is None or mcp_index > min(playwright_indexes):
-            raise ValueError(
-                "MCP Chrome DevTools must be attempted before Playwright"
-            )
     if route == "unreadable_image":
         expected = _COMMON + (
             "screenshot_fallback_if_needed",
@@ -129,24 +113,27 @@ def validate_reschedule_events(events, route, *, effective_route=None, fallback=
     if route != "existing_post":
         raise ValueError(f"unknown reschedule route: {route}")
     observed = tuple(events)
-    if not observed or observed[0] != "mcp_chrome_devtools_attempt":
-        raise ValueError("reschedule requires an MCP Chrome DevTools attempt")
+    if not observed or observed[0] != "playwright_attempt":
+        raise ValueError("reschedule requires a Playwright attempt")
     if effective_route not in _RECEIPT_ROUTES - {"stop"}:
         raise ValueError("reschedule requires an effective browser route")
-    if effective_route == "playwright_fallback":
-        if fallback != "playwright_fallback":
-            raise ValueError("Playwright reschedule requires a valid fallback")
-        if "playwright_fallback" not in observed or "playwright_attempt" not in observed:
-            raise ValueError("Playwright reschedule requires fallback evidence")
+    if effective_route == "screenshot+nativa":
+        if fallback != "screenshot+nativa":
+            raise ValueError("visual reschedule requires a valid fallback")
+        if "screenshot_fallback_if_needed" not in observed:
+            raise ValueError("visual reschedule requires fallback evidence")
+    elif effective_route == "image-analyzer":
+        if fallback != "image-analyzer":
+            raise ValueError("image-analyzer reschedule requires a valid fallback")
+        if "image-analyzer:reason=native_failed" not in observed:
+            raise ValueError("image-analyzer reschedule requires fallback evidence")
     elif fallback != "none":
-        raise ValueError("MCP reschedule requires fallback none")
-    if effective_route == "mcp_chrome_devtools" and "playwright_fallback" in observed:
-        raise ValueError("effective route cannot be MCP after Playwright fallback")
+        raise ValueError("Playwright reschedule requires fallback none")
     return _validate_exact(
         events,
         (
-            "mcp_chrome_devtools_attempt",
-            *(("playwright_fallback", "playwright_attempt") if effective_route == "playwright_fallback" else ()),
+            "playwright_attempt",
+            *(("screenshot_fallback_if_needed", "image-analyzer:reason=native_failed") if effective_route == "image-analyzer" else ()),
             "existing_post_menu",
             "alter_schedule",
             "date_selected",
@@ -192,7 +179,7 @@ def can_register_timestamp(
         return False
     if receipt["evidence_status"] != "real_existing_post":
         return False
-    if receipt.get("mcp_attempted") is not True:
+    if receipt.get("playwright_attempted") is not True:
         return False
     if not isinstance(receipt.get("route_attempted"), list) or not receipt["route_attempted"]:
         return False
@@ -221,23 +208,10 @@ def can_register_timestamp(
 
 def validate_dry_run_events(events):
     observed = tuple(events)
-    playwright_indexes = [
-        index for index, event in enumerate(observed) if "playwright" in event
-    ]
-    mcp_index = next(
-        (
-            index
-            for index, event in enumerate(observed)
-            if event == "mcp_chrome_devtools_attempt"
-        ),
-        None,
-    )
-    if playwright_indexes and (mcp_index is None or mcp_index > min(playwright_indexes)):
-        raise ValueError("MCP Chrome DevTools must be attempted before Playwright")
     base = (
         "approved_file",
         "markdown_converted",
-        "mcp_chrome_devtools_attempt",
+        "playwright_attempt",
     )
     suffix = (
         "visual_route",
@@ -246,12 +220,6 @@ def validate_dry_run_events(events):
         "summary_confirmed",
         "blocked_before_advance",
     )
-    if playwright_indexes:
-        if "playwright_fallback" not in observed:
-            raise ValueError("playwright_fallback required before playwright_attempt")
-        return _validate_exact(
-            events, base + ("playwright_fallback", "playwright_attempt") + suffix
-        )
     return _validate_exact(events, base + suffix)
 
 
@@ -269,26 +237,31 @@ def validate_receipt(receipt):
         raise ValueError("invalid receipt route")
     if receipt["fallback"] not in _RECEIPT_FALLBACKS:
         raise ValueError("invalid receipt fallback")
-    if receipt["mcp_attempted"] is not True:
-        raise ValueError("receipt requires MCP attempt evidence")
+    if receipt["playwright_attempted"] is not True:
+        raise ValueError("receipt requires Playwright attempt evidence")
     attempted = receipt["route_attempted"]
     if (
         not isinstance(attempted, list)
         or not attempted
         or any(route not in _RECEIPT_ROUTES - {"stop"} for route in attempted)
         or len(attempted) != len(set(attempted))
-        or attempted[0] != "mcp_chrome_devtools"
+        or attempted[0] != "playwright"
     ):
         raise ValueError("invalid attempted route order")
-    if receipt["route"] == "mcp_chrome_devtools" and attempted != ["mcp_chrome_devtools"]:
+    if receipt["route"] == "playwright" and attempted != ["playwright"]:
         raise ValueError("effective route does not match attempted route order")
-    if receipt["route"] == "playwright_fallback" and attempted != [
-        "mcp_chrome_devtools", "playwright_fallback"
+    if receipt["route"] == "screenshot+nativa" and attempted != [
+        "playwright", "screenshot+nativa"
+    ]:
+        raise ValueError("effective route does not match attempted route order")
+    if receipt["route"] == "image-analyzer" and attempted != [
+        "playwright", "screenshot+nativa", "image-analyzer"
     ]:
         raise ValueError("effective route does not match attempted route order")
     if receipt["route"] == "stop" and attempted not in (
-        ["mcp_chrome_devtools"],
-        ["mcp_chrome_devtools", "playwright_fallback"],
+        ["playwright"],
+        ["playwright", "screenshot+nativa"],
+        ["playwright", "screenshot+nativa", "image-analyzer"],
     ):
         raise ValueError("stop route has invalid attempted route order")
     reasons = receipt["route_reasons"]
@@ -310,26 +283,33 @@ def validate_receipt(receipt):
     if receipt["route"] == "stop":
         if receipt["fallback"] != "none":
             raise ValueError("stop receipt cannot declare a fallback")
-        if receipt.get("mcp_attempted") is not True:
-            raise ValueError("stop receipt requires MCP attempt evidence")
-        if not isinstance(receipt.get("route_attempted"), list) or "mcp_chrome_devtools" not in receipt["route_attempted"]:
+        if receipt.get("playwright_attempted") is not True:
+            raise ValueError("stop receipt requires Playwright attempt evidence")
+        if not isinstance(receipt.get("route_attempted"), list) or "playwright" not in receipt["route_attempted"]:
             raise ValueError("stop receipt requires attempted route evidence")
         if not isinstance(receipt.get("verification_evidence"), str) or not receipt["verification_evidence"].strip():
             raise ValueError("stop receipt requires verification evidence")
-    elif receipt["route"] == "mcp_chrome_devtools":
+    elif receipt["route"] == "playwright":
         if receipt["fallback"] != "none":
             raise ValueError("receipt route and fallback are inconsistent")
-        if "mcp_failure" in fields or "fallback_reason" in fields:
+        if "playwright_failure" in fields or "fallback_reason" in fields:
             raise ValueError("receipt declares fallback evidence without fallback")
-    elif receipt["fallback"] != "playwright_fallback":
+    elif receipt["fallback"] not in {"screenshot+nativa", "image-analyzer"}:
         raise ValueError("receipt route and fallback are inconsistent")
-    if receipt["route"] == "playwright_fallback":
-        if receipt.get("mcp_failure") is not True:
-            raise ValueError("playwright fallback requires MCP failure")
+    if receipt["route"] == "screenshot+nativa":
+        if receipt.get("playwright_failure") is not True:
+            raise ValueError("visual fallback requires Playwright failure")
         if not isinstance(receipt.get("fallback_reason"), str) or not receipt[
             "fallback_reason"
         ].strip():
-            raise ValueError("playwright fallback requires an explicit reason")
+            raise ValueError("visual fallback requires an explicit reason")
+    if receipt["route"] == "image-analyzer":
+        if receipt.get("playwright_failure") is not True:
+            raise ValueError("image-analyzer fallback requires Playwright failure")
+        if not isinstance(receipt.get("fallback_reason"), str) or not receipt[
+            "fallback_reason"
+        ].strip():
+            raise ValueError("image-analyzer fallback requires an explicit reason")
     status = receipt["evidence_status"]
     if status in {"real_non_destructive", "real_existing_post"}:
         if receipt["requested_timestamp"] != receipt["displayed_timestamp"]:

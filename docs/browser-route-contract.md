@@ -4,30 +4,36 @@ Este documento define a rota normativa para qualquer skill ou script que opere
 um navegador no pipeline editorial. A rota padrão é sempre:
 
 ```text
-MCP Chrome DevTools → Playwright (fallback) → stop
+Playwright → screenshot + visão nativa → image-analyzer → stop
 ```
 
 Os nomes normativos das rotas são:
 
-- `mcp_chrome_devtools`: rota primária. Deve ser tentada primeiro para abrir,
-  inspecionar, ler ou interagir com uma página.
-- `playwright_fallback`: rota secundária, usada somente quando a rota primária
-  não estiver disponível ou não conseguir completar uma operação ainda não
-  confirmada como mutação.
+- `playwright`: rota primária. Deve ser tentada primeiro para abrir, inspecionar,
+  ler ou interagir com uma página, via `connectOverCDP` no browser do OpenWork.
+- `screenshot+nativa`: rota de confirmação visual, usada quando a leitura do
+  Playwright não for suficiente para confirmar o estado da tela. Captura um
+  screenshot e usa visão nativa do modelo para resumir conteúdo, data, hora,
+  botões e prévia.
+- `image-analyzer`: rota de confirmação visual delegada, usada quando o modelo
+  não tem visão nativa (`no_native_vision`) ou quando a visão nativa falha
+  (`native_failed`). Recebe o screenshot e retorna a leitura da tela.
 - `ambiguous_mutation`: resultado em que uma operação de mutação pode ter sido
   aplicada, mas seu resultado não foi confirmado.
 - `fail_closed` (também referido como **fail-closed**): comportamento
-  obrigatório diante de uma mutação ambígua:
-  interromper novas ações e não presumir sucesso.
+  obrigatório diante de uma mutação ambígua: interromper novas ações e não
+  presumir sucesso.
 
 ## Ordem e limite do fallback
 
-1. Registrar a intenção da operação e tentar `mcp_chrome_devtools`.
+1. Registrar a intenção da operação e tentar `playwright`.
 2. Se a operação não puder ser concluída e ainda não houver confirmação de
-   mutação, registrar a falha e tentar `playwright_fallback`.
-3. Se o fallback também não concluir a operação, registrar a rota efetiva e
-   parar. Não tentar uma terceira rota e não abrir uma nova composição de ação.
-4. Depois que uma mutação for enviada, fallback não é permitido para repetir
+   mutação, registrar a falha e tentar `screenshot+nativa` (visão nativa).
+3. Se o modelo não tiver visão nativa ou ela falhar, delegar ao `image-analyzer`
+   com o screenshot.
+4. Se nenhuma rota concluir a operação, registrar a rota efetiva e parar. Não
+   tentar uma rota adicional e não abrir uma nova composição de ação.
+5. Depois que uma mutação for enviada, fallback não é permitido para repetir
    a ação. Primeiro é necessário verificar o estado resultante.
 
 Fallback é permitido somente antes de uma mutação ser confirmada. Em especial,
@@ -35,19 +41,20 @@ uma resposta de timeout, desconexão ou erro após o envio de uma ação deve se
 tratada como `ambiguous_mutation`, não como autorização para repetir a ação.
 
 Toda operação deve registrar, no artefato ou log persistente, pelo menos a rota
-efetiva (`mcp_chrome_devtools`, `playwright_fallback` ou `stop`), o tipo de
-operação, o resultado e, quando houver, a verificação do estado. A ausência de
-registro torna a operação não auditável e impede sua aprovação.
+efetiva (`playwright`, `screenshot+nativa`, `image-analyzer` ou `stop`), o tipo
+de operação, o resultado e, quando houver, a verificação do estado. A ausência
+de registro torna a operação não auditável e impede sua aprovação.
 
 ## Leitura e inspeção
 
 Para abrir, ler, localizar elementos, capturar estado ou inspecionar uma tela:
 
-- usar `mcp_chrome_devtools` primeiro;
-- permitir `playwright_fallback` se a tentativa primária falhar antes de
-  qualquer mutação;
+- usar `playwright` primeiro;
+- permitir `screenshot+nativa` se a tentativa primária falhar antes de qualquer
+  mutação;
+- delegar ao `image-analyzer` se o modelo não tiver visão nativa ou ela falhar;
 - registrar a rota efetiva mesmo quando a operação terminar sem dados;
-- em caso de falha nas duas rotas, parar sem converter uma leitura incerta em
+- em caso de falha em todas as rotas, parar sem converter uma leitura incerta em
   uma decisão editorial.
 
 Leituras não devem criar, enviar ou alterar conteúdo. Uma ação de inspeção que
@@ -59,9 +66,9 @@ Publicar, agendar, reagendar e excluir são mutações de alto risco. Para cada
 uma delas:
 
 - confirmar o alvo, o conteúdo e a intenção antes do envio;
-- usar `mcp_chrome_devtools` como rota primária;
-- usar `playwright_fallback` somente se a falha ocorrer antes de a mutação ser
-  confirmada como enviada;
+- usar `playwright` como rota primária;
+- usar `screenshot+nativa` ou `image-analyzer` somente se a falha ocorrer antes
+  de a mutação ser confirmada como enviada;
 - após o envio, verificar o estado no navegador ou por uma leitura independente
   antes de registrar sucesso;
 - se o estado não puder distinguir sucesso de não execução, classificar como

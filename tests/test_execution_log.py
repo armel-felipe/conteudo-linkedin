@@ -14,11 +14,11 @@ def test_sanitizes_nested_secrets_and_writes_jsonl(tmp_path):
     event = logger.emit(
         "browser",
         "fallback",
-        route_attempted=["mcp_chrome_devtools", "playwright_fallback"],
-        effective_route="playwright_fallback",
+        route_attempted=["playwright", "screenshot+nativa"],
+        effective_route="screenshot+nativa",
         state="confirmed",
         duration_ms=12,
-        reason="mcp_unavailable",
+        reason="playwright_unavailable",
         details={
             "headers": {"Authorization": "Bearer secret"},
             "nested": [{"api_key": "key"}],
@@ -28,8 +28,8 @@ def test_sanitizes_nested_secrets_and_writes_jsonl(tmp_path):
     assert event == saved
     assert saved["run_id"] == "run-1"
     assert saved["route_attempted"] == [
-        "mcp_chrome_devtools",
-        "playwright_fallback",
+        "playwright",
+        "screenshot+nativa",
     ]
     assert saved["details"]["headers"]["Authorization"] == "[REDACTED]"
     assert saved["details"]["nested"][0]["api_key"] == "[REDACTED]"
@@ -75,9 +75,9 @@ def test_receipt_validation_can_emit_sanitized_log(tmp_path):
         "scheduled_list": "not_run",
         "timestamp_registered": "not_run",
         "duplicate_created": False,
-        "route_attempted": ["mcp_chrome_devtools"],
-        "mcp_attempted": True,
-        "route_reasons": {"mcp_chrome_devtools": "blocked"},
+        "route_attempted": ["playwright"],
+        "playwright_attempted": True,
+        "route_reasons": {"playwright": "blocked"},
         "observed_state": "ambiguous_mutation",
         "verification_evidence": "state check",
         "post_action_confirmation": "not_run",

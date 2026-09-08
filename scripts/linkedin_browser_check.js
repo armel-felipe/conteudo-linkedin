@@ -21,82 +21,98 @@ function selectLinkedInPage(pages) {
 }
 
 function browserRouteOrder() {
-  return ['mcp_chrome_devtools', 'playwright_fallback', 'stop'];
+  return ['playwright', 'screenshot+nativa', 'image-analyzer', 'stop'];
 }
 
 function resolveBrowserRoute({
-  mcpAttempt,
-  playwrightAttempt = null,
+  playwrightAttempt,
+  visualAttempt = null,
 }) {
-  const attemptedRoutes = ['mcp_chrome_devtools'];
-  const mcp = mcpAttempt || {};
+  const attemptedRoutes = ['playwright'];
+  const pw = playwrightAttempt || {};
   if (
-    mcp.mutation_confirmed
-    || mcp.ambiguous === true
-    || mcp.reason === 'ambiguous_mutation'
+    pw.mutation_confirmed
+    || pw.ambiguous === true
+    || pw.reason === 'ambiguous_mutation'
   ) {
     return {
       attempted_routes: attemptedRoutes,
       effective_route: 'stop',
       reason: 'ambiguous_mutation',
-      route_reasons: { mcp_chrome_devtools: 'ambiguous_mutation' },
-      observed_state: mcp.observed_state || null,
+      route_reasons: { playwright: 'ambiguous_mutation' },
+      observed_state: pw.observed_state || null,
       mutation_confirmed: true,
     };
   }
-  if (mcp.ok === true) {
+  if (pw.ok === true) {
     return {
       attempted_routes: attemptedRoutes,
-      effective_route: 'mcp_chrome_devtools',
-      reason: 'mcp_success',
-      route_reasons: { mcp_chrome_devtools: 'mcp_success' },
-      observed_state: mcp.report?.visual_state || mcp.observed_state || null,
+      effective_route: 'playwright',
+      reason: 'playwright_success',
+      route_reasons: { playwright: 'playwright_success' },
+      observed_state: pw.report?.visual_state || pw.observed_state || null,
     };
   }
-  if (!playwrightAttempt) {
+  if (!visualAttempt) {
     return {
       attempted_routes: attemptedRoutes,
       effective_route: 'stop',
-      reason: mcp.reason || 'mcp_failed',
-      route_reasons: { mcp_chrome_devtools: mcp.reason || 'mcp_failed' },
-      observed_state: mcp.observed_state || null,
+      reason: pw.reason || 'playwright_failed',
+      route_reasons: { playwright: pw.reason || 'playwright_failed' },
+      observed_state: pw.observed_state || null,
     };
   }
-  attemptedRoutes.push('playwright_fallback');
-  if (playwrightAttempt.mutation_confirmed) {
+  attemptedRoutes.push('screenshot+nativa');
+  if (visualAttempt.mutation_confirmed) {
     return {
       attempted_routes: attemptedRoutes,
       effective_route: 'stop',
       reason: 'ambiguous_mutation',
       route_reasons: {
-        mcp_chrome_devtools: mcp.reason || 'mcp_failed',
-        playwright_fallback: 'ambiguous_mutation',
+        playwright: pw.reason || 'playwright_failed',
+        'screenshot+nativa': 'ambiguous_mutation',
       },
-      observed_state: playwrightAttempt.observed_state || null,
+      observed_state: visualAttempt.observed_state || null,
       mutation_confirmed: true,
     };
   }
-  if (playwrightAttempt.ok === true) {
+  if (visualAttempt.ok === true) {
     return {
       attempted_routes: attemptedRoutes,
-      effective_route: 'playwright_fallback',
-      reason: mcp.reason || 'mcp_failed',
+      effective_route: 'screenshot+nativa',
+      reason: pw.reason || 'playwright_failed',
       route_reasons: {
-        mcp_chrome_devtools: mcp.reason || 'mcp_failed',
-        playwright_fallback: 'playwright_success',
+        playwright: pw.reason || 'playwright_failed',
+        'screenshot+nativa': 'visual_success',
       },
-      observed_state: playwrightAttempt.report?.visual_state || playwrightAttempt.observed_state || null,
+      observed_state: visualAttempt.report?.visual_state || visualAttempt.observed_state || null,
+    };
+  }
+  // visualAttempt falhou -> tentar image-analyzer
+  attemptedRoutes.push('image-analyzer');
+  if (visualAttempt.image_analyzer_ok === true) {
+    return {
+      attempted_routes: attemptedRoutes,
+      effective_route: 'image-analyzer',
+      reason: visualAttempt.reason || 'native_failed',
+      route_reasons: {
+        playwright: pw.reason || 'playwright_failed',
+        'screenshot+nativa': visualAttempt.reason || 'native_failed',
+        'image-analyzer': 'image_analyzer_success',
+      },
+      observed_state: visualAttempt.observed_state || null,
     };
   }
   return {
     attempted_routes: attemptedRoutes,
     effective_route: 'stop',
-    reason: playwrightAttempt.reason || 'playwright_failed',
+    reason: visualAttempt.reason || 'image_analyzer_failed',
     route_reasons: {
-      mcp_chrome_devtools: mcp.reason || 'mcp_failed',
-      playwright_fallback: playwrightAttempt.reason || 'playwright_failed',
+      playwright: pw.reason || 'playwright_failed',
+      'screenshot+nativa': visualAttempt.reason || 'native_failed',
+      'image-analyzer': visualAttempt.reason || 'image_analyzer_failed',
     },
-    observed_state: playwrightAttempt.observed_state || null,
+    observed_state: visualAttempt.observed_state || null,
   };
 }
 
@@ -106,7 +122,7 @@ function normalizePlaywrightAttempt(value) {
 }
 
 function visualFallbackOrder() {
-  return ['screenshot+nativa', 'image-analyzer:native_failed', 'stop'];
+  return ['screenshot+nativa', 'image-analyzer', 'stop'];
 }
 
 function screenshotPathFromEnvironment(value = process.env.OPENWORK_BROWSER_SCREENSHOT_PATH) {
@@ -139,22 +155,6 @@ async function inspectPage(page) {
   return report;
 }
 
-function defaultMcpAdapter() {
-  return {
-    async inspect() {
-      return {
-        ok: false,
-        reason: 'mcp_adapter_unconfigured',
-        mutation_confirmed: false,
-      };
-    },
-  };
-}
-
-function defaultMcpAdapterFactory() {
-  return defaultMcpAdapter();
-}
-
 async function defaultPlaywrightAdapterFactory() {
   const { chromium } = require('playwright');
   const browser = await chromium.connectOverCDP(
@@ -174,71 +174,23 @@ async function defaultPlaywrightAdapterFactory() {
 }
 
 /**
- * MCP adapter contract: inspect() returns { ok, report?, reason?,
+ * Playwright adapter contract: inspect() returns { ok, report?, reason?,
  * mutation_confirmed?, observed_state? }. It is injected so tests never need
- * credentials or a remote MCP connection.
+ * credentials or a remote connection.
  */
 async function runBrowserCheck({
-  mcpAdapter,
-  mcpAdapterFactory = defaultMcpAdapterFactory,
+  playwrightAdapter,
   playwrightAdapterFactory = defaultPlaywrightAdapterFactory,
+  visualAdapter = null,
   logPath = path.resolve('runs', 'browser-check.jsonl'),
   runId,
 } = {}) {
   const logger = createExecutionLogger(logPath, { runId });
   logger.start('browser');
-  let mcpAttempt;
-  try {
-    const adapter = mcpAdapter || await mcpAdapterFactory();
-    mcpAttempt = await adapter.inspect();
-  } catch (error) {
-    mcpAttempt = {
-      ok: false,
-      reason: error.ambiguous || error.mutation_confirmed
-        ? 'ambiguous_mutation'
-        : error.message,
-      ambiguous: error.ambiguous === true,
-      mutation_confirmed: error.mutation_confirmed === true || error.ambiguous === true,
-      observed_state: error.observed_state || null,
-    };
-  }
-  if (mcpAttempt.ok === true) {
-    const result = {
-      ...resolveBrowserRoute({ mcpAttempt }),
-      report: mcpAttempt.report,
-    };
-    logger.finish('browser', 'completed', {
-      route_attempted: result.attempted_routes,
-      effective_route: result.effective_route,
-      state: result.observed_state,
-      reason: result.reason,
-    });
-    return { ...result, log_path: logger.path, events: logger.events };
-  }
-  if (
-    mcpAttempt.mutation_confirmed
-    || mcpAttempt.ambiguous === true
-    || mcpAttempt.reason === 'ambiguous_mutation'
-  ) {
-    const result = resolveBrowserRoute({ mcpAttempt });
-    logger.finish('browser', 'blocked', {
-      route_attempted: result.attempted_routes,
-      effective_route: result.effective_route,
-      state: result.observed_state,
-      reason: result.reason,
-    });
-    return { ...result, log_path: logger.path, events: logger.events };
-  }
-
-  logger.finish('browser', 'fallback', {
-    route_attempted: ['mcp_chrome_devtools', 'playwright_fallback'],
-    reason: mcpAttempt.reason || 'mcp_failed',
-  });
-
   let playwrightAttempt;
   let adapter;
   try {
-    adapter = await playwrightAdapterFactory();
+    adapter = playwrightAdapter || await playwrightAdapterFactory();
     playwrightAttempt = normalizePlaywrightAttempt(await adapter.inspect());
     if (playwrightAttempt.ambiguous === true) {
       playwrightAttempt.mutation_confirmed = true;
@@ -253,8 +205,63 @@ async function runBrowserCheck({
   } finally {
     if (adapter?.close) await adapter.close();
   }
-  const result = resolveBrowserRoute({ mcpAttempt, playwrightAttempt });
-  if (playwrightAttempt.ok === true) result.report = playwrightAttempt.report;
+
+  if (playwrightAttempt.ok === true) {
+    const result = {
+      ...resolveBrowserRoute({ playwrightAttempt }),
+      report: playwrightAttempt.report,
+    };
+    logger.finish('browser', 'completed', {
+      route_attempted: result.attempted_routes,
+      effective_route: result.effective_route,
+      state: result.observed_state,
+      reason: result.reason,
+    });
+    return { ...result, log_path: logger.path, events: logger.events };
+  }
+  if (
+    playwrightAttempt.mutation_confirmed
+    || playwrightAttempt.ambiguous === true
+    || playwrightAttempt.reason === 'ambiguous_mutation'
+  ) {
+    const result = resolveBrowserRoute({ playwrightAttempt });
+    logger.finish('browser', 'blocked', {
+      route_attempted: result.attempted_routes,
+      effective_route: result.effective_route,
+      state: result.observed_state,
+      reason: result.reason,
+    });
+    return { ...result, log_path: logger.path, events: logger.events };
+  }
+
+  // Playwright falhou antes de mutação -> tentar fallback visual (screenshot + visão nativa)
+  logger.finish('browser', 'fallback', {
+    route_attempted: ['playwright', 'screenshot+nativa'],
+    reason: playwrightAttempt.reason || 'playwright_failed',
+  });
+
+  let visualAttempt;
+  if (visualAdapter) {
+    try {
+      const raw = await visualAdapter.inspect();
+      visualAttempt = normalizePlaywrightAttempt(raw);
+      if (visualAttempt.ambiguous === true) {
+        visualAttempt.mutation_confirmed = true;
+      }
+    } catch (error) {
+      visualAttempt = {
+        ok: false,
+        reason: error.mutation_confirmed || error.ambiguous ? 'ambiguous_mutation' : error.message,
+        mutation_confirmed: error.mutation_confirmed === true || error.ambiguous === true,
+        observed_state: error.observed_state || null,
+      };
+    }
+  } else {
+    visualAttempt = { ok: false, reason: 'no_visual_adapter' };
+  }
+
+  const result = resolveBrowserRoute({ playwrightAttempt, visualAttempt });
+  if (visualAttempt.ok === true) result.report = visualAttempt.report;
   logger.finish('browser', result.effective_route === 'stop' ? 'blocked' : 'completed', {
     route_attempted: result.attempted_routes,
     effective_route: result.effective_route,
