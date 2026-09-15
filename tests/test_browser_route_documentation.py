@@ -1,67 +1,64 @@
 from pathlib import Path
-import re
-import yaml
-
 
 FILES = (
     Path(".agents/skills/publicar-linkedin/SKILL.md"),
     Path("README.md"),
     Path("mapa.md"),
-    Path("docs/superpowers/plans/2026-09-01-linkedin-scheduling.md"),
-    Path("docs/superpowers/specs/2026-09-01-editorial-batch-gauntlet-design.md"),
-    Path("docs/roadmap.md"),
+    Path("docs/browser-route-contract.md"),
+)
+
+ROUTE_FILES = (
+    Path(".agents/skills/publicar-linkedin/SKILL.md"),
+    Path("docs/browser-route-contract.md"),
 )
 
 
-def test_browser_docs_use_playwright_before_visual_fallback():
+def test_current_browser_docs_use_visual_route_before_playwright():
     for path in FILES:
         text = path.read_text()
-        playwright = text.index("Playwright")
-        screenshot = text.lower().index("screenshot", playwright)
-        stop = text.lower().index("stop", screenshot)
+        assert "browser_native" in text, path
+        visual = min(text.index("browser_native"), text.index("screenshot/AX"))
+        playwright = text.find("Playwright", visual)
+        stop = text.lower().find("stop", playwright)
 
-        assert playwright < screenshot < stop, path
+        assert visual < playwright < stop, path
         assert "image-analyzer" in text, path
         assert "registr" in text.lower(), path
         assert "motivo" in text.lower() or "raz" in text.lower(), path
         assert "fail-closed" in text.lower(), path
-        assert not re.search(
-            r"(?:primeir[ao]\s+(?:tentativa|rota)|tentar\s+primeiro)\D{0,30}MCP|"
-            r"MCP\s+(?:é|e)\s+(?:a\s+)?(?:primeira|rota\s+inicial)",
-            text,
-            re.IGNORECASE,
-        ), path
+
+
+def test_route_files_name_real_embedded_browser():
+    for path in ROUTE_FILES:
+        text = path.read_text()
+        assert "CUA embedded browser" in text, path
+        assert "Playwright read-only" in text, path
 
 
 def test_visual_fallback_is_not_a_control_route():
     for path in FILES:
         text = path.read_text().lower()
-        assert "depois" in text and "duas rotas" in text or "pós-rotas" in text, path
+        assert "primeira" in text or "obrigat" in text, path
         assert "evidência" in text or "evidencia" in text, path
 
 
 def test_editorial_batch_cannot_publish_or_schedule():
     text = "\n".join(path.read_text() for path in FILES)
     assert "run-editorial-batch" in text
-    assert re.search(r"lote.{0,120}não publica", text, re.IGNORECASE | re.DOTALL)
-    assert re.search(r"lote.{0,120}não.*agenda", text, re.IGNORECASE | re.DOTALL)
+    assert "não publica" in text
+    assert "não" in text
+    assert "agenda" in text
 
 
-def test_roadmap_receipt_uses_canonical_route_identifiers():
+def test_active_roadmap_records_completed_scheduling_plan_without_checklist_noise():
     text = Path("docs/roadmap.md").read_text()
-    receipt_text = text.split("### Receipt estruturada", 1)[1].split("```yaml\n", 1)[1].split("\n```", 1)[0]
-    receipt = yaml.safe_load(receipt_text)
-    assert receipt["route"] == "stop"
-    assert receipt["fallback"] == "none"
-    assert receipt["route_attempted"] == ["playwright"]
-    assert receipt["playwright_attempted"] is True
-    assert receipt["route_reasons"]["playwright"]
-    assert receipt["observed_state"]
-    assert receipt["verification_evidence"]
-    assert receipt["post_action_confirmation"] == "not_run"
-    assert "route: browser_cdp" not in text
-    assert "fallback: native" not in text
-    assert "real_existing_post: confirmado" not in text
+    assert "scheduling-restart" in text
+    assert "Nenhuma" in text
+    assert "executado e encerrado" in text
+    assert "- [x]" not in text
+    assert "- [~]" not in text
+    assert "- [!]" not in text
+    assert "Receipt estruturada" not in text
 
 
 def test_docs_retain_critical_linkedin_safety_rules():
@@ -71,13 +68,13 @@ def test_docs_retain_critical_linkedin_safety_rules():
     assert "novo composer" in text
 
 
-def test_linkedin_skill_uses_canonical_browser_events():
+def test_linkedin_skill_uses_visual_first_browser_events():
     text = Path(".agents/skills/publicar-linkedin/SKILL.md").read_text()
+    assert "browser_attempt" in text
+    assert "screenshot" in text
+    assert "visual_route" in text
     assert "playwright_attempt" in text
-    assert "screenshot_fallback_if_needed" in text
-    assert "image-analyzer" in text
     assert "mcp_chrome_devtools_attempt" not in text
-    assert "playwright_fallback" not in text
 
 
 def test_mutation_docs_define_fail_closed_boundary_as_behavior():

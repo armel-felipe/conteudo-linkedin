@@ -13,6 +13,8 @@ def test_checklist_has_required_verification_steps():
         "date_time_confirmed",
         "final_preview_confirmed",
         "scheduled_list_confirmed",
+        "browser_attempted",
+        "route_attempted",
     }
     assert required <= set(data)
 

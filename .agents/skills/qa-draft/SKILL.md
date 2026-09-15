@@ -1,6 +1,6 @@
 ---
 name: qa-draft
-description: Use quando um draft de post estiver em content/drafts/ e o autor humano quiser revisar, aprovar (e agendar), pedir modificação ou descartar. Aprovar é decisão exclusiva do humano e dispara o agendamento + movimentação do arquivo.
+description: Use quando um draft de post estiver em content/drafts/ e o autor humano quiser revisar, aprovar, pedir modificação ou descartar. Aprovar é decisão exclusiva do humano; o agendamento/publicação ocorre em invocação explícita do Bloco 3.
 ---
 
 # QA de Draft — Revisão humana
@@ -33,16 +33,16 @@ Revisão humana de drafts do pipeline. O autor decide o destino de cada draft em
 
 ## Decisões de QA
 
-### Aprovar (= decidir agendar)
+### Aprovar (marco editorial)
 
-Aprovar e agendar são **a mesma decisão processual**. Não existe "approved pendente de agendamento".
+Aprovar e agendar são etapas distintas: a aprovação humana marca o topic como `approved`; o arquivo continua em `content/drafts/` até a confirmação do Bloco 3.
 
 - **Antes de agendar, verificar conflitos** rodando `python scheduling_registry.py --check`. Isso lê os markers `<!-- agendado: ... -->` de todos os posts e detecta:
   - **Conflito de horário**: dois posts no mesmo horário (ex.: tentar agendar para 10/09 10:00 quando outro post já ocupa esse horário).
   - **Conflito de conteúdo**: o mesmo texto agendado duas vezes.
   - Se houver conflito, **não agendar**; propor ao autor outro horário ou outro post.
 - Marcar o topic como `approved` no arquivo `research/topics/topics_*.yaml`.
-- Disparar o agendamento via Bloco 3 (`publicar-linkedin`) com a data/hora informada.
+- Invocar explicitamente o Bloco 3 (`publicar-linkedin`) quando houver data/hora de agendamento.
 - Após a confirmação do agendamento, **mover literalmente** o arquivo de `content/drafts/` para `content/published/` (git mv / mv), registrando o marker `<!-- agendado: ... -->`.
 - Não é necessário aguardar a publicação real; basta o agendamento ter sido feito corretamente.
 
@@ -66,8 +66,8 @@ Aprovar e agendar são **a mesma decisão processual**. Não existe "approved pe
 
 ## Regras
 
-- `approved` só é carimbado pelo humano, e **sempre junto com a decisão de agendar**.
-- Aprovar move o arquivo de `content/drafts/` para `content/published/` (não fica pendente em `drafts/`).
+- `approved` só é carimbado pelo humano; o arquivo pode permanecer aprovado em `content/drafts/` até o Bloco 3.
+- O Bloco 3 move o arquivo de `content/drafts/` para `content/published/` somente após a confirmação no LinkedIn.
 - Descartar move para `content/arquived/` (decisão exclusiva do autor).
-- Não publicar nem agendar dentro do QA sem a decisão de aprovação — o agendamento é disparado na aprovação.
+- Não publicar nem agendar dentro do QA; após a aprovação, o Bloco 3 é invocado explicitamente.
 - Revalidar tamanho (900–1500 caracteres / 150–250 palavras) e presença de `## Fontes` após qualquer ajuste.

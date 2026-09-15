@@ -1,20 +1,18 @@
 # Contrato de Rota de Navegador
 
 Este documento define a rota normativa para qualquer skill ou script que opere
-um navegador no pipeline editorial. A rota padrão é sempre:
+um navegador no pipeline editorial. A rota padrão obrigatória é sempre:
 
 ```text
-Playwright → screenshot + visão nativa → image-analyzer → stop
+CUA embedded browser → screenshot/AX → image-analyzer (se necessário) → Playwright read-only → stop
 ```
 
 Os nomes normativos das rotas são:
 
-- `playwright`: rota primária. Deve ser tentada primeiro para abrir, inspecionar,
-  ler ou interagir com uma página, via `connectOverCDP` no browser do OpenWork.
-- `screenshot+nativa`: rota de confirmação visual, usada quando a leitura do
-  Playwright não for suficiente para confirmar o estado da tela. Captura um
-  screenshot e usa visão nativa do modelo para resumir conteúdo, data, hora,
-  botões e prévia.
+- `browser_native`: rota primária e obrigatória. Deve abrir ou selecionar a aba
+  pelo CUA embedded browser, capturar screenshot e usar visão nativa
+  para localizar, ler e confirmar elementos antes de qualquer mutação.
+- `browser_native`: rota primária e obrigatória. Deve abrir ou selecionar a aba pelo CUA embedded browser, capturar screenshot e usar visão nativa para localizar, ler e confirmar elementos antes de qualquer mutação; ela também resume conteúdo, data, hora, botões, menus e prévia.
 - `image-analyzer`: rota de confirmação visual delegada, usada quando o modelo
   não tem visão nativa (`no_native_vision`) ou quando a visão nativa falha
   (`native_failed`). Recebe o screenshot e retorna a leitura da tela.
@@ -26,11 +24,12 @@ Os nomes normativos das rotas são:
 
 ## Ordem e limite do fallback
 
-1. Registrar a intenção da operação e tentar `playwright`.
-2. Se a operação não puder ser concluída e ainda não houver confirmação de
-   mutação, registrar a falha e tentar `screenshot+nativa` (visão nativa).
-3. Se o modelo não tiver visão nativa ou ela falhar, delegar ao `image-analyzer`
+1. Registrar a intenção, abrir/selecionar a aba com o navegador embutido e
+   capturar `screenshot+nativa`.
+2. Se o modelo não tiver visão nativa ou ela falhar, delegar ao `image-analyzer`
    com o screenshot.
+3. Se a rota visual não puder concluir a operação, registrar a falha e tentar
+   `playwright` somente como diagnóstico read-only.
 4. Se nenhuma rota concluir a operação, registrar a rota efetiva e parar. Não
    tentar uma rota adicional e não abrir uma nova composição de ação.
 5. Depois que uma mutação for enviada, fallback não é permitido para repetir
@@ -41,17 +40,16 @@ uma resposta de timeout, desconexão ou erro após o envio de uma ação deve se
 tratada como `ambiguous_mutation`, não como autorização para repetir a ação.
 
 Toda operação deve registrar, no artefato ou log persistente, pelo menos a rota
-efetiva (`playwright`, `screenshot+nativa`, `image-analyzer` ou `stop`), o tipo
-de operação, o resultado e, quando houver, a verificação do estado. A ausência
+efetiva (`browser_native`, `image-analyzer`, `playwright` ou `stop`), o tipo
+de operação, o motivo, o resultado e, quando houver, a verificação do estado. A ausência
 de registro torna a operação não auditável e impede sua aprovação.
 
 ## Leitura e inspeção
 
 Para abrir, ler, localizar elementos, capturar estado ou inspecionar uma tela:
 
-- usar `playwright` primeiro;
-- permitir `screenshot+nativa` se a tentativa primária falhar antes de qualquer
-  mutação;
+- usar `browser_native` primeiro;
+- permitir `playwright` somente como diagnóstico read-only, depois da tentativa visual;
 - delegar ao `image-analyzer` se o modelo não tiver visão nativa ou ela falhar;
 - registrar a rota efetiva mesmo quando a operação terminar sem dados;
 - em caso de falha em todas as rotas, parar sem converter uma leitura incerta em
@@ -66,9 +64,9 @@ Publicar, agendar, reagendar e excluir são mutações de alto risco. Para cada
 uma delas:
 
 - confirmar o alvo, o conteúdo e a intenção antes do envio;
-- usar `playwright` como rota primária;
-- usar `screenshot+nativa` ou `image-analyzer` somente se a falha ocorrer antes
-  de a mutação ser confirmada como enviada;
+- usar `browser_native` como rota primária e obrigatória;
+- usar `image-analyzer` quando não houver visão nativa ou ela falhar;
+- usar `playwright` somente como diagnóstico read-only antes de qualquer mutação;
 - após o envio, verificar o estado no navegador ou por uma leitura independente
   antes de registrar sucesso;
 - se o estado não puder distinguir sucesso de não execução, classificar como

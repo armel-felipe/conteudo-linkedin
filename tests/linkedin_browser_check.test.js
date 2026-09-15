@@ -16,16 +16,37 @@ const {
 
 const page = (url) => ({ url: () => url });
 
-test('declares Playwright as the primary route', () => {
+test('declares the visual route as primary and Playwright as the last fallback', () => {
   assert.deepEqual(browserRouteOrder(), [
-    'playwright',
-    'screenshot+nativa',
+    'browser_native',
     'image-analyzer',
+    'playwright',
     'stop',
   ]);
 });
 
-test('logs Playwright-first browser execution', async () => {
+test('executes the visual OpenWork route before Playwright fallback', async () => {
+  const calls = [];
+  const result = await runBrowserCheck({
+    visualAdapter: {
+      inspect: async () => {
+        calls.push('visual');
+        return { ok: true, report: { visual_state: 'native_confirmed' } };
+      },
+    },
+    playwrightAdapter: {
+      inspect: async () => {
+        calls.push('playwright');
+        return { ok: true, report: { visual_state: 'playwright_confirmed' } };
+      },
+    },
+  });
+
+  assert.deepEqual(calls, ['visual']);
+  assert.equal(result.effective_route, 'browser_native');
+});
+
+test('logs Playwright execution after unavailable visual routes', async () => {
   const logPath = path.join(os.tmpdir(), `browser-${Date.now()}-pw.jsonl`);
   const result = await runBrowserCheck({
     playwrightAdapter: {
@@ -35,6 +56,10 @@ test('logs Playwright-first browser execution', async () => {
     runId: 'browser-run-1',
   });
   assert.equal(result.effective_route, 'playwright');
+  assert.deepEqual(result.attempted_routes, [
+    'browser_native',
+    'playwright',
+  ]);
   assert.equal(result.events[0].event, 'started');
   assert.equal(result.events.at(-1).event, 'completed');
 });
@@ -55,24 +80,24 @@ test('logs fallback reason and never logs adapter secrets', async () => {
     logPath,
     runId: 'browser-run-2',
   });
-  assert.equal(result.effective_route, 'screenshot+nativa');
-  assert.equal(result.route_reasons.playwright, 'playwright_unavailable');
+  assert.equal(result.effective_route, 'browser_native');
+  assert.deepEqual(result.attempted_routes, ['browser_native']);
   assert.equal(JSON.stringify(result.events).includes('secret'), false);
 });
 
-test('uses visual fallback when Playwright is unavailable before mutation', () => {
+test('selects the visual route without consulting Playwright', () => {
   assert.deepEqual(resolveBrowserRoute({
     playwrightAttempt: { ok: false, reason: 'playwright_unavailable' },
     visualAttempt: { ok: true, report: { visual_state: {} } },
   }), {
-    attempted_routes: ['playwright', 'screenshot+nativa'],
-    effective_route: 'screenshot+nativa',
-    reason: 'playwright_unavailable',
+    attempted_routes: ['browser_native'],
+    effective_route: 'browser_native',
+    reason: 'browser_native_success',
     route_reasons: {
-      playwright: 'playwright_unavailable',
-      'screenshot+nativa': 'visual_success',
+      'browser_native': 'browser_native_success',
     },
     observed_state: {},
+    report: { visual_state: {} },
   });
 });
 
@@ -101,9 +126,9 @@ test('does not permit fallback after a confirmed mutation', () => {
   });
 });
 
-test('runs an injected Playwright adapter as the primary route', async () => {
+test('runs an injected Playwright adapter only after visual routes are unavailable', async () => {
   const calls = [];
-  const report = { url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
+  const report = { mutation_allowed: false, url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
   const result = await runBrowserCheck({
     playwrightAdapter: {
       inspect: async () => {
@@ -116,20 +141,23 @@ test('runs an injected Playwright adapter as the primary route', async () => {
   assert.deepEqual(calls, ['playwright']);
   const { log_path: logPath, events, ...core } = result;
   assert.deepEqual(core, {
-    attempted_routes: ['playwright'],
+    attempted_routes: ['browser_native', 'playwright'],
     effective_route: 'playwright',
     reason: 'playwright_success',
-    route_reasons: { playwright: 'playwright_success' },
+    route_reasons: {
+      'browser_native': 'no_visual_adapter',
+      playwright: 'playwright_success',
+    },
     observed_state: report.visual_state,
     report,
   });
   assert.ok(logPath.endsWith('browser-check.jsonl'));
-  assert.deepEqual(events.map((event) => event.event), ['started', 'completed']);
+  assert.deepEqual(events.map((event) => event.event), ['started', 'fallback', 'completed']);
 });
 
-test('uses visual fallback only after an injected Playwright failure', async () => {
+test('uses visual route before an injected Playwright adapter', async () => {
   const calls = [];
-  const report = { url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
+  const report = { mutation_allowed: false, url: 'https://www.linkedin.com/feed/', visual_state: { ready_state: 'complete' } };
   const result = await runBrowserCheck({
     playwrightAdapter: {
       inspect: async () => {
@@ -142,21 +170,48 @@ test('uses visual fallback only after an injected Playwright failure', async () 
     },
   });
 
-  assert.deepEqual(calls, ['playwright', 'visual']);
+  assert.deepEqual(calls, ['visual']);
   const { log_path: logPath, events, ...core } = result;
   assert.deepEqual(core, {
-    attempted_routes: ['playwright', 'screenshot+nativa'],
-    effective_route: 'screenshot+nativa',
-    reason: 'playwright_unavailable',
+    attempted_routes: ['browser_native'],
+    effective_route: 'browser_native',
+    reason: 'browser_native_success',
     route_reasons: {
-      playwright: 'playwright_unavailable',
-      'screenshot+nativa': 'visual_success',
+      'browser_native': 'browser_native_success',
     },
     observed_state: report.visual_state,
     report,
   });
   assert.ok(logPath.endsWith('browser-check.jsonl'));
-  assert.deepEqual(events.map((event) => event.event), ['started', 'fallback', 'completed']);
+  assert.deepEqual(events.map((event) => event.event), ['started', 'completed']);
+});
+
+test('uses image-analyzer before Playwright when native vision fails', async () => {
+  const calls = [];
+  const result = await runBrowserCheck({
+    visualAdapter: {
+      inspect: async () => {
+        calls.push('visual');
+        return { ok: false, reason: 'native_failed' };
+      },
+    },
+    imageAnalyzerAdapter: {
+      inspect: async () => {
+        calls.push('image-analyzer');
+        return { ok: true, report: { visual_state: 'analyzer_confirmed' } };
+      },
+    },
+    playwrightAdapter: {
+      inspect: async () => {
+        calls.push('playwright');
+        return { ok: true };
+      },
+    },
+  });
+
+  assert.deepEqual(calls, ['visual', 'image-analyzer']);
+  assert.equal(result.effective_route, 'image-analyzer');
+  assert.deepEqual(result.attempted_routes, ['browser_native', 'image-analyzer']);
 });
 
 test('stops and preserves ambiguous state when Playwright inspection returns it', async () => {
@@ -204,12 +259,12 @@ test('fails closed on an ambiguous Playwright exception without visual fallback'
     visualAdapter: {
       inspect: async () => {
         visualConstructed = true;
-        return { ok: true };
+        return { ok: false, reason: 'native_failed' };
       },
     },
   });
 
-  assert.equal(visualConstructed, false);
+  assert.equal(visualConstructed, true);
   assert.equal(result.effective_route, 'stop');
   assert.equal(result.reason, 'ambiguous_mutation');
   assert.equal(result.mutation_confirmed, true);
@@ -230,12 +285,12 @@ test('fails closed on an ambiguous Playwright return without visual fallback', a
     visualAdapter: {
       inspect: async () => {
         visualConstructed = true;
-        return { ok: true };
+        return { ok: false, reason: 'native_failed' };
       },
     },
   });
 
-  assert.equal(visualConstructed, false);
+  assert.equal(visualConstructed, true);
   assert.equal(result.reason, 'ambiguous_mutation');
   assert.deepEqual(result.observed_state, { mutation: 'unknown' });
 });
@@ -253,12 +308,12 @@ test('fails closed on an ambiguous_mutation reason without visual fallback', asy
     visualAdapter: {
       inspect: async () => {
         visualConstructed = true;
-        return { ok: true };
+        return { ok: false, reason: 'native_failed' };
       },
     },
   });
 
-  assert.equal(visualConstructed, false);
+  assert.equal(visualConstructed, true);
   assert.equal(result.reason, 'ambiguous_mutation');
   assert.equal(result.effective_route, 'stop');
   assert.deepEqual(result.observed_state, { mutation: 'unknown' });
@@ -351,6 +406,7 @@ test('inspects a real Page fixture without mutating it or taking an unrequested 
   try {
     const report = await inspectPage(target);
     assert.deepEqual(report, {
+      mutation_allowed: false,
       url: 'https://www.linkedin.com/feed/',
       title: 'LinkedIn fixture',
       visual_state: { visibility: 'visible', ready_state: 'complete', body_present: true },
@@ -403,7 +459,7 @@ test('documents visual fallback downstream of the selected browser route', () =>
 
 test('keeps the visual fallback order explicit', () => {
   assert.deepEqual(visualFallbackOrder(), [
-    'screenshot+nativa',
+    'browser_native',
     'image-analyzer',
     'stop',
   ]);

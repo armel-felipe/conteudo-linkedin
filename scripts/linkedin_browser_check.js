@@ -13,7 +13,6 @@ function selectLinkedInPage(pages) {
       return false;
     }
   });
-
   if (!selected) {
     throw new Error('LinkedIn target not found (about:blank or no target)');
   }
@@ -21,98 +20,66 @@ function selectLinkedInPage(pages) {
 }
 
 function browserRouteOrder() {
-  return ['playwright', 'screenshot+nativa', 'image-analyzer', 'stop'];
+  return ['browser_native', 'image-analyzer', 'playwright', 'stop'];
 }
 
 function resolveBrowserRoute({
-  playwrightAttempt,
   visualAttempt = null,
+  imageAnalyzerAttempt = null,
+  playwrightAttempt = null,
 }) {
-  const attemptedRoutes = ['playwright'];
-  const pw = playwrightAttempt || {};
-  if (
-    pw.mutation_confirmed
-    || pw.ambiguous === true
-    || pw.reason === 'ambiguous_mutation'
-  ) {
-    return {
-      attempted_routes: attemptedRoutes,
-      effective_route: 'stop',
-      reason: 'ambiguous_mutation',
-      route_reasons: { playwright: 'ambiguous_mutation' },
-      observed_state: pw.observed_state || null,
-      mutation_confirmed: true,
-    };
+  const attempts = [
+    ['browser_native', visualAttempt],
+    ['image-analyzer', imageAnalyzerAttempt],
+    ['playwright', playwrightAttempt],
+  ].filter(([, attempt]) => attempt);
+  const attemptedRoutes = [];
+  const routeReasons = {};
+
+  for (const [route, attempt] of attempts) {
+    attemptedRoutes.push(route);
+    const reason = attempt.ok === true
+      ? `${route === 'playwright' ? route : route.replace('-', '_')}_success`
+      : attempt.reason || `${route}_failed`;
+    routeReasons[route] = reason;
+
+    if (
+      attempt.mutation_confirmed
+      || attempt.ambiguous === true
+      || attempt.reason === 'ambiguous_mutation'
+    ) {
+      return {
+        attempted_routes: attemptedRoutes,
+        effective_route: 'stop',
+        reason: 'ambiguous_mutation',
+        route_reasons: { ...routeReasons, [route]: 'ambiguous_mutation' },
+        observed_state: attempt.observed_state || null,
+        mutation_confirmed: true,
+      };
+    }
+    if (attempt.ok === true) {
+      let report = attempt.report;
+      if (route === 'playwright') {
+        report = { mutation_allowed: false, ...(report || {}) };
+      }
+      return {
+        attempted_routes: attemptedRoutes,
+        effective_route: route,
+        reason,
+        route_reasons: routeReasons,
+        observed_state: attempt.report?.visual_state || attempt.observed_state || null,
+        report,
+      };
+    }
   }
-  if (pw.ok === true) {
-    return {
-      attempted_routes: attemptedRoutes,
-      effective_route: 'playwright',
-      reason: 'playwright_success',
-      route_reasons: { playwright: 'playwright_success' },
-      observed_state: pw.report?.visual_state || pw.observed_state || null,
-    };
-  }
-  if (!visualAttempt) {
-    return {
-      attempted_routes: attemptedRoutes,
-      effective_route: 'stop',
-      reason: pw.reason || 'playwright_failed',
-      route_reasons: { playwright: pw.reason || 'playwright_failed' },
-      observed_state: pw.observed_state || null,
-    };
-  }
-  attemptedRoutes.push('screenshot+nativa');
-  if (visualAttempt.mutation_confirmed) {
-    return {
-      attempted_routes: attemptedRoutes,
-      effective_route: 'stop',
-      reason: 'ambiguous_mutation',
-      route_reasons: {
-        playwright: pw.reason || 'playwright_failed',
-        'screenshot+nativa': 'ambiguous_mutation',
-      },
-      observed_state: visualAttempt.observed_state || null,
-      mutation_confirmed: true,
-    };
-  }
-  if (visualAttempt.ok === true) {
-    return {
-      attempted_routes: attemptedRoutes,
-      effective_route: 'screenshot+nativa',
-      reason: pw.reason || 'playwright_failed',
-      route_reasons: {
-        playwright: pw.reason || 'playwright_failed',
-        'screenshot+nativa': 'visual_success',
-      },
-      observed_state: visualAttempt.report?.visual_state || visualAttempt.observed_state || null,
-    };
-  }
-  // visualAttempt falhou -> tentar image-analyzer
-  attemptedRoutes.push('image-analyzer');
-  if (visualAttempt.image_analyzer_ok === true) {
-    return {
-      attempted_routes: attemptedRoutes,
-      effective_route: 'image-analyzer',
-      reason: visualAttempt.reason || 'native_failed',
-      route_reasons: {
-        playwright: pw.reason || 'playwright_failed',
-        'screenshot+nativa': visualAttempt.reason || 'native_failed',
-        'image-analyzer': 'image_analyzer_success',
-      },
-      observed_state: visualAttempt.observed_state || null,
-    };
-  }
+
+  const lastAttempt = attempts.at(-1)?.[1] || {};
   return {
     attempted_routes: attemptedRoutes,
     effective_route: 'stop',
-    reason: visualAttempt.reason || 'image_analyzer_failed',
-    route_reasons: {
-      playwright: pw.reason || 'playwright_failed',
-      'screenshot+nativa': visualAttempt.reason || 'native_failed',
-      'image-analyzer': visualAttempt.reason || 'image_analyzer_failed',
-    },
-    observed_state: visualAttempt.observed_state || null,
+    reason: lastAttempt.reason || 'browser_routes_failed',
+    route_reasons: routeReasons,
+    observed_state: lastAttempt.observed_state || null,
   };
 }
 
@@ -122,7 +89,7 @@ function normalizePlaywrightAttempt(value) {
 }
 
 function visualFallbackOrder() {
-  return ['screenshot+nativa', 'image-analyzer', 'stop'];
+  return ['browser_native', 'image-analyzer', 'stop'];
 }
 
 function screenshotPathFromEnvironment(value = process.env.OPENWORK_BROWSER_SCREENSHOT_PATH) {
@@ -138,6 +105,7 @@ function screenshotPathFromEnvironment(value = process.env.OPENWORK_BROWSER_SCRE
 async function inspectPage(page) {
   selectLinkedInPage([page]);
   const report = {
+    mutation_allowed: false,
     url: page.url(),
     title: await page.title(),
     visual_state: await page.evaluate(() => ({
@@ -146,7 +114,6 @@ async function inspectPage(page) {
       body_present: Boolean(document.body),
     })),
   };
-
   const screenshotPath = screenshotPathFromEnvironment();
   if (screenshotPath) {
     await page.screenshot({ path: screenshotPath });
@@ -173,28 +140,76 @@ async function defaultPlaywrightAdapterFactory() {
   }
 }
 
-/**
- * Playwright adapter contract: inspect() returns { ok, report?, reason?,
- * mutation_confirmed?, observed_state? }. It is injected so tests never need
- * credentials or a remote connection.
- */
 async function runBrowserCheck({
   playwrightAdapter,
   playwrightAdapterFactory = defaultPlaywrightAdapterFactory,
   visualAdapter = null,
+  imageAnalyzerAdapter = null,
   logPath = path.resolve('runs', 'browser-check.jsonl'),
   runId,
 } = {}) {
   const logger = createExecutionLogger(logPath, { runId });
   logger.start('browser');
+  let visualAttempt;
+  try {
+    visualAttempt = normalizePlaywrightAttempt(
+      visualAdapter ? await visualAdapter.inspect() : { ok: false, reason: 'no_visual_adapter' },
+    );
+    if (visualAttempt.ambiguous === true) visualAttempt.mutation_confirmed = true;
+  } catch (error) {
+    visualAttempt = {
+      ok: false,
+      reason: error.mutation_confirmed || error.ambiguous ? 'ambiguous_mutation' : error.message,
+      mutation_confirmed: error.mutation_confirmed === true || error.ambiguous === true,
+      observed_state: error.observed_state || null,
+    };
+  }
+  if (visualAttempt.mutation_confirmed || visualAttempt.reason === 'ambiguous_mutation') {
+    const result = resolveBrowserRoute({ visualAttempt });
+    logger.finish('browser', 'blocked', { route_attempted: result.attempted_routes, effective_route: result.effective_route, state: result.observed_state, reason: result.reason });
+    return { ...result, log_path: logger.path, events: logger.events };
+  }
+  if (visualAttempt.ok === true) {
+    const result = resolveBrowserRoute({ visualAttempt });
+    logger.finish('browser', 'completed', { route_attempted: result.attempted_routes, effective_route: result.effective_route, state: result.observed_state, reason: result.reason });
+    return { ...result, log_path: logger.path, events: logger.events };
+  }
+
+  let imageAnalyzerAttempt;
+  if (imageAnalyzerAdapter) {
+    try {
+      imageAnalyzerAttempt = normalizePlaywrightAttempt(await imageAnalyzerAdapter.inspect());
+      if (imageAnalyzerAttempt.ambiguous === true) imageAnalyzerAttempt.mutation_confirmed = true;
+    } catch (error) {
+      imageAnalyzerAttempt = {
+        ok: false,
+        reason: error.mutation_confirmed || error.ambiguous ? 'ambiguous_mutation' : error.message,
+        mutation_confirmed: error.mutation_confirmed === true || error.ambiguous === true,
+        observed_state: error.observed_state || null,
+      };
+    }
+    if (imageAnalyzerAttempt.mutation_confirmed || imageAnalyzerAttempt.reason === 'ambiguous_mutation') {
+      const result = resolveBrowserRoute({ visualAttempt, imageAnalyzerAttempt });
+      logger.finish('browser', 'blocked', { route_attempted: result.attempted_routes, effective_route: result.effective_route, state: result.observed_state, reason: result.reason });
+      return { ...result, log_path: logger.path, events: logger.events };
+    }
+    if (imageAnalyzerAttempt.ok === true) {
+      const result = resolveBrowserRoute({ visualAttempt, imageAnalyzerAttempt });
+      logger.finish('browser', 'completed', { route_attempted: result.attempted_routes, effective_route: result.effective_route, state: result.observed_state, reason: result.reason });
+      return { ...result, log_path: logger.path, events: logger.events };
+    }
+  }
+
+  logger.finish('browser', 'fallback', {
+    route_attempted: ['browser_native', ...(imageAnalyzerAttempt ? ['image-analyzer'] : []), 'playwright'],
+    reason: visualAttempt.reason || 'native_failed',
+  });
   let playwrightAttempt;
   let adapter;
   try {
     adapter = playwrightAdapter || await playwrightAdapterFactory();
     playwrightAttempt = normalizePlaywrightAttempt(await adapter.inspect());
-    if (playwrightAttempt.ambiguous === true) {
-      playwrightAttempt.mutation_confirmed = true;
-    }
+    if (playwrightAttempt.ambiguous === true) playwrightAttempt.mutation_confirmed = true;
   } catch (error) {
     playwrightAttempt = {
       ok: false,
@@ -206,62 +221,7 @@ async function runBrowserCheck({
     if (adapter?.close) await adapter.close();
   }
 
-  if (playwrightAttempt.ok === true) {
-    const result = {
-      ...resolveBrowserRoute({ playwrightAttempt }),
-      report: playwrightAttempt.report,
-    };
-    logger.finish('browser', 'completed', {
-      route_attempted: result.attempted_routes,
-      effective_route: result.effective_route,
-      state: result.observed_state,
-      reason: result.reason,
-    });
-    return { ...result, log_path: logger.path, events: logger.events };
-  }
-  if (
-    playwrightAttempt.mutation_confirmed
-    || playwrightAttempt.ambiguous === true
-    || playwrightAttempt.reason === 'ambiguous_mutation'
-  ) {
-    const result = resolveBrowserRoute({ playwrightAttempt });
-    logger.finish('browser', 'blocked', {
-      route_attempted: result.attempted_routes,
-      effective_route: result.effective_route,
-      state: result.observed_state,
-      reason: result.reason,
-    });
-    return { ...result, log_path: logger.path, events: logger.events };
-  }
-
-  // Playwright falhou antes de mutação -> tentar fallback visual (screenshot + visão nativa)
-  logger.finish('browser', 'fallback', {
-    route_attempted: ['playwright', 'screenshot+nativa'],
-    reason: playwrightAttempt.reason || 'playwright_failed',
-  });
-
-  let visualAttempt;
-  if (visualAdapter) {
-    try {
-      const raw = await visualAdapter.inspect();
-      visualAttempt = normalizePlaywrightAttempt(raw);
-      if (visualAttempt.ambiguous === true) {
-        visualAttempt.mutation_confirmed = true;
-      }
-    } catch (error) {
-      visualAttempt = {
-        ok: false,
-        reason: error.mutation_confirmed || error.ambiguous ? 'ambiguous_mutation' : error.message,
-        mutation_confirmed: error.mutation_confirmed === true || error.ambiguous === true,
-        observed_state: error.observed_state || null,
-      };
-    }
-  } else {
-    visualAttempt = { ok: false, reason: 'no_visual_adapter' };
-  }
-
-  const result = resolveBrowserRoute({ playwrightAttempt, visualAttempt });
-  if (visualAttempt.ok === true) result.report = visualAttempt.report;
+  const result = resolveBrowserRoute({ visualAttempt, imageAnalyzerAttempt, playwrightAttempt });
   logger.finish('browser', result.effective_route === 'stop' ? 'blocked' : 'completed', {
     route_attempted: result.attempted_routes,
     effective_route: result.effective_route,

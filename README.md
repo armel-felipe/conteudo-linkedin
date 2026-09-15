@@ -87,7 +87,7 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 
 ## Bloco 2.5 — QA (revisão humana dos drafts)
 
-**O que faz:** você lê cada draft e decide — **aprovar** (que dispara o agendamento e move o arquivo), **pedir modificação**, **editar direto** e pedir ações ao agente, ou **descartar**.
+**O que faz:** você lê cada draft e decide — **aprovar**, **pedir modificação**, **editar direto** e pedir ações ao agente, ou **descartar**. A aprovação marca o topic como `approved`; o Bloco 3 é invocado explicitamente para agendar/publicar e só então mover o arquivo após a confirmação.
 
 **Skill:** `qa-draft`.
 
@@ -105,12 +105,12 @@ Descarta o topic_X
 
 **Resultados possíveis (as 3 ações esgotam o QA):**
 
-- **Aprovar** (= decidir agendar) → marca `approved`, dispara o agendamento (Bloco 3) e **move o arquivo** de `content/drafts/` para `content/published/`. Não é preciso aguardar a publicação real; basta o agendamento correto.
+- **Aprovar** → marca `approved`; o agendamento só é executado depois, por uma invocação explícita do Bloco 3.
 - **Pedir modificação** → sua instrução volta para correção; o draft permanece `drafted` até você aprovar.
 - **Editar direto** → você edita e informa ações ao agente; o draft permanece `drafted` até você aprovar.
 - **Descartar** → move o arquivo para `content/arquived/`; sai do fluxo de aprovação.
 
-**Saída do bloco:** drafts aprovados (movidos para `published/`), ajustados (permanecem `drafted`) ou descartados (em `arquived/`).
+**Saída do bloco:** drafts aprovados com marco `approved` (ainda em `drafts/`), ajustados (permanecem `drafted`) ou descartados (em `arquived/`).
 
 ## Bloco 3 — Publicar (texto aprovado para o LinkedIn)
 
@@ -131,9 +131,9 @@ Agende content/drafts/topic_X.md para 2026-09-10 às 09:00 (horário de São Pau
 
 **Regras:**
 
-- Rota do browser, em ordem: **Playwright → screenshot + visão nativa → image-analyzer → stop**. Playwright é a rota primária; se o modelo não tiver visão nativa ou ela falhar, delega-se ao `image-analyzer` com o screenshot.
+- Rota do browser, em ordem obrigatória: **CUA embedded browser → browser_native screenshot/AX → image-analyzer (se necessário) → Playwright read-only → stop**. O `image-analyzer` só entra quando não há visão nativa ou ela falha; Playwright é a terceira rota.
 - **Registrar** em cada execução a rota escolhida e o **motivo**: registro de rota, razão, resultado e evidência.
-- O fallback visual (screenshot + visão) ocorre **depois das duas rotas** de controle e não substitui evidência; em mutação ambígua, pare em **fail-closed**, não repita.
+- A evidência visual ocorre na primeira rota e não é opcional; em mutação ambígua, pare em **fail-closed**, não repita.
 - Agendar exige confirmar data e hora, refazer o horário após trocar a data, conferir prévia e confirmar em "Publicações agendadas".
 - Nunca abrir um novo composer para reagendar uma publicação existente (evita duplicata) — use `Alterar agenda`.
 - A aprovação editorial é feita no QA (bloco 2.5, skill `qa-draft`), separada da publicação (bloco 3).

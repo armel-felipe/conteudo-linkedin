@@ -1,5 +1,7 @@
 # P1 segmentado — design de execução
 
+> **Status documental:** histórico; não é contrato operacional. Consulte `AGENTS.md` e `docs/roadmap.md`.
+
 **Data:** 2026-09-06  
 **Status:** aprovado pelo usuário
 

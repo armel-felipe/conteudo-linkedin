@@ -1,5 +1,7 @@
 # MCP-First Browser Automation Implementation Plan
 
+> **Status documental:** obsoleto; substituído pela rota visual-first em `docs/browser-route-contract.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Fazer todo o pipeline agentico tentar MCP Chrome DevTools antes de Playwright, usando Playwright apenas como fallback explícito e seguro.

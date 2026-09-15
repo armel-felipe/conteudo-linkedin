@@ -1,5 +1,7 @@
 # Especificação: execução editorial sequencial com Loop Gauntlet
 
+> **Status documental:** histórico; não é contrato operacional. Consulte `AGENTS.md` e `docs/fluxo-operacao.md`.
+
 ## Objetivo
 
 Permitir selecionar de 1 a X topics do backlog, inclusive todos os topics elegíveis, e processá-los um por vez através das etapas editoriais até a aprovação humana, preservando qualidade, rastreabilidade e retomada segura.
