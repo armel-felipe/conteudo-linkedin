@@ -1,5 +1,7 @@
 # Pipeline de Conteúdo LinkedIn — Implementation Plan
 
+> **Status documental:** histórico; não é contrato operacional. Consulte `AGENTS.md` e `docs/fluxo-operacao.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Construir o pipeline agentico manual de conteúdo LinkedIn (configs, memória do autor, mapa de skills, AGENTS.md e 7 skills do pipeline) conforme o design aprovado em `docs/superpowers/specs/2026-08-31-pipeline-conteudo-linkedin-design.md`.
