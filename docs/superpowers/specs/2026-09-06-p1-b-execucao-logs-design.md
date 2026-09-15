@@ -1,5 +1,7 @@
 # P1-B — Logs estruturados de execução
 
+> **Status documental:** histórico; não é contrato operacional. Consulte `AGENTS.md` e os receipts em `runs/scheduling/`.
+
 **Data:** 2026-09-06  
 **Status:** aprovado pelo usuário
 

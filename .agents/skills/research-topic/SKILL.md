@@ -77,3 +77,14 @@ O revisor deve retornar um objeto JSON conforme `docs/schemas/gauntlet-review.js
 - Incluir uma seção de limitações com lacunas de cobertura, conflitos entre fontes e grau de confiança.
 - O brief precisa da aprovação do Gauntlet antes de ser considerado `researched`; falha ou artefato incompleto mantém o topic bloqueado.
 - O brief é a ÚNICA fonte de referência do write-post.
+
+## Completude de caso (obrigatório)
+
+O write-post vai usar os casos do brief para escrever para um leitor que NÃO conhece as fontes. Para isso, cada caso citado nas evidências precisa vir com os 4 batimentos capturados no Resumo, quando disponíveis na fonte:
+
+1. **A promessa** — o que o sistema/produto deveria fazer (o que a automação ou a decisão "vendia").
+2. **A quebra** — o que aconteceu de fato.
+3. **A reação** — o que o cliente ou o operador fez.
+4. **O custo** — o que isso custou, e para quem.
+
+Além dos batimentos, capturar no Resumo os detalhes concretos que viram batidas de história: horários, valores, sequência de eventos, citações literais do cliente ou da fonte (entre aspas, com a tradução quando o original for em outro idioma). Um caso com só o número final não sustenta narrativa — se a fonte não trouxer os batimentos, registrar em "Pontos ainda incertos" o que falta.

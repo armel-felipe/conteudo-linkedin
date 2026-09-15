@@ -13,7 +13,7 @@ topics:
     possible_thesis: "Em operações, a IA só escala quando reduz fricção no processo existente e acelera decisões sem retirar do humano o julgamento das exceções."
     author_connection: weak
     scores: {freshness: 8, relevance: 10, debate: 9, evidence: 5, author_fit: 0, originality: 8, linkedin_fit: 9, total: 67.5}
-    status: approved
+    status: archived
 
   - id: topic_20260901_02
     title: "O teste de um agente é sobreviver ao último quilômetro"
@@ -27,7 +27,7 @@ topics:
     possible_thesis: "O indicador mais honesto de maturidade de um agente não é sua capacidade de conversar ou ler, mas sua taxa de conclusão em fluxos transacionais reais."
     author_connection: weak
     scores: {freshness: 8, relevance: 9, debate: 10, evidence: 5.5, author_fit: 0, originality: 9.5, linkedin_fit: 9.75, total: 69.75}
-    status: approved
+    status: published
 
   - id: topic_20260901_03
     title: "Governança de IA começa no encanamento da operação"
@@ -40,7 +40,7 @@ topics:
     possible_thesis: "Uma IA operacional confiável não é a que promete autonomia total, mas a que tem rastreabilidade, limites e um caminho explícito para pedir ajuda."
     author_connection: weak
     scores: {freshness: 8, relevance: 8.3, debate: 9, evidence: 6, author_fit: 0, originality: 9.3, linkedin_fit: 8.3, total: 65.7}
-    status: approved
+    status: published
 
   - id: topic_20260901_04
     title: "A manufatura ainda está entre o piloto e a decisão industrial"
@@ -54,7 +54,7 @@ topics:
     possible_thesis: "Na manufatura, o desafio não é encontrar mais um caso de uso, mas conectar engenharia, dados e operação a uma decisão que alguém realmente toma."
     author_connection: weak
     scores: {freshness: 7.25, relevance: 9.25, debate: 8.5, evidence: 4.5, author_fit: 0, originality: 8.5, linkedin_fit: 8.5, total: 63.63}
-    status: approved
+    status: published
 
   - id: topic_20260901_05
     title: "A infraestrutura da IA também é uma decisão operacional"

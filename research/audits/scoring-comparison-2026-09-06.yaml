@@ -1,7 +1,7 @@
 date: '2026-09-06'
 status: inconclusive
-purpose: Comparar scores congelados com decisões editoriais e qualidade observada
-  em artefatos persistidos.
+purpose: "Comparar scores congelados com decis\xF5es editoriais e qualidade observada\
+  \ em artefatos persistidos."
 method:
   scoring_source: research/topics/topics_scored_2026-09-06.yaml
   decision_sources:
@@ -11,8 +11,8 @@ method:
   - research/briefs/topic_20260901_03.md
   - research/briefs/topic_20260901_04.md
   - research/audits/source-quality-2026-09-06.yaml
-  rule: Classificar somente com base em score, status, briefs e auditoria de fontes
-    persistidos; ausência de evidência comparável permanece inconclusiva.
+  rule: "Classificar somente com base em score, status, briefs e auditoria de fontes\
+    \ persistidos; aus\xEAncia de evid\xEAncia compar\xE1vel permanece inconclusiva."
   excluded_signals:
   - LinkedIn engagement
 sample_paths:
@@ -21,16 +21,22 @@ sample_paths:
 - research/briefs/topic_20260901_03.md
 - research/briefs/topic_20260901_04.md
 - research/audits/source-quality-2026-09-06.yaml
-sample_fingerprint: sha256:724f18558918c60376a4c82c159f0e8db3be3e53dbfd7566e08578865d1feb31
+sample_fingerprint: sha256:a9460838a757dbcf05bcbc8ed2c3d8d1d8abc4fe72b3441877c0e46f0ef6ebe9
 fingerprint_history:
 - frozen_at: '2026-09-06'
   fingerprint: sha256:09a8624dbd8441478bd5092586bf8f1c01aaef604fa090a427de726c2cbc2541
-- reason: 'Amostra evoluiu após o congelamento: topic_20260901_04 passou a approved
-    no topics_scored_2026-09-06.yaml e uma nova rodada editorial (07/09) adicionou
-    4 temas ao content/backlog.md. Fingerprint re-registrado no estado atual.'
+- reason: "Amostra evoluiu ap\xF3s o congelamento: topic_20260901_04 passou a approved\
+    \ no topics_scored_2026-09-06.yaml e uma nova rodada editorial (07/09) adicionou\
+    \ 4 temas ao content/backlog.md. Fingerprint re-registrado no estado atual."
 - frozen_at: '2026-09-07'
-  reason: Backlog reduzido aos temas ainda elegíveis após a rodada do Bloco 2 (topics
-    de 07/09 viraram approved). Fingerprint re-registrado.
+  reason: "Backlog reduzido aos temas ainda eleg\xEDveis ap\xF3s a rodada do Bloco\
+    \ 2 (topics de 07/09 viraram approved). Fingerprint re-registrado."
+- frozen_at: '2026-09-15'
+  fingerprint: sha256:a9460838a757dbcf05bcbc8ed2c3d8d1d8abc4fe72b3441877c0e46f0ef6ebe9
+  reason: Fingerprint verificado no início do restart do agendamento.
+- frozen_at: '2026-09-15'
+  fingerprint: sha256:a9460838a757dbcf05bcbc8ed2c3d8d1d8abc4fe72b3441877c0e46f0ef6ebe9
+  reason: Fingerprint verificado no início do restart do agendamento.
 topics:
 - id: topic_20260901_01
   score_predicted: 67.5
@@ -39,8 +45,9 @@ topics:
   backlog_status: ready_for_research
   quality_observed: unresolved
   classification: inconclusive
-  reason: O score está approved, mas o backlog permanece ready_for_research; a divergência
-    de status e a ausência de brief ou auditoria de fontes tornam a comparação inconclusiva.
+  reason: "O score est\xE1 approved, mas o backlog permanece ready_for_research; a\
+    \ diverg\xEAncia de status e a aus\xEAncia de brief ou auditoria de fontes tornam\
+    \ a compara\xE7\xE3o inconclusiva."
   evidence_refs:
   - research/topics/topics_scored_2026-09-06.yaml:2-27
   - content/backlog.md:3-15
@@ -51,9 +58,9 @@ topics:
   backlog_status: ready_for_research
   quality_observed: not_observed
   classification: inconclusive
-  reason: O score está approved, mas o backlog permanece ready_for_research; a ausência
-    de brief ou auditoria de fontes não prova qualidade fraca, portanto não sustenta
-    false_positive.
+  reason: "O score est\xE1 approved, mas o backlog permanece ready_for_research; a\
+    \ aus\xEAncia de brief ou auditoria de fontes n\xE3o prova qualidade fraca, portanto\
+    \ n\xE3o sustenta false_positive."
   evidence_refs:
   - research/topics/topics_scored_2026-09-06.yaml:28-51
   - content/backlog.md:3-15
@@ -64,9 +71,9 @@ topics:
   backlog_status: ready_for_research
   quality_observed: strong_verified_mechanisms
   classification: inconclusive
-  reason: O score está approved, mas o backlog permanece ready_for_research; embora
-    o brief verifique mecanismos técnicos, não há decisão editorial reconciliada nem
-    resultado independente para confirmar acerto preditivo.
+  reason: "O score est\xE1 approved, mas o backlog permanece ready_for_research; embora\
+    \ o brief verifique mecanismos t\xE9cnicos, n\xE3o h\xE1 decis\xE3o editorial\
+    \ reconciliada nem resultado independente para confirmar acerto preditivo."
   evidence_refs:
   - research/topics/topics_scored_2026-09-06.yaml:52-74
   - research/briefs/topic_20260901_03.md:17-36
@@ -78,9 +85,9 @@ topics:
   backlog_status: ready_for_research
   quality_observed: weak_public_evidence
   classification: inconclusive
-  reason: O score está approved, mas o backlog permanece ready_for_research; as limitações
-    do brief não resolvem a divergência nem fornecem evidência forte verificável para
-    caracterizar false_negative.
+  reason: "O score est\xE1 approved, mas o backlog permanece ready_for_research; as\
+    \ limita\xE7\xF5es do brief n\xE3o resolvem a diverg\xEAncia nem fornecem evid\xEA\
+    ncia forte verific\xE1vel para caracterizar false_negative."
   evidence_refs:
   - research/topics/topics_scored_2026-09-06.yaml:75-98
   - research/briefs/topic_20260901_04.md:15-20
@@ -93,9 +100,9 @@ topics:
   backlog_status: ready_for_research
   quality_observed: not_observed
   classification: inconclusive
-  reason: O score é o menor da amostra, mas o tópico ainda está ready_for_research
-    e não possui brief ou auditoria de fontes observável; não há base persistida para
-    afirmar qualidade forte ou fraca.
+  reason: "O score \xE9 o menor da amostra, mas o t\xF3pico ainda est\xE1 ready_for_research\
+    \ e n\xE3o possui brief ou auditoria de fontes observ\xE1vel; n\xE3o h\xE1 base\
+    \ persistida para afirmar qualidade forte ou fraca."
   evidence_refs:
   - research/topics/topics_scored_2026-09-06.yaml:99-120
   - content/backlog.md:59-71
@@ -108,7 +115,7 @@ summary:
   - topic_20260901_03
   - topic_20260901_04
   - topic_20260901_05
-  conclusion: As divergências entre score_status e backlog_status afetam quatro tópicos
-    e tornam suas decisões editoriais inconclusivas; o tópico 5 tem status coincidente,
-    mas permanece inconclusivo na classificação por ausência de brief ou auditoria
-    e qualidade não observada.
+  conclusion: "As diverg\xEAncias entre score_status e backlog_status afetam quatro\
+    \ t\xF3picos e tornam suas decis\xF5es editoriais inconclusivas; o t\xF3pico 5\
+    \ tem status coincidente, mas permanece inconclusivo na classifica\xE7\xE3o por\
+    \ aus\xEAncia de brief ou auditoria e qualidade n\xE3o observada."

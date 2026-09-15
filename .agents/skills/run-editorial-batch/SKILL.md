@@ -264,6 +264,15 @@ stages:
 
 Scheduling remains outside this batch and belongs to the separate LinkedIn publishing plan. The batch finishes with `humanize_review_2` (draft em revisão); publication or scheduling requires an explicit later call to `publicar-linkedin`, preceded by human approval in the QA (`qa-draft`).
 
+## Requisitos editoriais da rodada
+
+Estes requisitos atravessam os stages e são verificados pelos revisores em cada Gauntlet:
+
+- **Leitor-alvo:** o leitor não conhece os casos das fontes. Todo caso citado no post se sustenta sozinho.
+- **Completude narrativa (4 batimentos):** todo caso citado responde promessa → quebra → reação → custo. Caso incompleto vira referência solta: completa ou sai.
+- **Fio narrativo:** a regra do autor abre o post; o caso entra como prova da regra; o aprendizado é consequência da história, não carimbo rotulado.
+- Detalhes em `memory/writing_style.md` e nas skills `research-topic` (captura dos batimentos no brief) e `write-post` (aplicação no draft). O critério "uso de evidências" do Gauntlet cobre a completude narrativa.
+
 ## Checklist Rápido
 
 | Momento | Verificação |

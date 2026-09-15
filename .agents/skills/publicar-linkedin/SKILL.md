@@ -7,7 +7,7 @@ description: Use quando um post em content/drafts/ tiver marco aprovado (approve
 
 ## Overview
 
-Core principle: levar conteúdo APROVADO (marco lógico `approved`) de `content/drafts/` ao LinkedIn via browser do OpenWork já logado, sem nova aprovação de texto e sem credenciais. A aprovação é decidida no QA (`qa-draft`) e **dispara este agendamento**; aprovar e agendar são a mesma decisão processual.
+Core principle: levar conteúdo APROVADO (marco lógico `approved`) de `content/drafts/` ao LinkedIn via browser do OpenWork já logado, sem nova aprovação de texto e sem credenciais. A aprovação é decidida no QA (`qa-draft`); esta skill é a invocação explícita do Bloco 3 que executa o agendamento/publicação.
 
 ## Quando Usar / Quando NÃO Usar
 
@@ -24,14 +24,16 @@ Core principle: levar conteúdo APROVADO (marco lógico `approved`) de `content/
 
 1. Localizar arquivo em content/drafts/ (valida existência e marco approved; se não existir ou não tiver aprovação, parar e informar).
 2. Ler o arquivo Markdown e converter para texto LinkedIn (opção B): remover `# ` de título, converter/remover `**`/`__`/`*` sem vazar literal, manter quebras de linha, emojis e hashtags (`#palavra` preservadas).
-3. Observar primeiro a rota Playwright, sem mutação: abrir o browser do OpenWork já logado e localizar o target `linkedin.com`, registrar rota, resultado e evidência. Playwright é a rota primária.
-4. Se Playwright falhar antes de qualquer mutação confirmada, registrar o motivo e capturar screenshot para confirmação visual (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) com `OPENWORK_BROWSER_CDP_URL` quando necessário. O script usa `chromium.connectOverCDP`, seleciona somente um target `linkedin.com`, reporta URL/título/estado visual e falha fechado em `about:blank` ou ausência de target; não clica nem publica. Screenshot só pode ser solicitado com `OPENWORK_BROWSER_SCREENSHOT_PATH` apontando explicitamente para um caminho temporário. Se o modelo não tiver visão nativa ou ela falhar, delegar ao `image-analyzer` com o screenshot.
-5. Colar o conteúdo no campo de texto.
-6. Aplicar agendamento:
+3. **Obrigatoriamente iniciar pela rota visual do CUA embedded browser:** usar `browser.open_url` para criar/selecionar a aba, guardar `browser_url` e `target_id`, e capturar screenshot antes de tentar Playwright.
+4. Usar **visão nativa** para localizar texto, botões, ícones, campos, menus e coordenadas no screenshot. Interagir pelo alvo correto da aba, inclusive atravessando `#interop-outlet.shadowRoot` quando a interface estiver encapsulada. Não inferir posições sem screenshot.
+5. Se o modelo não tiver visão nativa, invocar `image-analyzer` com o screenshot e `reason: no_native_vision`. Se a visão nativa falhar, usar `image-analyzer` com `reason: native_failed`. Só depois dessas tentativas visuais, se ainda necessário, usar Playwright.
+6. Playwright é somente diagnóstico read-only, nunca a rota de mutação: conectar ao target `linkedin.com`, registrar URL/título/estado e falhar fechado em `about:blank`, ausência de target, timeout ou seletor não encontrado.
+7. Colar o conteúdo no campo de texto.
+8. Aplicar agendamento:
    - Envio "agora": colar conteúdo, PAUSAR antes do clique final, informar que a pessoa pode anexar imagem manualmente, e aguardar o comando para concluir.
    - Agendado: abrir o seletor de agendamento e preencher data/hora conforme o caso (ver "Agendamento — detalhes").
-7. Verificar o agendamento (ver "Verificação pós-agendamento").
-8. Somente depois da verificação, registrar o agendamento no arquivo (ver "Registro do agendamento").
+9. Verificar o agendamento (ver "Verificação pós-agendamento").
+10. Somente depois da verificação, registrar o agendamento no arquivo (ver "Registro do agendamento").
 
 ## Conversão Markdown → texto LinkedIn (OBRIGATÓRIA, antes da colagem)
 
@@ -149,17 +151,16 @@ A confirmação final deve ocorrer em **Publicações agendadas**, com o post e 
 ## Visão e rota de interação
 
 O contrato compartilhado está em `docs/browser-route-contract.md`. Use esta ordem
-de decisão, sem tratar fallback como substituto de evidência visual. O fallback
-visual (screenshot + visão nativa, ou image-analyzer) ocorre **depois das duas rotas** de controle e não substitui evidência:
+obrigatória de decisão. A evidência visual vem antes de qualquer automação Playwright:
 
 ```text
-Playwright → screenshot + visão nativa → image-analyzer → stop
+CUA embedded browser → screenshot/AX → image-analyzer (se necessário) → Playwright read-only → stop
 ```
 
-1. Tentar primeiro Playwright (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) para abrir, localizar o target e interagir sem mutação. Registrar a rota e o resultado.
-2. Se Playwright falhar antes de qualquer mutação confirmada, registrar a razão e capturar screenshot para confirmação visual.
-3. Usar visão nativa para resumir conteúdo, data, hora, botões e prévia a partir do screenshot.
-4. Se o modelo não tiver visão nativa, delegar ao `image-analyzer` com `reason: no_native_vision`; se a visão nativa falhar, usar `reason: native_failed`, sempre passando o screenshot.
+1. Abrir ou selecionar a aba com `browser.open_url`, guardar exatamente `browser_url` e `target_id`, e capturar screenshot.
+2. Usar visão nativa para resumir conteúdo, data, hora, botões e prévia a partir do screenshot; os cliques devem seguir a localização visual confirmada.
+3. Se não houver visão nativa, delegar ao `image-analyzer` com `reason: no_native_vision`; se a visão nativa falhar, usar `reason: native_failed`, sempre passando o screenshot.
+4. Só se a rota visual não conseguir concluir a interação, tentar Playwright (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) somente como diagnóstico read-only e registrar a razão da transição.
 5. Se nenhuma rota funcionar ou a imagem estiver ilegível, registrar `stop`, relatar a limitação e não inferir o estado da tela.
 
 Cada execução deve preservar a operação, alvo, rota tentada, rota efetiva, resultado,
@@ -174,14 +175,13 @@ Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar
 ### Contrato comportamental
 
 Uma execução válida usa estes eventos na ordem indicada; `playwright_attempt`
-só aparece no branch Playwright, e `screenshot_fallback_if_needed` só aparece
-nos branches que precisam de screenshot:
+só aparece depois da tentativa visual:
 
 ```text
-approved_file → markdown_converted → playwright_attempt → screenshot_fallback_if_needed → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
+approved_file → markdown_converted → browser_attempt → screenshot → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
 ```
 
-O evento `screenshot_fallback_if_needed` representa a confirmação visual quando necessária; não autoriza inferência sem evidência. No branch `playwright`, ele é omitido quando a tentativa tem sucesso. Os branches visuais são `playwright`, `no_native_vision`, `native_failed` e `unreadable_image`. O branch `no_native_vision` vai diretamente ao `image-analyzer` com `reason: no_native_vision`, sem tentar visão nativa; `native_failed` usa screenshot e `reason: native_failed`; `unreadable_image` encerra em `stop`.
+O screenshot é obrigatório na primeira rota; não autoriza inferência sem evidência. Os branches são `browser_native`, `image-analyzer`, `playwright` e `stop`; `browser_native` é a primeira tentativa, `image-analyzer` é usado quando necessário, `playwright` só aparece depois da tentativa visual e `stop` encerra quando não há evidência suficiente.
 
 Para reagendamento, a sequência é `existing_post_menu → alter_schedule → date_selected → time_selected`. O fluxo não contém `new_composer`: divergências usam a publicação existente.
 
@@ -198,8 +198,8 @@ Para reagendamento, a sequência é `existing_post_menu → alter_schedule → d
  - Não validar que o arquivo está em `content/drafts/` e com marco `approved` — bloquear se não estiver.
 - Agendar sem confirmar o valor exibido no seletor — o LinkedIn pode manter data/hora padrão; confirmar antes de clicar em "Agendar".
 - Concluir como sucesso sem verificar "Ver publicações agendadas" — o agendamento pode ter falhado silenciosamente.
-- Usar MCP Chrome DevTools como rota primária — Playwright é a rota primária; MCP não é usado neste fluxo.
-- Tratar o fallback visual como evidência ausente — o screenshot + visão nativa (ou image-analyzer) é a confirmação visual.
+- Pular o navegador embutido e começar por Playwright — CUA embedded browser + screenshot + visão é a rota obrigatória inicial.
+- Tratar a confirmação visual como fallback — screenshot/AX (ou image-analyzer) é a primeira evidência.
 - Não selecionar novamente o horário depois de trocar a data.
 - Reagendar abrindo um compositor novo em vez de usar `... → Alterar agenda`.
 - Não registrar o agendamento no arquivo do post — sem o bloco `<!-- agendado: ... -->` não há rastreabilidade.

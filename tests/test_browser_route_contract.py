@@ -10,7 +10,7 @@ def contract_text():
 
 def test_contract_declares_exact_route_sequence():
     text = contract_text()
-    assert "Playwright → screenshot + visão nativa → image-analyzer → stop" in text
+    assert "CUA embedded browser → screenshot/AX → image-analyzer (se necessário) → Playwright read-only → stop" in text
 
 
 def test_contract_names_normative_routes_and_safe_stop():
@@ -66,7 +66,8 @@ def test_contract_separates_read_and_mutation_rules():
     read_section = text[text.index("## Leitura e inspeção") : text.index("## Publicar")]
     mutation_section = text[text.index("## Publicar") : text.index("## Registro mínimo")]
     assert "playwright" in read_section
-    assert "screenshot+nativa" in read_section
+    assert "browser_native" in read_section
+    assert "screenshot/AX" in text
     assert "image-analyzer" in read_section
     assert "confirmar o alvo" in mutation_section
     assert "após o envio, verificar o estado" in mutation_section

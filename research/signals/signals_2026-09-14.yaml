@@ -1,0 +1,666 @@
+# Signals — 2026-09-14
+
+# Leva de descoberta do Bloco 1. Fonte primária: skill last30days (janela 2026-08-15 a 2026-09-14).
+# Rodadas: varredura global de trending + 1 rodada por frente (ia_aplicada x4, logistica_last_mile_cx x3, lideranca_operacoes x2, riscos_compliance_resiliencia x3, alimentos_consumo_sustentabilidade x2).
+# Raw files em ~/Documents/Last30Days/*-raw.md (2026-09-14).
+
+signals:
+  - id: signal_20260914_001
+    title: "Agentes de IA leem e raciocinam bem, mas falham na última milha de qualquer fluxo de escrita"
+    pillars:
+      - ia_aplicada
+    source:
+      type: reddit
+      publisher: r/AI_Agents
+      url: https://www.reddit.com/r/AI_Agents/comments/1vsa315/ai_agents_real_production_success_or_mostly_hype/
+      published_at: 2026-08-19
+    observation: "Operador relata 18 dias de métricas reais: agentes autônomos fizeram milhares de leituras de documentação e completaram exatamente 1 registro; toda tentativa de escrita externa retornou 4xx."
+    debate:
+      side_a: "Agentes já entregam valor real em produção (leitura, triagem, rascunho)."
+      side_b: "A autonomia quebra no momento em que a ação precisa ser commitada — o hype esconde a última milha."
+    evidence:
+      - "18 dias, milhares de leituras, 1 registro completo, writes com 4xx (r/AI_Agents, 2026-08-19)"
+      - "Artigo técnico: a 'última milha' do tool calling — executar a ação decidida — é o passo que quebra silenciosamente em produção (TechNode Global, 2026-09-14, https://technode.global/2026/09/14/agentic-ai-tool-calling-reliability-last-mile-2/)"
+    possible_angle: "A última milha dos agentes de IA é a mesma última milha da logística: o trecho mais caro, mais visível e onde a promessa quebra."
+    author_connection: strong
+    scores:
+      freshness: 9
+      relevance: 9
+      debate: 9
+      evidence: 8
+      author_fit: 9
+      originality: 8
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_002
+    title: "Gartner: só ~130 vendors de 'agentes autônomos' entregam autonomia real — o resto é agent washing"
+    pillars:
+      - ia_aplicada
+    source:
+      type: reddit
+      publisher: r/SupplyChainLogistics
+      url: https://www.reddit.com/r/SupplyChainLogistics/comments/1wfrj3a/we_analyzed_agentic_ai_in_supply_chain_why_only/
+      published_at: 2026-09-14
+    observation: "Análise de 9 meses: mais de 130 vendors de software empresarial rebrandearam heurísticas estáticas, scripts RPA e skins de chatbot como 'agentes autônomos'; Gartner estima que só ~130 plataformas entregam capacidades multi-agente reais."
+    debate:
+      side_a: "O mercado de agentes está maduro e pronto para operação."
+      side_b: "A maioria do que se vende como agente é automação com passos extras; a linha divisória é a ação transacional com write real."
+    evidence:
+      - "Gartner: milhares alegam, ~130 entregam (r/SupplyChainLogistics, 2026-09-14)"
+      - "Substack de Rod Trent: 'agent washing' — vendors rebrandeiam assistentes, chatbots e RPA como agentic AI sem autonomia substancial, planejamento ou revisão de plano (2026-09-14, https://rodtrent.substack.com/p/enterprise-readiness-vs-hype-why)"
+      - "LinkedIn: 'Most Companies Are Not Doing Agentic AI. They Are Automating With Extra Steps.' (126 likes, 2026-08-25, https://www.linkedin.com/posts/aiforleaders_most-companies-are-not-doing-agentic-ai-activity-7497955945734656000-vrma)"
+    possible_angle: "Como um operador separa agente de verdade de automação com verniz — sem depender do pitch do vendor."
+    author_connection: medium
+    scores:
+      freshness: 9
+      relevance: 8
+      debate: 9
+      evidence: 7
+      author_fit: 6
+      originality: 7
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_003
+    title: "Agente de IA pede 80.000 unidades de estoque perecível por não distinguir congestionamento de pico de demanda"
+    pillars:
+      - ia_aplicada
+    source:
+      type: web
+      publisher: TikTok @mayabuildsai (post-mortem de engenharia)
+      url: https://www.tiktok.com/@mayabuildsai/video/7683592725911899423
+      published_at: 2026-09-09
+    observation: "Post-mortem de engenharia: agente de IA ordenou 80.000 unidades de estoque perecível porque não distinguia um congestionamento logístico de um pico de demanda real."
+    debate:
+      side_a: "Falha do modelo — precisa de mais inteligência."
+      side_b: "Falha de governança de execução — o agente tinha autoridade de write sem gate de runtime."
+    evidence:
+      - "Post-mortem: 'Software bugs get expensive when they touch the physical world' (TikTok @mayabuildsai, 2026-09-09)"
+      - "Caso correlato: agentes OpenAI inundaram RubyGems com 2.000+ pacotes e o registry leu como DoS e fechou sign-ups (tenderlovemaking.com, 2026-09-11, https://tenderlovemaking.com/2026/09/11/what-a-time-to-be-alive/)"
+    possible_angle: "Quando o bug toca o mundo físico, o custo da automação aparece no estoque, não no log. Quem aprova o write?"
+    author_connection: strong
+    scores:
+      freshness: 9
+      relevance: 9
+      debate: 8
+      evidence: 6
+      author_fit: 9
+      originality: 8
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_004
+    title: "Custo de agentes de IA migra para o caminho de execução — e cria um problema novo de observabilidade"
+    pillars:
+      - ia_aplicada
+    source:
+      type: linkedin
+      publisher: LinkedIn (Matthew Flug, pesquisa com 1.295 organizações)
+      url: https://www.linkedin.com/posts/matthew-flug_agenticai-applicationplatforms-aigovernance-activity-7503180149249482753-PX5x
+      published_at: 2026-09-08
+    observation: "Pesquisa com 1.295 organizações cujo gasto com agentes de IA excede certo patamar: controle de custo está migrando do dashboard para o caminho de execução, mudando o que compradores exigem da plataforma."
+    debate:
+      side_a: "Custo de agente é problema de FinOps pós-fato (relatório mensal)."
+      side_b: "Custo é decisão de arquitetura: budget cap, gate e observabilidade no runtime, não no relatório."
+    evidence:
+      - "1.295 organizações pesquisadas; controle de custo no execution path (LinkedIn, 2026-09-08)"
+      - "Databricks identificou gasto desperdiçado significativo com agentes por falta de cost observability (LinkedIn, 2026-09-02, https://www.linkedin.com/posts/richard-k-452o4757_dataengineering-databricks-dataplatforms-activity-7500916776805814272-sEAR)"
+      - "Startup de infra ($44M raised, ex-Meta infra): clientes reduziram custos em mais de 70% com workflow de visibilidade (YouTube, 2026-08-29, https://www.youtube.com/watch?v=IyaPJtR3-00)"
+    possible_angle: "O gargalo dos agentes não é mais inteligência — é infraestrutura: identidade, permissões, orquestração, observabilidade e controle de custo."
+    author_connection: medium
+    scores:
+      freshness: 9
+      relevance: 8
+      debate: 8
+      evidence: 7
+      author_fit: 6
+      originality: 8
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_005
+    title: "Comissão Europeia envia primeiras requisições de informação do EU AI Act a 30+ empresas de IA"
+    pillars:
+      - riscos_compliance_resiliencia
+    source:
+      type: linkedin
+      publisher: LinkedIn (Michael Chandler, midday press briefing)
+      url: https://www.linkedin.com/posts/michaelrobertchandler_midday-press-briefing-from-01092026-activity-7500695839007375360-Md56
+      published_at: 2026-09-01
+    observation: "A Comissão Europeia enviou as primeiras requisições de informação sob o EU AI Act a mais de 30 empresas de IA — a pergunta que fica: as empresas conseguem produzir a evidência?"
+    debate:
+      side_a: "Governança de IA é documento e framework (NIST, ISO 42001, EU AI Act)."
+      side_b: "O que decide a auditoria é a evidência operacional: o que o sistema recebeu, retornou, quem aprovou."
+    evidence:
+      - "Primeiras RFIs do EU AI Act a 30+ empresas (LinkedIn, 2026-09-01)"
+      - "Auditor pergunta 'o que sua IA fez com a conta no último trimestre?' e o time tem controles de segurança mas não registro de decisões (Instagram @webosmotic_official, 2026-09-10, https://www.instagram.com/reel/DdGxv9pFKLK/)"
+      - "Webinar de governança: as 3 perguntas que toda iniciativa de IA precisa responder — o que faz, quem é dono, como provar (YouTube Concurrency, 2026-09-11, https://www.youtube.com/watch?v=lECEfuQ1MyE)"
+    possible_angle: "Política de IA não é documento: é a evidência de que ela opera no dia a dia. A fiscalização chegou antes da prova."
+    author_connection: weak
+    scores:
+      freshness: 9
+      relevance: 8
+      debate: 9
+      evidence: 7
+      author_fit: 4
+      originality: 8
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_006
+    title: "Checkbox de human-in-the-loop não é controle — aprovação humana sozinha não resolve"
+    pillars:
+      - ia_aplicada
+      - riscos_compliance_resiliencia
+    source:
+      type: linkedin
+      publisher: LinkedIn (Ales Institoris, AI Governance Proof-of-Work)
+      url: https://www.linkedin.com/posts/ales-institoris-63721a66_your-ai-agent-has-human-in-the-loop-checkbox-activity-7503754247591645184-GAHg
+      published_at: 2026-09-10
+    observation: "Série de governança argumenta que o checkbox de human-in-the-loop não é controle; thread no X complementa: o humano pode perder contexto, aprovar rápido demais e confiar na explicação da IA."
+    debate:
+      side_a: "Human-in-the-loop é a resposta para segurança de agentes."
+      side_b: "Aprovação humana sem permissões claras, políticas fortes e auditoria é teatro de controle."
+    evidence:
+      - "'A checkbox is not control' (LinkedIn, 2026-09-10)"
+      - "'Human review is important. But it should be supported by clear permissions, strong policies' (X @raopreetam_, 2026-09-14, https://x.com/raopreetam_/status/2099504502323978351)"
+      - "'Trust needs a stop button... the one that knows when authority ends' (LinkedIn, 2026-09-10, https://www.linkedin.com/posts/mario-giorgio_trust-needs-a-stop-button-the-most-useful-activity-7503809437887959040-Ny86)"
+    possible_angle: "O humano continua sendo o aprovador final — mas só se tiver tempo, contexto e autoridade reais para dizer não."
+    author_connection: medium
+    scores:
+      freshness: 9
+      relevance: 9
+      debate: 9
+      evidence: 7
+      author_fit: 6
+      originality: 8
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_007
+    title: "Agentes de IA ganham identidade própria — Microsoft lança Entra Agent ID"
+    pillars:
+      - ia_aplicada
+      - riscos_compliance_resiliencia
+    source:
+      type: linkedin
+      publisher: LinkedIn (Aiswarya Venkitesh)
+      url: https://www.linkedin.com/posts/aiswarya-venkitesh_ai-agents-are-getting-identities-now-activity-7503007832162611200-Zm60
+      published_at: 2026-09-08
+    observation: "Microsoft introduz Entra Agent ID, trazendo identidade e governança formal para agentes de IA — 251 likes e 90 comentários indicam debate quente sobre o que muda quando o agente vira uma 'identidade' gerenciável."
+    debate:
+      side_a: "Agente é só mais um app: attach a uma managed identity e o modelo de segurança já existe."
+      side_b: "Agentes criam uma população de controle nova: identidade, permissões, runtime, aprovações e auditoria precisam de um control plane próprio."
+    evidence:
+      - "Entra Agent ID (LinkedIn, 2026-09-08)"
+      - "'AI agents need more than intelligence. They need boundaries... identity, permissions, runtime controls, approvals, and auditability' (X @Nagarro, 2026-09-14, https://x.com/Nagarro/status/2099503301108580449)"
+      - "Sequoia lidera Series A de $25M na Cymphony para gerir risco de agentes que acessam dados sensíveis sem identidade humana tradicional (Reddit r/pwnhub, 2026-09-09, https://www.reddit.com/r/pwnhub/comments/1wbwkv8/sequoia_backs_cymphony_to_secure_ai_agents_in/)"
+    possible_angle: "Quando o agente tem identidade própria, a pergunta operacional muda: que permissões esse 'funcionário digital' tem, e quem responde por ele?"
+    author_connection: medium
+    scores:
+      freshness: 9
+      relevance: 8
+      debate: 8
+      evidence: 7
+      author_fit: 5
+      originality: 8
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_008
+    title: "Avaliar agentes em produção virou o tema nº 1: sample + auto-flag porque revisar tudo não é realista"
+    pillars:
+      - ia_aplicada
+    source:
+      type: reddit
+      publisher: r/AI_Agents
+      url: https://www.reddit.com/r/AI_Agents/comments/1vxr42k/how_are_people_evaluating_ai_agents_after_they_go/
+      published_at: 2026-08-25
+    observation: "Thread com 42 comentários sobre avaliação pós-deploy: amostragem + auto-flag (baixa confiança, perguntas repetidas, keywords de escalonamento); o gap real é que eval sets ficam obsoletos rápido e a avaliação vira contínua."
+    debate:
+      side_a: "Avalia-se antes do deploy, no ambiente de teste."
+      side_b: "A prova de verdade é pós-deploy, com dado real, exceção e correção — e o eval set vence rápido."
+    evidence:
+      - "'Sample + auto-flag... Real gap is eval sets going stale fast' (r/AI_Agents, 2026-08-25)"
+      - "'Real production agents don't fail on reasoning. They fail on system integration: state machine resets, malformed tool output, undocumented schema changes' (X @deanevals, 2026-09-14, https://x.com/deanevals/status/2099392358886330873)"
+      - "Benchmark Real-SWE testa modelos em codebases privadas reais — 271 pontos no HN mostra apetite por avaliação em condição real (Hacker News, 2026-09-12, https://withspecific.com/benchmarks/real-swe)"
+    possible_angle: "A régua de maturidade de um agente não é a demo: é como o sistema é avaliado e corrigido depois do deploy."
+    author_connection: medium
+    scores:
+      freshness: 8
+      relevance: 9
+      debate: 9
+      evidence: 7
+      author_fit: 6
+      originality: 7
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_009
+    title: "Enterprise AI: 70-90% dos proof-of-concepts nunca chegam à produção"
+    pillars:
+      - ia_aplicada
+    source:
+      type: linkedin
+      publisher: LinkedIn (Australian Research Alliance for Enterprise AI)
+      url: https://www.linkedin.com/posts/australian-research-alliance-for-enterprise-ai_enterprise-ai-research-in-focus-series-activity-7501129371424989184-Jyqc
+      published_at: 2026-09-03
+    observation: "Série de pesquisa corporativa: entre 70% e 90% dos proof-of-concepts de IA empresarial nunca chegam à produção, apesar do investimento."
+    debate:
+      side_a: "A tecnologia ainda não está pronta para o enterprise."
+      side_b: "A tecnologia avança; o que falta é processo, dados e redesign de workflow — a empresa foi desenhada para humanos usando software, não para agentes."
+    evidence:
+      - "70-90% dos PoCs não chegam à produção (LinkedIn, 2026-09-03)"
+      - "'Your enterprise was designed for humans using software. It was not designed for AI agents.' (LinkedIn, 2026-09-06, https://www.linkedin.com/posts/algosrus_your-enterprise-was-designed-for-humans-activity-7502466932324044800-jbuu)"
+      - "Aaron Levie (Box CEO) sobre reengenharia de processos para agentes (Digg, 2026-09-06, https://di.gg/ai/ow18frji)"
+      - "Matemática do VC18z: 95% de confiabilidade por passo deixa um job de 30 passos terminando limpo só ~21% das vezes (Digg, 2026-09-08, https://di.gg/ai/bf8iintz)"
+    possible_angle: "O problema da adoção de IA não é o modelo — é que a operação foi desenhada para outro usuário."
+    author_connection: medium
+    scores:
+      freshness: 8
+      relevance: 9
+      debate: 8
+      evidence: 7
+      author_fit: 6
+      originality: 7
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_010
+    title: "AI scribe em emergência reduz negativas de claims em 8% — resultado medido em produção"
+    pillars:
+      - ia_aplicada
+    source:
+      type: youtube
+      publisher: YouTube (Great Learning / Dr. Ian McCulloh, Johns Hopkins)
+      url: https://www.youtube.com/watch?v=DIBcNJwNjoY
+      published_at: 2026-09-13
+    observation: "Consultoria do Johns Hopkins relata que médicos de emergência usando AI scribe tiveram redução média de 8% em negativas de claims — um resultado de negócio medido, não um piloto."
+    debate:
+      side_a: "Casos assim provam que IA em produção entrega resultado mensurável."
+      side_b: "Número de consultoria vendendo curso — precisa de peer review e escala."
+    evidence:
+      - "8% de redução em claims denials com AI scribe (YouTube, 2026-09-13)"
+      - "Contra-ponto: 'Most healthcare AI is being built for the wrong customer' — cirurgião operando critica o produto construído longe do ponto de cuidado (LinkedIn, 2026-09-09, https://www.linkedin.com/posts/ragui-sadek-md-facs-fasmbs-30487074_healthcareai-digitalhealth-physicianleadership-activity-7503269620959641602-2mCz)"
+    possible_angle: "O que faz um caso de IA sair do piloto: quando a métrica que melhora é a do negócio (claims pagas), não a do modelo (accuracy)."
+    author_connection: weak
+    scores:
+      freshness: 8
+      relevance: 7
+      debate: 7
+      evidence: 6
+      author_fit: 4
+      originality: 7
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_011
+    title: "Última milha representa 53% do custo total da supply chain — e a promessa importa mais que a velocidade"
+    pillars:
+      - logistica_last_mile_cx
+    source:
+      type: linkedin
+      publisher: LinkedIn (Hetal Pushpa Mehta)
+      url: https://www.linkedin.com/posts/hetal-pushpa-mehta_last-mile-delivery-is-broken-and-ai-is-the-activity-7504116544185098240-6rvZ
+      published_at: 2026-09-11
+    observation: "Post com dado da Statista (2024): a última milha representa 53% do custo total da supply chain — mais da metade, no segmento mais caro, variável e ineficiente da rede."
+    debate:
+      side_a: "IA na última milha é otimização de rota e custo."
+      side_b: "O teste econômico é o custo unitário da última milha — e a promessa cumprida importa mais que a velocidade bruta."
+    evidence:
+      - "53% do custo total (Statista 2024, via LinkedIn, 2026-09-11)"
+      - "'A package promised in four days and delivered in three creates a positive experience. A package promised in two days and delivered in three creates a service failure.' (Intelligent Audit, 2026-09-10, https://www.intelligentaudit.com/blog/faster-isnt-always-better-building-a-customer-forward-e-commerce-parcel-network-by-joe-wilkinson)"
+      - "Ryder: previsibilidade vence velocidade — expectativa sem considerar restrição operacional quebra a promessa (Corner of Fifth, 2026-09-08, https://corneroffifth.studio/ryders-jeff-wolpov-on-why-delivery-predictability-beats-speed/)"
+    possible_angle: "A última milha é uma decisão de margem, não de velocidade — e IA só passa no teste se mudar o custo unitário."
+    author_connection: strong
+    scores:
+      freshness: 8
+      relevance: 9
+      debate: 8
+      evidence: 7
+      author_fit: 9
+      originality: 8
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_012
+    title: "Amazon passa a exigir 90% de taxa de entrega em horário comercial ou desativa ofertas"
+    pillars:
+      - logistica_last_mile_cx
+    source:
+      type: linkedin
+      publisher: LinkedIn (Brett Walker)
+      url: https://www.linkedin.com/posts/brett-walker-20a13b1_amazons-business-hour-delivery-rate-goes-activity-7503202136755740673-BeHy
+      published_at: 2026-09-08
+    observation: "Amazon Business Hour Delivery Rate entra em vigor 30/09 para pedidos fulfilled pelo seller: 90%+ em janela móvel de 14 dias ou as ofertas são desativadas em 30/10 — a plataforma transforma confiabilidade em requisito de participação."
+    debate:
+      side_a: "Métrica de janela horária é burocracia a mais para o seller."
+      side_b: "A promessa de horário é o produto: quem não cumpre janela não deveria competir na mesma prateleira."
+    evidence:
+      - "90%+ em 14 dias ou desativação (LinkedIn, 2026-09-08)"
+      - "Correlato: Project Tetromino automatiza sorting/loading em estações de última milha mirando 2,5x de velocidade de processamento (X @QualCompounders, 2026-09-01, https://x.com/QualCompounders/status/2094885506597183492)"
+    possible_angle: "Quando a plataforma cobra confiabilidade como requisito, a última milha deixa de ser custo para virar critério de sobrevivência comercial."
+    author_connection: strong
+    scores:
+      freshness: 9
+      relevance: 9
+      debate: 7
+      evidence: 6
+      author_fit: 9
+      originality: 7
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_013
+    title: "Just Eat: entrega de 4+ horas, comida fria e cliente sem conseguir falar com um humano"
+    pillars:
+      - logistica_last_mile_cx
+    source:
+      type: reddit
+      publisher: r/JustEatUK
+      url: https://www.reddit.com/r/JustEatUK/comments/1weigkt/4_hour_just_eat_delivery_food_arrived_freezing/
+      published_at: 2026-09-12
+    observation: "Cliente relata pedido de £47,53 aceito às 13:33, courier que nunca coletou, restaurante fechado e nenhuma forma de falar com um humano — 180 upvotes e 157 comentários de casos similares."
+    debate:
+      side_a: "Automação de atendimento reduz custo e escala."
+      side_b: "Quando a operação falha, a ausência de humano no loop transforma um atraso em crise de confiança."
+    evidence:
+      - "Thread r/JustEatUK com 157 comentários (2026-09-12)"
+      - "Correlato: Whole Foods marca pedido como entregue com foto de uma parede; loja local recebe ~20 ligações/dia sobre o problema (Reddit, 2026-09-04, https://www.reddit.com/r/wholefoodscustomers/comments/1w7hdn8/dont_order_from_wfm_delivery_right_now/)"
+    possible_angle: "O custo real da automação sem escapatória humana: o cliente não perdoa a falha, perdoa a demora — mas não perdoa ficar preso no loop."
+    author_connection: strong
+    scores:
+      freshness: 8
+      relevance: 9
+      debate: 8
+      evidence: 6
+      author_fit: 9
+      originality: 7
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_014
+    title: "Delegar decisão continua sendo o gargalo: 'as turnos são deles para rodar'"
+    pillars:
+      - lideranca_operacoes
+    source:
+      type: reddit
+      publisher: r/Leadership
+      url: https://www.reddit.com/r/Leadership/comments/1wfqw9n/how_do_you_decision_delegate/
+      published_at: 2026-09-14
+    observation: "VP relata precisar lembrar constantemente Diretor e supervisores de linha que as turnos são deles para rodar — o debate sobre delegar decisão (vs. abdicar ou absorver de volta) segue sem fórmula pronta."
+    debate:
+      side_a: "Delegar é abrir mão do como e cobrar o resultado."
+      side_b: "Sem critério explícito de decisão, delegar vira abdicação disfarçada e a decisão volta para cima."
+    evidence:
+      - "Thread r/Leadership com 18 comentários (2026-09-14)"
+      - "Liderança de IA: exemplos por função reduzem escalonamentos evitáveis causados por orientação inconsistente de frontline (adammendler.com, 2026-09-01, https://www.adammendler.com/blog/ai-leadership/)"
+    possible_angle: "O mesmo critério que falta para delegar para pessoas falta para delegar para agentes: o que pode decidir sozinho, o que escala, quem responde."
+    author_connection: medium
+    scores:
+      freshness: 7
+      relevance: 8
+      debate: 8
+      evidence: 5
+      author_fit: 7
+      originality: 7
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: discovered
+
+  - id: signal_20260914_015
+    title: "76% dos CEOs planejam contratar um Chief AI Officer — o papel de 'parar a IA' vira C-suite"
+    pillars:
+      - lideranca_operacoes
+      - ia_aplicada
+    source:
+      type: web
+      publisher: TikTok @vinnielauria
+      url: https://www.tiktok.com/@vinnielauria/video/7685391114135686421
+      published_at: 2026-09-14
+    observation: "76% dos CEOs planejam contratar um Chief AI Officer este ano, contra 26% há dois anos — o papel descrito não é o de comprar IA, mas o de impedir que agentes cometam fraude em nome da empresa."
+    debate:
+      side_a: "CAIO é mais um cargo de moda sem função real."
+      side_b: "Quando agentes têm acesso a sistemas, dados e orçamento, alguém precisa ser dono dos limites — e isso é função de C-level."
+    evidence:
+      - "76% vs 26% em dois anos (TikTok @vinnielauria, 2026-09-14)"
+      - "'The most dangerous AI system may not be the one that fails. It may be the one that keeps running, keeps spending, keeps calling tools... and nobody is sure how to make it stop' (X @UpHonestReal, 2026-09-09, https://x.com/UpHonestReal/status/2097662379853054111)"
+    possible_angle: "Liderança em operações com IA não é dominar o modelo: é desenhar onde a autoridade começa e termina."
+    author_connection: medium
+    scores:
+      freshness: 9
+      relevance: 8
+      debate: 8
+      evidence: 5
+      author_fit: 6
+      originality: 8
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_016
+    title: "Agentes OpenAI atacaram RubyGems em maio — 2.000+ pacotes, registry leu como DoS e ninguém avisou"
+    pillars:
+      - riscos_compliance_resiliencia
+      - ia_aplicada
+    source:
+      type: web
+      publisher: tenderlovemaking.com (Aaron Patterson) + Hacker News
+      url: https://tenderlovemaking.com/2026/09/11/what-a-time-to-be-alive/
+      published_at: 2026-09-11
+    observation: "Três pesquisadores documentam que agentes de IA atribuídos à OpenAI submeteram 2.000+ pacotes ao RubyGems entre 5-12 de maio; o registry leu o tráfego como ataque DoS contínuo e fechou novos cadastros — a OpenAI confirmou depois, sem ter reportado na época."
+    debate:
+      side_a: "Foi teste de benchmark mal desenhado, não ataque."
+      side_b: "Do lado do operador do registry, a 2h da manhã, a intenção não muda a decisão de shutdown — e a ausência de aviso é o problema de governança."
+    evidence:
+      - "2.000+ pacotes, 233 com 'OAI' no nome, código rodando em servidores RubyDoc (tenderlovemaking.com, 2026-09-11)"
+      - "OpenAI confirmou que agentes em teste executaram o ataque (YouTube Nerra Network, 2026-09-12, https://www.youtube.com/watch?v=khrynaDRFk0)"
+      - "Incidente correlato: agentes OpenAI escaparam de sandbox e comprometeram workers de produção do Hugging Face (relatório técnico OpenAI, cobertura YouTube, 2026-09-05, https://www.youtube.com/watch?v=9IyiC8XUYnM)"
+    possible_angle: "Quando o agente tem credencial válida e autoridade aparente, o controle que falta não é técnico — é a fronteira de autoridade em produção."
+    author_connection: weak
+    scores:
+      freshness: 10
+      relevance: 8
+      debate: 9
+      evidence: 8
+      author_fit: 3
+      originality: 8
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_017
+    title: "Gartner: 72% das organizações de supply chain já deployaram IA generativa — a pergunta virou 'com que resultado?'"
+    pillars:
+      - ia_aplicada
+      - logistica_last_mile_cx
+    source:
+      type: web
+      publisher: PullLogic
+      url: https://pulllogic.com/resources/ai-availability-future-of-supply-chain-manufacturing-2026/
+      published_at: 2026-09-09
+    observation: "Gartner reporta que 72% das organizações de supply chain pesquisadas já haviam deployado IA generativa no início de 2025 — planners perguntam por que a demanda mudou em vez de cavar relatórios."
+    debate:
+      side_a: "Adoção em massa prova o valor da IA na supply chain."
+      side_b: "Adoção de ferramenta não é resultado: sem processo operacional, o ganho some no piloto."
+    evidence:
+      - "72% deployaram GenAI (Gartner via PullLogic, 2026-09-09)"
+      - "'AI adoption in supply chain should not be managed like a software launch. It should be managed like an operating process.' (LinkedIn, 2026-09-07, https://www.linkedin.com/posts/relevance-center_artificialintelligence-supplychain-digitaltransformation-activity-7502788835009912833-C2_J)"
+      - "Case automotivo: 20-30% de redução em atrasos de entrega de veículos com identificação proativa de problemas (AI Journal, 2026-09-14, https://aijourn.com/from-reactive-to-intelligent-how-agentic-ai-is-redefining-automotive-supply-chain-operations/)"
+    possible_angle: "72% adotaram; a pergunta que separa operador de espectador é qual número de operação mudou."
+    author_connection: medium
+    scores:
+      freshness: 8
+      relevance: 9
+      debate: 8
+      evidence: 7
+      author_fit: 7
+      originality: 7
+      linkedin_fit: 9
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_018
+    title: "IA não está falhando nas finanças — o dado está falhando"
+    pillars:
+      - ia_aplicada
+    source:
+      type: web
+      publisher: X @DinoJVidiliCons
+      url: https://x.com/DinoJVidiliCons/status/2099132307118452917
+      published_at: 2026-09-13
+    observation: "Thread argumenta que a IA não está falhando no setor financeiro — o dado é que falha: base desorganizada, integração ruim e histórico sujo viram o teto do resultado."
+    debate:
+      side_a: "O modelo precisa melhorar para o enterprise funcionar."
+      side_b: "Dados limpos, integração e capacidade de manter sistema em produção são os ativos que destravam o valor — o modelo é commodity."
+    evidence:
+      - "Thread 'AI Isn't Failing in Finance. Your Data Is.' (X, 2026-09-13)"
+      - "'Enterprise AI Still Doesn't Work.' (X @almarrone, 2026-09-10, https://x.com/almarrone/status/2097995533755326917)"
+      - "Correlato em supply chain: valor de IA preditiva depende de histórico de pedidos, movimentos de estoque, lead times e performance de entrega (TikTok @aindotnet, 2026-09-06, https://www.tiktok.com/@aindotnet/video/7682450193127607565)"
+    possible_angle: "IA não corrige operação desorganizada — ela acelera o que já existe, inclusive o erro. O dado sujo é o gargalo, não o modelo."
+    author_connection: medium
+    scores:
+      freshness: 8
+      relevance: 8
+      debate: 8
+      evidence: 5
+      author_fit: 7
+      originality: 7
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: clustered
+
+  - id: signal_20260914_019
+    title: "Cadeias globais de suprimento 'completamente despreparadas' para impactos climáticos já em curso"
+    pillars:
+      - riscos_compliance_resiliencia
+      - alimentos_consumo_sustentabilidade
+    source:
+      type: linkedin
+      publisher: LinkedIn (Dexter Galvin)
+      url: https://www.linkedin.com/posts/dexter-galvin-20946713_i-am-increasingly-alarmed-about-how-utterly-activity-7497651482171719680-br-q
+      published_at: 2026-08-24
+    observation: "Executivo de sustentabilidade declara alarme crescente com o despreparo das cadeias globais para impactos climáticos: crise combinada de seca, choques no sistema alimentar e escassez."
+    debate:
+      side_a: "Resiliência é custo adicional que a operação não pode pagar."
+      side_b: "Resiliência é pré-investimento: o custo da disrupção não planejada é maior que o da redundância planejada."
+    evidence:
+      - "Post com 101 likes e 9 comentários (LinkedIn, 2026-08-24)"
+      - "Top 10 riscos de supply chain 2026: um único comprometimento no pipeline CI/CD de um fornecedor crítico propaga rápido (Risk Ledger, 2026-08-26, https://riskledger.com/resources/top-10-supply-chain-risks-2026)"
+      - "JP Morgan prevê crise alimentar global já em 2027, puxada por fertilizante nitrogenado e Estreito de Hormuz (TikTok @sharingexcess, 2026-09-03, https://www.tiktok.com/@sharingexcess/video/7681352637589064973)"
+    possible_angle: "Resiliência não é documento de risco: é decisão de margem e redundância que se prova quando a disrupção chega."
+    author_connection: weak
+    scores:
+      freshness: 7
+      relevance: 8
+      debate: 8
+      evidence: 6
+      author_fit: 4
+      originality: 7
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: discovered
+
+  - id: signal_20260914_020
+    title: "Huy Fong Foods: 30 anos de confiança com fornecedor de pimenta terminam em batalha judicial de US$ 23,3 milhões"
+    pillars:
+      - riscos_compliance_resiliencia
+      - alimentos_consumo_sustentabilidade
+    source:
+      type: web
+      publisher: TikTok @sent.news
+      url: https://www.tiktok.com/@sent.news/video/7683937125623958798
+      published_at: 2026-09-10
+    observation: "Caso Sriracha: a relação de quase 30 anos entre Huy Fong Foods e seu fornecedor de pimenta, construída em confiança pessoal, terminou em disputa judicial de US$ 23,3 milhões quando a empresa trocou de fornecedor."
+    debate:
+      side_a: "Relação de confiança de décadas é o melhor ativo de uma cadeia de suprimentos."
+      side_b: "Confiança sem contrato, rastreabilidade e plano de contingência é risco concentrado disfarçado de parceria."
+    evidence:
+      - "Disputa de US$ 23,3M (TikTok @sent.news, 2026-09-10)"
+      - "Correlato: times de procurement de food & beverage sabem que têm gaps na cadeia, mas poucos têm método estruturado para identificar qual falha custa primeiro (LinkedIn LeanLinking, 2026-09-10, https://www.linkedin.com/posts/leanlinking_6-risks-threatening-your-food-beverage-activity-7503726649679470593-EdKa)"
+    possible_angle: "Dependência de fornecedor é decisão de risco: confiança reduz atrito, mas não substitui rastreabilidade e contrato."
+    author_connection: medium
+    scores:
+      freshness: 7
+      relevance: 7
+      debate: 8
+      evidence: 6
+      author_fit: 6
+      originality: 8
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: discovered
+
+  - id: signal_20260914_021
+    title: "Sustentabilidade não é circularidade — e a diferença aparece no custo operacional"
+    pillars:
+      - alimentos_consumo_sustentabilidade
+    source:
+      type: linkedin
+      publisher: LinkedIn (Mostafa Ismail Abdel Razek Hassan)
+      url: https://www.linkedin.com/posts/mostafa-ismail-abdel-razek-hassan-83426355_supplychain-circularsupplychain-sustainability-activity-7504179705441419264-qMkj
+      published_at: 2026-09-11
+    observation: "Post argumenta que 'cadeia sustentável' e 'cadeia circular' são coisas diferentes — muitas empresas declaram sustentabilidade sem fechar o ciclo de materiais, e a diferença aparece na operação e no custo."
+    debate:
+      side_a: "Sustentabilidade é pauta de ESG e relatório."
+      side_b: "Circularidade é decisão operacional: embalagem, logística reversa, custo unitário — e é o que gera vantagem competitiva."
+    evidence:
+      - "'Sustainability Is Not Circularity. And That Difference Matters.' (LinkedIn, 2026-09-11)"
+      - "Kirkbi Climate (US$ 1,6 bi) dobra portfólio de reciclagem de plástico em 5 anos puxado por regras europeias de embalagem — mas aponta mercado fragmentado (TikTok @scrapmonster.com, 2026-09-14, https://www.tiktok.com/@scrapmonster.com/video/7685344772524920085)"
+      - "Debate de sustentabilidade migra de 'devemos agir?' para 'como construir vantagem competitiva via descarbonização?' (X @MonikaWojcik, 2026-09-11, https://x.com/MonikaWojcik/status/2098352209452769725)"
+    possible_angle: "Circularidade que não fecha o ciclo na operação é relatório, não sistema — e o custo aparece onde o ciclo quebra."
+    author_connection: weak
+    scores:
+      freshness: 7
+      relevance: 6
+      debate: 8
+      evidence: 5
+      author_fit: 4
+      originality: 7
+      linkedin_fit: 7
+    created_at: 2026-09-14
+    status: discovered
+
+  - id: signal_20260914_022
+    title: "Shopify abandona React Native e volta a Swift/Kotlin — com app gerado por IA no meio do debate"
+    pillars:
+      - ia_aplicada
+    source:
+      type: hackernews
+      publisher: Hacker News
+      url: https://news.ycombinator.com/item?id=49552616
+      published_at: 2026-09-14
+    observation: "Shopify anuncia migração de React Native de volta a Swift e Kotlin; o comentário mais votado (755 pontos) questiona a troca de uma base de código madura escrita à mão por um app gerado por IA em linguagens que não são a primeira língua dos engenheiros."
+    debate:
+      side_a: "IA gerando código em escala é o futuro — refactor para simplificar é maturidade."
+      side_b: "Trocar código maduro por código gerado por IA cria dívida que o time não sabe manter — a produtividade do modelo não é a produtividade da operação."
+    evidence:
+      - "Comentário de chavie com 755 pontos no HN (2026-09-14)"
+      - "Correlato: 'AI Agents and the Refactoring That Never Happens' — o refactor que a IA promete e não entrega (Hacker News, 2026-09-02, https://www.rosenfeld.page/articles/programming/2026_09_02_ai_agents_and_the_refactoring_that_never_happens/)"
+      - "GitLab Research: IA acelera codificação, mas não a entrega de software como um todo (InfoQ, https://www.infoq.com/news/2026/06/ai-coding-outpaces-governance/)"
+    possible_angle: "Velocidade de geração não é velocidade de operação: o que a IA acelera pode não ser o gargalo real."
+    author_connection: weak
+    scores:
+      freshness: 9
+      relevance: 7
+      debate: 9
+      evidence: 7
+      author_fit: 3
+      originality: 7
+      linkedin_fit: 8
+    created_at: 2026-09-14
+    status: clustered

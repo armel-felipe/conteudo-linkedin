@@ -1,0 +1,135 @@
+topics:
+- id: topic_20260914_01
+  title: 'A última milha dos agentes de IA: ler é fácil, commitar é o que quebra'
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260914_001
+  - signal_20260914_003
+  - signal_20260914_008
+  central_question: Por que agentes de IA que leem e raciocinam bem quebram exatamente
+    na hora de executar a ação que decide?
+  possible_thesis: 'A autonomia de um agente se prova na última milha — o trecho onde
+    a ação precisa ser commitada — e é ali que a demo vira prejuízo: 80.000 unidades
+    de estoque perecível, writes com 4xx, integração que ninguém testou.'
+  author_connection: strong
+  status: drafted
+- id: topic_20260914_02
+  title: 'Agent washing: o que se vende como agente autônomo é automação com passos
+    extras'
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260914_002
+  - signal_20260914_009
+  - signal_20260914_017
+  central_question: Como separar agente de verdade de automação com verniz quando
+    72% das supply chains já 'deployaram' IA generativa?
+  possible_thesis: 'A adoção em massa não prova nada: só ~130 vendors entregam autonomia
+    real, 70-90% dos PoCs morrem antes da produção, e a linha divisória é simples
+    — a ação transacional com write real e consequência.'
+  author_connection: medium
+  status: ready_for_research
+- id: topic_20260914_03
+  title: Governança de IA se prova por evidência operacional, não por política
+  pillars:
+  - riscos_compliance_resiliencia
+  - ia_aplicada
+  signals:
+  - signal_20260914_005
+  - signal_20260914_006
+  - signal_20260914_016
+  central_question: O que faz uma política de IA deixar de ser documento e passar
+    a operar de verdade?
+  possible_thesis: Não falta política nem framework — NIST, ISO 42001 e EU AI Act
+    existem; falta a camada que prova, no encanamento, que a regra está sendo cumprida,
+    e a fiscalização (RFIs da Comissão Europeia) chegou antes da prova.
+  author_connection: weak
+  status: ready_for_research
+- id: topic_20260914_04
+  title: O humano no loop só é controle se tiver tempo, contexto e autoridade para
+    dizer não
+  pillars:
+  - ia_aplicada
+  - lideranca_operacoes
+  signals:
+  - signal_20260914_015
+  - signal_20260914_007
+  central_question: Quando a aprovação humana é controle real e quando é teatro de
+    governança?
+  possible_thesis: 'O checkbox de human-in-the-loop não é controle: sem permissões
+    claras, políticas fortes e um dono de C-level para os limites, o humano aprova
+    rápido demais e confia na explicação da própria IA.'
+  author_connection: medium
+  status: published
+- id: topic_20260914_05
+  title: O gargalo dos agentes não é mais inteligência — é infraestrutura e custo
+    no caminho de execução
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260914_004
+  - signal_20260914_018
+  central_question: 'Onde está o verdadeiro gargalo da IA em produção: no modelo ou
+    no encanamento ao redor dele?'
+  possible_thesis: O gargalo migrou do modelo para a infraestrutura — identidade,
+    permissões, observabilidade e controle de custo no runtime; dado sujo e gasto
+    desperdiçado são o teto real do resultado.
+  author_connection: medium
+  status: ready_for_research
+- id: topic_20260914_06
+  title: 'Avaliar agente em produção: a régua não é a demo, é o que acontece depois
+    do deploy'
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260914_010
+  central_question: Como medir um agente de IA quando a prova de verdade só aparece
+    com dado real, exceção e correção?
+  possible_thesis: 'A régua de maturidade não é o benchmark nem a demo: é o resultado
+    de negócio medido em produção (claims pagas, escalonamento, correção) e o ciclo
+    contínuo que puxa casos novos de volta para o eval.'
+  author_connection: medium
+  status: ready_for_research
+- id: topic_20260914_07
+  title: A última milha é uma decisão de margem, não de velocidade
+  pillars:
+  - logistica_last_mile_cx
+  signals:
+  - signal_20260914_011
+  - signal_20260914_012
+  central_question: Por que o custo da última milha continua alto mesmo com mais tecnologia
+    de entrega?
+  possible_thesis: 'O teste econômico da IA na entrega é o custo unitário da última
+    milha — 53% do custo total da supply chain — e a promessa cumprida vale mais que
+    a velocidade bruta: prometer 4 e entregar em 3 ganha; prometer 2 e entregar em
+    3 quebra.'
+  author_connection: strong
+  status: drafted
+- id: topic_20260914_08
+  title: Quando a operação falha, a ausência de humano transforma atraso em crise
+    de confiança
+  pillars:
+  - logistica_last_mile_cx
+  signals:
+  - signal_20260914_013
+  central_question: Qual é o custo real da automação de atendimento sem escapatória
+    humana?
+  possible_thesis: 'O cliente não perdoa a falha, perdoa a demora — mas não perdoa
+    ficar preso no loop: quando a operação quebra e não existe humano alcançável,
+    o atraso vira crise de confiança.'
+  author_connection: strong
+  status: published
+- id: topic_20260914_09
+  title: Velocidade de geração não é velocidade de operação
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260914_022
+  central_question: Por que a IA acelera a geração de código mas não a entrega de
+    software — e o que isso ensina para operações?
+  possible_thesis: 'O que a IA acelera pode não ser o gargalo real: trocar código
+    maduro por código gerado cria dívida que o time não sabe manter, e a produtividade
+    do modelo não é a produtividade da operação.'
+  author_connection: weak
+  status: candidate

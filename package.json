@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "linkedin:check": "node scripts/linkedin_browser_check.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:python": "pytest -q"
   },
   "devDependencies": {
     "playwright": "^1.62.1"

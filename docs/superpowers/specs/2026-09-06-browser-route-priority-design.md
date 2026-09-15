@@ -1,5 +1,7 @@
 # Prioridade de rota de navegador: MCP Chrome DevTools → Playwright
 
+> **Status documental:** obsoleto; substituído pela rota visual-first em `docs/browser-route-contract.md`.
+
 **Data:** 2026-09-06  
 **Status:** aprovado pelo usuário
 

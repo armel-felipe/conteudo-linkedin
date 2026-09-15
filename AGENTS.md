@@ -30,7 +30,7 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Skill:** `qa-draft` (revisão humana guiada).
 - **Entrada:** drafts em `content/drafts/` com status `drafted`.
 - **Saídas:**
-  - **Aprovar** → marca `approved` no topic; fica em `content/drafts/` (opcionalmente agenda na sequência, via Bloco 3).
+  - **Aprovar** → marca `approved` no topic; o arquivo permanece em `content/drafts/` até a execução explícita do Bloco 3.
   - **Pedir modificação** → a instrução volta para correção (agente ajusta conforme pedido, repassa `escrita-humana` se pedido, revalida) e o draft permanece `drafted`.
   - **Editar direto** → você edita o arquivo e informa ações ao agente (ex.: rodar `escrita-humana`, ajustar limite de caracteres); o agente executa e o draft permanece `drafted` até você aprovar.
 - **Estado fim do bloco:** drafts aprovados com marco `approved`.
@@ -84,10 +84,10 @@ Cada arquivo de post fica em **exatamente uma** pasta de `content/`, e é **movi
 - `content/drafts/` — todo texto que o fluxo **gerou ou editou e ainda não foi agendado**. É a pasta de trabalho; um post pode sair daqui apenas para `published/` ou `arquived/`.
 - `content/published/` — texto **já agendado ou com publicação disparada** no LinkedIn (fim do Bloco 3).
 - `content/arquived/` — texto que você **descartou** do pipe (não será aproveitado). Só recebe arquivo por decisão explícita sua; começa e permanece vazia a menos que você descarte.
-- `approved` é um **marco editorial lógico** (fim do Bloco 2.5), NÃO uma pasta de destino física. Aprovar **é a decisão de agendar**: o texto aprovado é movido de `content/drafts/` para `content/published/` no momento da aprovação. Não existe "approved pendente" em `drafts/`.
+- `approved` é um **marco editorial lógico** (fim do Bloco 2.5), NÃO uma pasta de destino física. A aprovação humana marca o topic como `approved`; o arquivo permanece em `content/drafts/` até o Bloco 3 confirmar o agendamento ou publicação.
 
 **Regra de movimentação:** quando um post muda de fase, o arquivo é movido fisicamente:
-- **Aprovar (= agendar/publicar)** → move de `content/drafts/` para `content/published/` no momento da aprovação (a decisão de aprovar já traz o agendamento junto).
+- **Agendar/publicar (Bloco 3)** → após a aprovação humana, move de `content/drafts/` para `content/published/` somente depois da confirmação no LinkedIn.
 - **Descartar** → move de onde estiver para `content/arquived/` (apenas por decisão sua).
 
 O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Em qualquer momento de consulta: `published/` = agendados/disparados, `drafts/` = os demais, `arquived/` = descartados, `approved/` = vazia.
@@ -96,6 +96,7 @@ O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Em qual
 
 - `.env` nunca vai para o git; credenciais nunca em chat, arquivos ou commits.
 - Publicação usa apenas a sessão logada do browser do OpenWork (sem credenciais).
+- **Rota obrigatória de publicação:** começar pelo CUA embedded browser, capturar screenshot e usar visão nativa para localizar e confirmar os elementos. Se o modelo não tiver visão nativa, usar `image-analyzer`; Playwright só é a terceira rota, depois da tentativa visual.
 
 ## Estados de conteúdo
 

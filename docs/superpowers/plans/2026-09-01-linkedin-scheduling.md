@@ -1,5 +1,7 @@
 # LinkedIn Scheduling Skill Implementation Plan
 
+> **Status documental:** obsoleto; substituído pelo plano visual-first de 2026-09-15 e por `docs/browser-route-contract.md`.
+
 **Goal:** Tornar o agendamento e reagendamento do LinkedIn verificáveis usando a
 rota compartilhada `MCP Chrome DevTools → Playwright (fallback) → screenshot +
 visão nativa → image-analyzer(native_failed) → stop`.

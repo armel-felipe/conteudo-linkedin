@@ -1,5 +1,8 @@
 approved_file: true
 content_converted: true
+browser_attempted: true
+route_attempted:
+  - browser_native
 browser_route: mcp_chrome_devtools
 fallback_used: none
 date_time_confirmed: true
