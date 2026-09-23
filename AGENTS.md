@@ -16,6 +16,7 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Saídas persistentes:** `research/signals/signals_*.yaml` (signals `discovered`/`clustered`), `research/topics/topics_*.yaml` (temas `candidate` e depois `ready_for_research`), `research/topics/topics_*.html` (**visualização navegável dos temas, obrigatória**), `content/backlog.md` (ranqueado por score).
 - **Estado fim do bloco:** backlog com temas `ready_for_research` **e** o HTML de temas gerado. **O bloco 1 não gera posts.**
 - **HTML de temas (obrigatório):** ao fim do `score-opportunities`, gerar `research/topics/topics_YYYY-MM-DD.html` — página navegável com score, critérios, tese, pergunta central, nº de sinais, conexão com o autor e links para os artefatos. O HTML é versionado junto com os topics. Sem ele, o Bloco 1 não está concluído.
+- **Gate de novidade (obrigatório):** todo topic carrega `novelty` com `verdict` (`new` | `revisited` | `duplicate`). Revisitar tema só é permitido com **evento novo** (`new_case`) ou **delta declarado e verificado** (`delta` + `vs_published`). Topic `duplicate` ou sem `novelty` válido não entra no backlog nem no Bloco 2 — o gate é fail-closed (`novelty_gate.py`).
 
 ### Bloco 2 — Gerar o post (de tema a draft em revisão)
 

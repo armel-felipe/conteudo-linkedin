@@ -54,10 +54,25 @@ def write_fixture(root):
         yaml.safe_dump(
             {
                 "topics": [
-                    {"topic_id": "topic_a", "score": 81, "status": "ready_for_research"},
+                    {
+                        "topic_id": "topic_a",
+                        "score": 81,
+                        "status": "ready_for_research",
+                        "novelty": {"verdict": "new"},
+                    },
                     {"topic_id": "topic_b", "score": 99, "status": "candidate"},
-                    {"topic_id": "topic_c", "score": 92, "status": "ready_for_research"},
-                    {"topic_id": "topic_d", "score": 92, "status": "ready_for_research"},
+                    {
+                        "topic_id": "topic_c",
+                        "score": 92,
+                        "status": "ready_for_research",
+                        "novelty": {"verdict": "new"},
+                    },
+                    {
+                        "topic_id": "topic_d",
+                        "score": 92,
+                        "status": "ready_for_research",
+                        "novelty": {"verdict": "new"},
+                    },
                 ]
             }
         )
@@ -94,6 +109,7 @@ def test_selection_normalizes_editorial_topic_schema_id_and_nested_score(tmp_pat
             "title": "Editorial topic",
             "scores": {"total": 82.0},
             "status": "ready_for_research",
+            "novelty": {"verdict": "new"},
         }]})
     )
 

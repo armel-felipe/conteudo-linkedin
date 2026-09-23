@@ -13,7 +13,12 @@ def _topics_fixture(root):
     (root / "research/topics").mkdir(parents=True)
     (root / "content/backlog.md").write_text("topic_a 81 ready_for_research")
     (root / "research/topics/topics_20260901.yaml").write_text(yaml.safe_dump({
-        "topics": [{"topic_id": "topic_a", "score": 81, "status": "ready_for_research"}]
+        "topics": [{
+            "topic_id": "topic_a",
+            "score": 81,
+            "status": "ready_for_research",
+            "novelty": {"verdict": "new"},
+        }]
     }))
 
 

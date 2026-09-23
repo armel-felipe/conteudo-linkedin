@@ -11,6 +11,7 @@ import yaml
 
 from execution_log import ExecutionLogger
 from gauntlet_loop import validate_editorial_evidence, validate_review
+from novelty_gate import load_published_topics, validate_novelty
 
 
 CANONICAL_STAGES = [
@@ -189,6 +190,17 @@ def load_and_select_topics(backlog_path, topics_dir, selection):
         if topic_id in topics and topics[topic_id].get("status") == "ready_for_research"
     }
 
+    # Gate de novidade (fail-closed): um topic sem `novelty` válido não entra
+    # no lote, mesmo que esteja no backlog como ready_for_research.
+    published = load_published_topics(topics_dir)
+    blocked = {
+        topic_id: validate_novelty(topic, published)
+        for topic_id, topic in eligible.items()
+        if validate_novelty(topic, published)
+    }
+    for topic_id in blocked:
+        eligible.pop(topic_id, None)
+
     if selection == "all":
         chosen_ids = sorted(eligible, key=lambda topic_id: (-eligible[topic_id]["score"], topic_id))
     elif selection.isdigit():
@@ -207,9 +219,21 @@ def load_and_select_topics(backlog_path, topics_dir, selection):
             if topic_id not in eligible
         ]
         if invalid:
-            raise ValueError(f"invalid or non-ready topic ids: {', '.join(invalid)}")
+            details = "; ".join(
+                f"{topic_id}: {', '.join(blocked[topic_id])}"
+                if topic_id in blocked
+                else topic_id
+                for topic_id in invalid
+            )
+            raise ValueError(f"invalid or non-ready topic ids: {details}")
 
     if not chosen_ids:
+        if blocked:
+            details = "; ".join(
+                f"{topic_id}: {', '.join(problems)}"
+                for topic_id, problems in sorted(blocked.items())
+            )
+            raise ValueError(f"selection must not be empty (bloqueados pelo gate de novidade: {details})")
         raise ValueError("selection must not be empty")
 
     return [dict(eligible[topic_id]) for topic_id in chosen_ids]
