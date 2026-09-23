@@ -13,7 +13,7 @@ topics:
     a ação precisa ser commitada — e é ali que a demo vira prejuízo: 80.000 unidades
     de estoque perecível, writes com 4xx, integração que ninguém testou.'
   author_connection: strong
-  status: drafted
+  status: archived
 - id: topic_20260914_02
   title: 'Agent washing: o que se vende como agente autônomo é automação com passos
     extras'
@@ -29,7 +29,8 @@ topics:
     real, 70-90% dos PoCs morrem antes da produção, e a linha divisória é simples
     — a ação transacional com write real e consequência.'
   author_connection: medium
-  status: ready_for_research
+  scores: {total: 78.0}
+  status: archived
 - id: topic_20260914_03
   title: Governança de IA se prova por evidência operacional, não por política
   pillars:
@@ -45,7 +46,7 @@ topics:
     existem; falta a camada que prova, no encanamento, que a regra está sendo cumprida,
     e a fiscalização (RFIs da Comissão Europeia) chegou antes da prova.
   author_connection: weak
-  status: ready_for_research
+  status: archived
 - id: topic_20260914_04
   title: O humano no loop só é controle se tiver tempo, contexto e autoridade para
     dizer não
@@ -76,7 +77,8 @@ topics:
     permissões, observabilidade e controle de custo no runtime; dado sujo e gasto
     desperdiçado são o teto real do resultado.
   author_connection: medium
-  status: ready_for_research
+  scores: {total: 78.0}
+  status: archived
 - id: topic_20260914_06
   title: 'Avaliar agente em produção: a régua não é a demo, é o que acontece depois
     do deploy'
@@ -90,7 +92,8 @@ topics:
     de negócio medido em produção (claims pagas, escalonamento, correção) e o ciclo
     contínuo que puxa casos novos de volta para o eval.'
   author_connection: medium
-  status: ready_for_research
+  scores: {total: 78.0}
+  status: archived
 - id: topic_20260914_07
   title: A última milha é uma decisão de margem, não de velocidade
   pillars:
@@ -105,7 +108,7 @@ topics:
     a velocidade bruta: prometer 4 e entregar em 3 ganha; prometer 2 e entregar em
     3 quebra.'
   author_connection: strong
-  status: drafted
+  status: published
 - id: topic_20260914_08
   title: Quando a operação falha, a ausência de humano transforma atraso em crise
     de confiança

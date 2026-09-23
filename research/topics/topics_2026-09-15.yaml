@@ -1,0 +1,94 @@
+# Topics - 2026-09-15
+# Gerados a partir dos sinais de research/signals/signals_2026-09-15.yaml.
+
+topics:
+  - id: topic_20260915_01
+    title: "A IA só entrega valor quando atravessa o caminho entre insight e execução"
+    pillars: [ia_aplicada]
+    signals: [signal_20260915_001, signal_20260915_002, signal_20260915_005]
+    central_question: "Por que a IA já produz previsões e recomendações, mas ainda encontra dificuldade para mudar decisões operacionais?"
+    possible_thesis: "O gargalo da IA aplicada não é mais gerar insight; é criar o encanamento, a competência e o ownership que transformam insight em decisão executada."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9, total: 85.5}
+    status: archived
+
+  - id: topic_20260915_02
+    title: "A autonomia da IA se prova quando alguém consegue contestar a previsão"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    signals: [signal_20260915_003, signal_20260915_004, signal_20260915_006]
+    central_question: "Como ampliar a autonomia de agentes sem transformar previsão e coordenação em risco operacional?"
+    possible_thesis: "Autonomia sem contestabilidade não é maturidade: a IA precisa de limites, contexto, governança e uma pessoa com autoridade real para interromper a decisão."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 9, evidence: 8, author_fit: 9, originality: 9, linkedin_fit: 9, total: 89.0}
+    status: published
+
+  - id: topic_20260915_03
+    title: "Na última milha, a promessa cumprida vale mais que a velocidade"
+    pillars: [logistica_last_mile_cx]
+    signals: [signal_20260915_007, signal_20260915_008, signal_20260915_009]
+    central_question: "Quais indicadores mostram a qualidade real da última milha quando prazo, custo e experiência entram em conflito?"
+    possible_thesis: "A última milha madura não mede apenas velocidade ou entrega no prazo; mede a promessa percebida, o custo da operação e a velocidade de recuperação quando algo falha."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 10, debate: 9, evidence: 8, author_fit: 10, originality: 8, linkedin_fit: 10, total: 93.0}
+    status: published
+
+  - id: topic_20260915_04
+    title: "A velocidade da entrega precisa caber na margem"
+    pillars: [logistica_last_mile_cx]
+    signals: [signal_20260915_010]
+    central_question: "Quando a velocidade de entrega deixa de ser diferencial e passa a destruir margem?"
+    possible_thesis: "A última milha não é uma competição abstrata por minutos: cada promessa de velocidade precisa ser confrontada com canal, throughput e margem unitária."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 6, author_fit: 10, originality: 9, linkedin_fit: 9, total: 87.5}
+    status: archived
+
+  - id: topic_20260915_05
+    title: "Liderança operacional aparece na cobrança e na alocação de atenção"
+    pillars: [lideranca_operacoes]
+    signals: [signal_20260915_011, signal_20260915_012]
+    central_question: "Como distinguir liderança operacional real de discurso motivacional?"
+    possible_thesis: "O time reconhece liderança menos pelo discurso do líder do que pela disposição de cobrar, enfrentar conversas difíceis e alocar tempo para o que foi declarado prioridade."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 8, author_fit: 9, originality: 7, linkedin_fit: 9, total: 83.5}
+    status: published
+
+  - id: topic_20260915_06
+    title: "Confiança é infraestrutura para decidir sob pressão"
+    pillars: [lideranca_operacoes]
+    signals: [signal_20260915_013]
+    central_question: "O que permite a uma equipe manter qualidade de decisão quando a operação entra em tensão?"
+    possible_thesis: "Confiança não é um benefício periférico da cultura; é a infraestrutura que permite delegar, escalar problemas e agir quando o plano original deixa de existir."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 8, originality: 8, linkedin_fit: 8, total: 78.0}
+    status: published
+    block_reason: "Draft gerado antes do gate editorial substantivo; requer reescrita e crítica real."
+
+  - id: topic_20260915_07
+    title: "Governança de IA é uma cadeia operacional de prova"
+    pillars: [riscos_compliance_resiliencia, ia_aplicada]
+    signals: [signal_20260915_014, signal_20260915_015, signal_20260915_016]
+    central_question: "Como fazer a governança de IA sobreviver à mudança e produzir evidência operacional?"
+    possible_thesis: "Política e framework são apenas o começo: governança real conecta sinal, decisão, autoridade, workflow e resultado mensurável, inclusive quando modelos e regras mudam."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 10, debate: 9, evidence: 8, author_fit: 9, originality: 9, linkedin_fit: 9, total: 91.0}
+    status: archived
+
+  - id: topic_20260915_08
+    title: "IA em segurança alimentar deve acelerar o risco sem apagar a responsabilidade"
+    pillars: [alimentos_consumo_sustentabilidade, riscos_compliance_resiliencia]
+    signals: [signal_20260915_017, signal_20260915_020]
+    central_question: "Como usar IA e comunicação pública para reduzir o tempo até o risco sem simplificar demais a segurança alimentar?"
+    possible_thesis: "Em alimentos, a melhor aplicação da IA não substitui o controle humano: ela reduz o tempo para encontrar, priorizar e explicar um risco com evidência."
+    author_connection: medium
+    scores: {freshness: 10, relevance: 8, debate: 8, evidence: 9, author_fit: 7, originality: 8, linkedin_fit: 8, total: 82.0}
+    status: archived
+
+  - id: topic_20260915_09
+    title: "Sustentabilidade alimentar ganha força quando vira economia operacional"
+    pillars: [alimentos_consumo_sustentabilidade]
+    signals: [signal_20260915_018, signal_20260915_019]
+    central_question: "Quando sustentabilidade deixa de ser custo adicional e passa a ser uma alavanca de operação e crescimento?"
+    possible_thesis: "A agenda circular só escala quando conecta desperdício, margem, segurança e novos fluxos de valor, em vez de depender apenas de intenção ambiental."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 7, author_fit: 7, originality: 9, linkedin_fit: 8, total: 78.0}
+    status: published

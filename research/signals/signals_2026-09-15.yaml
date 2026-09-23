@@ -1,0 +1,414 @@
+# Signals - 2026-09-15
+# Leva de descoberta do Bloco 1. Janela pesquisada: 2026-08-16 a 2026-09-15.
+# Fontes brutas: /private/tmp/last30days-cycle-20260915/*raw*.md
+
+signals:
+  - id: signal_20260915_001
+    title: "A IA está saindo do forecast e chegando à execução operacional"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: aindotnet
+      url: https://www.tiktok.com/@aindotnet/video/7682450193127607565
+      published_at: 2026-09-06
+    observation: "A discussão desloca o foco de prever demanda para provar valor mensurável em operações, usando pedidos, estoque, produção, staffing e entregas."
+    debate:
+      side_a: "Mais dados e modelos preditivos finalmente destravam eficiência."
+      side_b: "Previsão melhor não vale nada sem integração, processo e resultado de negócio."
+    evidence:
+      - "Aindotnet lista dados operacionais concretos e pergunta se a IA preditiva gera valor mensurável."
+      - "O mesmo debate aparece em um post da ASCM sobre sair de insights para execução: https://www.linkedin.com/posts/ascminlandempire_ascmie-supplychain-ai-activity-7501296589676670977-uecZ"
+    possible_angle: "O teste da IA em operações não é prever melhor; é mudar uma decisão e medir o resultado."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_002
+    title: "A última milha da IA é o ponto em que o insight precisa virar ação"
+    pillars: [ia_aplicada]
+    source:
+      type: linkedin
+      publisher: ASCM Inland Empire
+      url: https://www.linkedin.com/posts/ascminlandempire_ascmie-supplychain-ai-activity-7501296589676670977-uecZ
+      published_at: 2026-09-03
+    observation: "Conteúdo de supply chain descreve a passagem de insights para execução como o próximo teste da IA."
+    debate:
+      side_a: "A geração de insight já é suficiente para melhorar a operação."
+      side_b: "O valor só existe quando o insight altera uma decisão no fluxo real."
+    evidence:
+      - "O título e a descrição do post são explicitamente 'AI - From Insights to Execution'."
+      - "Aindotnet formula a mesma tensão entre forecast e valor operacional: https://www.tiktok.com/@aindotnet/video/7682450193127607565"
+    possible_angle: "A diferença entre uma IA interessante e uma IA útil é o caminho entre recomendação e execução."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_003
+    title: "O risco maior é confiar cegamente na previsão da supply chain"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: linkedin
+      publisher: Raj Koul
+      url: https://www.linkedin.com/posts/raj-koul-710b0919_supplychain-artificialintelligence-machinelearning-activity-7501494747421630465-r-_i
+      published_at: 2026-09-04
+    observation: "Um post resume a preocupação operacional: a cadeia perigosa não é a que não prevê, mas a que obedece à previsão sem questioná-la."
+    debate:
+      side_a: "A automação deve seguir a previsão para capturar velocidade."
+      side_b: "Toda previsão precisa de contexto, limites e autoridade humana para ser contestada."
+    evidence:
+      - "Post de Raj Koul: 'The Most Dangerous Supply Chain Is Not the One That Cannot Predict. It is the one that blindly trusts its prediction.'"
+    possible_angle: "Governança começa no momento em que alguém pode dizer não para uma previsão."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 9, evidence: 6, author_fit: 9, originality: 9, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_004
+    title: "Agentes autônomos expõem riscos novos de coordenação e manipulação"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: hackernews
+      publisher: Yoshua Bengio
+      url: https://yoshuabengio.org/en/publication/why-are-ai-agents-lying-cheating-and-coordinating
+      published_at: 2026-09-13
+    observation: "Uma discussão de alto engajamento questiona agentes que mentem, trapaceiam e coordenam, deslocando o debate de capacidade para comportamento e controle."
+    debate:
+      side_a: "Com ferramentas e supervisão, agentes podem ampliar a capacidade das equipes."
+      side_b: "A coordenação autônoma cria comportamentos difíceis de prever e auditar."
+    evidence:
+      - "A discussão no Hacker News teve 652 pontos e 690 comentários em 13/09."
+    possible_angle: "Quanto mais autonomia se dá ao agente, mais importante fica observar sua interação com o ambiente."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 8, debate: 9, evidence: 8, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_005
+    title: "A adoção de IA em supply chain continua presa entre piloto e escala"
+    pillars: [ia_aplicada]
+    source:
+      type: linkedin
+      publisher: AIN GenX
+      url: https://www.linkedin.com/posts/ain-genx_from-data-to-decisions-ai-for-supply-chain-activity-7501545796232699907-3oRb
+      published_at: 2026-09-04
+    observation: "Programas de formação estão ensinando IA para forecast, inventário, workflows e comunicação com fornecedores, sinalizando demanda por aplicação prática."
+    debate:
+      side_a: "A capacitação é o caminho para acelerar a adoção."
+      side_b: "Treinar usuários não resolve dados ruins, processos desconectados e falta de ownership."
+    evidence:
+      - "O post anuncia a segunda turma de 'From Data to Decisions: AI for Supply Chain Professionals'."
+      - "Reportagem sobre a Amazon Brasil resume o gargalo como distância entre usar e escalar: https://transportemoderno.com.br/2026/09/09/amazon-aponta-o-que-trava-a-ia-na-logistica/"
+    possible_angle: "A próxima competência operacional não é saber usar IA, mas saber escolher onde ela merece ser escalada."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 7, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_006
+    title: "Palantir e Nvidia levam IA soberana para o problema da supply chain"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: x
+      publisher: MsResJudicata
+      url: https://x.com/MsResJudicata/status/2097977774770213046
+      published_at: 2026-09-10
+    observation: "O anúncio de parceria conecta modelos abertos, infraestrutura de IA e cadeias críticas, começando pela própria operação da Nvidia."
+    debate:
+      side_a: "IA soberana e modelos abertos podem reduzir dependência e aumentar controle."
+      side_b: "Parcerias estratégicas não provam valor operacional nem resolvem governança por si só."
+    evidence:
+      - "Post no X relata integração de modelos Nemotron em operações da Nvidia e futura oferta empresarial."
+    possible_angle: "A pergunta relevante não é quem tem o modelo, mas quem consegue colocá-lo dentro de uma cadeia crítica."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 7, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_007
+    title: "Na última milha, confiabilidade começa a vencer velocidade"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: web
+      publisher: Truck News
+      url: https://www.trucknews.com/transportation/us-last-mile-operators-prioritize-reliability-as-delivery-costs-climb/1003220939/
+      published_at: 2026-09-01
+    observation: "Operadores estão priorizando confiabilidade enquanto o custo mediano da entrega cresce 12% pelo segundo ano consecutivo."
+    debate:
+      side_a: "Velocidade é o principal diferencial percebido pelo cliente."
+      side_b: "Promessa cumprida e previsibilidade valem mais do que velocidade nominal."
+    evidence:
+      - "Truck News resume a pesquisa FarEye: confiabilidade à frente de velocidade e custos medianos +12% em 2026."
+      - "A discussão também aparece em https://www.thescxchange.com/editorial/featured/report-rising-costs-plague-the-last-mile"
+    possible_angle: "A última milha deixou de ser uma corrida de velocidade e virou uma decisão de confiança."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 9, evidence: 8, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_008
+    title: "O cliente sente a supply chain como uma única promessa"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: linkedin
+      publisher: Anthony Martenot
+      url: https://www.linkedin.com/posts/anthony-martenot-b811346_customerexperience-supplychain-cx-activity-7500809028537663488-qvQQ
+      published_at: 2026-09-02
+    observation: "Um post afirma que o cliente não percebe etapas separadas, mas uma promessa de marca que é cumprida ou quebrada."
+    debate:
+      side_a: "Cada área pode otimizar seu próprio indicador."
+      side_b: "A experiência é sistêmica; a falha em uma etapa vira problema da marca inteira."
+    evidence:
+      - "Post teve 78 likes e conecta customer experience, supply chain e CX."
+    possible_angle: "O indicador que importa na última milha não é apenas entrega no prazo, mas a promessa percebida pelo cliente."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_009
+    title: "O scorecard da última milha precisa medir recuperação, não só prazo"
+    pillars: [logistica_last_mile_cx, lideranca_operacoes]
+    source:
+      type: web
+      publisher: Cleverly Names
+      url: https://cleverlynames.com/what-last-mile-carrier-scorecards-should-measure-beyond-on-time-delivery-rates/
+      published_at: 2026-09-08
+    observation: "A proposta de avaliação de transportadoras amplia o scorecard para confiabilidade, experiência, custo, compliance e velocidade de recuperação."
+    debate:
+      side_a: "OTD é o indicador simples e suficiente para comparar transportadoras."
+      side_b: "Operações maduras medem também o que acontece quando a promessa falha."
+    evidence:
+      - "A fonte lista service reliability, customer experience, cost control, compliance e recovery speed."
+      - "A recomendação de playbooks cross-functional aparece em https://racklify.com/encyclopedia/how-to-improve-last-mile-customer-experience-for-ecommerce/"
+    possible_angle: "A qualidade da operação aparece menos no dia perfeito e mais na velocidade de recuperação."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_010
+    title: "A última milha está ficando cara demais para competir só por velocidade"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: x
+      publisher: ZeroDhaMarkets
+      url: https://x.com/zerodhamarkets/status/2095018266188189870
+      published_at: 2026-09-02
+    observation: "A discussão sobre restaurantes sugere combinar entrega, experiência presencial e throughput para não carregar sozinho o custo da última milha."
+    debate:
+      side_a: "Mais velocidade e cobertura justificam o custo da entrega."
+      side_b: "O canal precisa ser desenhado junto com margem e experiência, não como promessa isolada."
+    evidence:
+      - "O post cita a modernização de cerca de 400 lojas Domino's para serviço, throughput e experiência."
+    possible_angle: "A pergunta da última milha não é 'quão rápido?', mas 'qual margem essa promessa sustenta?'."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 9, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_011
+    title: "Liderar não é ser amado; é direcionar, cobrar e desenvolver"
+    pillars: [lideranca_operacoes]
+    source:
+      type: youtube
+      publisher: O Padrinho Podcast
+      url: https://www.youtube.com/watch?v=1aS_ZaYM91Q
+      published_at: 2026-09-08
+    observation: "Um episódio com 43 mil visualizações coloca conversas difíceis, cobrança e desenvolvimento no centro da liderança de times."
+    debate:
+      side_a: "Liderança eficaz precisa preservar harmonia e aprovação do time."
+      side_b: "Confiança inclui direcionar, cobrar e enfrentar conversas difíceis."
+    evidence:
+      - "O episódio afirma que ser bom líder não é ser amado, mas direcionar, cobrar e desenvolver pessoas."
+      - "O vídeo teve 43.475 visualizações, 705 likes e 34 comentários."
+    possible_angle: "Em operações, evitar a conversa difícil costuma transferir o problema para o cliente."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 8, author_fit: 8, originality: 7, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_012
+    title: "A liderança é mais visível no que prioriza do que no que declara"
+    pillars: [lideranca_operacoes]
+    source:
+      type: linkedin
+      publisher: John Friedel
+      url: https://www.linkedin.com/posts/john-friedel-leader_the-watch-the-feet-principle-dont-watch-activity-7502718093362634752-vl5H
+      published_at: 2026-09-07
+    observation: "O princípio 'watch the feet' propõe avaliar a liderança pelo tempo e pelas ações dedicadas a uma prioridade, não pelo discurso."
+    debate:
+      side_a: "Visão e comunicação são suficientes para alinhar a organização."
+      side_b: "A alocação real de tempo, recursos e atenção revela a prioridade."
+    evidence:
+      - "O post contrasta o que a liderança diz com os passos concretos que toma."
+    possible_angle: "Times operacionais acreditam menos no discurso da prioridade e mais no orçamento, agenda e decisão que o acompanham."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_013
+    title: "Pressão operacional transforma confiança em ativo de performance"
+    pillars: [lideranca_operacoes]
+    source:
+      type: web
+      publisher: The Leadership Sphere
+      url: https://theleadershipsphere.com.au/insights/leading-through-tension-when-the-pressure-is-on
+      published_at: 2026-09-07
+    observation: "A análise defende que confiança acumulada melhora a performance quando o time opera sob tensão e pressão."
+    debate:
+      side_a: "Pressão exige comando central e controle mais próximo."
+      side_b: "Confiança e clareza de papéis permitem decidir melhor sob pressão."
+    evidence:
+      - "A fonte trata confiança como performance asset e tensão como oportunidade de fortalecer o time."
+    possible_angle: "Confiança operacional não é conforto; é infraestrutura para agir quando o plano quebra."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 8, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_014
+    title: "Governança de IA precisa ligar sinal, decisão, autoridade e resultado"
+    pillars: [riscos_compliance_resiliencia, ia_aplicada]
+    source:
+      type: web
+      publisher: Gigawatt AI
+      url: https://gigawatt.ai/blog/ai-for-supply-chain-management-in-utilities/
+      published_at: 2026-09-11
+    observation: "A proposta para utilities afirma que previsão sem dono deixa risco aberto, visibilidade sem priorização cria informação e automação sem governança cria exposição."
+    debate:
+      side_a: "Mais visibilidade e automação já melhoram a resiliência."
+      side_b: "Sem autoridade, workflow e resultado mensurável, tecnologia apenas aumenta o volume de informação."
+    evidence:
+      - "A fonte propõe conectar signal, decision, authority, workflow e measurable result."
+      - "A mesma lógica aparece no debate sobre governança resiliente: https://www.linkedin.com/posts/tolvira_tolvira-aigovernance-aigrc-activity-7501142789800427521-XJ64"
+    possible_angle: "A unidade mínima de governança não é a política; é uma decisão operacional com dono e evidência."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 9, evidence: 8, author_fit: 9, originality: 9, linkedin_fit: 9}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_015
+    title: "A regulação de software está transformando supply chain em responsabilidade de liderança"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: linkedin
+      publisher: Chuck Davis
+      url: https://www.linkedin.com/posts/chuckdavis_sbom-vex-ai-dr-allan-friedman-on-the-activity-7495891047424610304-eTtw
+      published_at: 2026-08-19
+    observation: "A entrada em vigor de exigências europeias de resiliência cibernética é apresentada como obrigação de compliance e imperativo de liderança."
+    debate:
+      side_a: "Compliance é um trabalho técnico do time de segurança."
+      side_b: "Risco de software e fornecedores precisa entrar nas decisões de liderança e operação."
+    evidence:
+      - "O post conecta Cyber Resilience Act, SBOM/VEX e liderança da cadeia de software."
+    possible_angle: "Quando o software entra na operação, a governança da cadeia deixa de ser assunto de um departamento."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_016
+    title: "A resiliência da IA precisa sobreviver à mudança, não apenas ao lançamento"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: linkedin
+      publisher: Tolvira
+      url: https://www.linkedin.com/posts/tolvira_tolvira-aigovernance-aigrc-activity-7501142789800427521-XJ64
+      published_at: 2026-09-03
+    observation: "A discussão sobre AI governance pergunta se os controles continuam válidos quando modelos, dados, fornecedores e regras mudam."
+    debate:
+      side_a: "Uma política aprovada e um framework documentado bastam para controlar o risco."
+      side_b: "Governança precisa ser contínua, testável e adaptável ao runtime."
+    evidence:
+      - "O título do post é 'Can Your AI Governance Survive Change?'."
+      - "A proposta de monitoramento contínuo aparece também no whitepaper da EC-Council: https://www.eccouncil.org/cybersecurity-exchange/whitepaper/ai-threat-and-risk-management"
+    possible_angle: "O controle que não muda com o sistema não é governança; é fotografia."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 8, originality: 9, linkedin_fit: 8}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_017
+    title: "A IA pode melhorar resposta a incidentes de segurança alimentar"
+    pillars: [alimentos_consumo_sustentabilidade, riscos_compliance_resiliencia]
+    source:
+      type: web
+      publisher: UK Food Standards Agency
+      url: https://www.gov.uk/government/publications/food-standards-agency-business-committee-meeting-september-2026/progress-against-the-economic-growth-goals-fsa-business-committee
+      published_at: 2026-09-14
+    observation: "A FSA relata pilotos de IA e voz-para-texto para inspeção, inteligência de incidentes e avaliação de risco no sistema alimentar."
+    debate:
+      side_a: "IA pode tornar controles oficiais mais rápidos e direcionados ao risco."
+      side_b: "Em segurança alimentar, ganho de velocidade não pode reduzir evidência, revisão e responsabilidade."
+    evidence:
+      - "A FSA descreve dois pilotos em controles oficiais, auditoria e gestão de incidentes."
+      - "O texto condiciona a escala ao feedback do piloto e à qualidade dos dados."
+    possible_angle: "O caso mais valioso de IA em alimentos pode ser reduzir o tempo até o risco, não substituir o inspetor."
+    author_connection: medium
+    scores: {freshness: 10, relevance: 8, debate: 8, evidence: 9, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_018
+    title: "Desperdício de alimentos está sendo tratado como oportunidade de crescimento"
+    pillars: [alimentos_consumo_sustentabilidade]
+    source:
+      type: linkedin
+      publisher: Avery Dennison
+      url: https://www.linkedin.com/posts/avery-dennison_last-week-susan-flake-joined-the-fmi-the-activity-7496576869581066240-9nOZ
+      published_at: 2026-08-21
+    observation: "Uma discussão do Fresh Food Leadership Council enquadra a redução de desperdício de alimentos como oportunidade de crescimento, não apenas custo ambiental."
+    debate:
+      side_a: "Sustentabilidade é investimento adicional e pressão sobre margem."
+      side_b: "Reduzir desperdício pode liberar valor econômico e melhorar a operação."
+    evidence:
+      - "O post relata discussão sobre transformar food waste em growth opportunity."
+    possible_angle: "A agenda de sustentabilidade ganha força quando é traduzida para margem, disponibilidade e execução."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_019
+    title: "Biotecnologia está aproximando resíduos de novos ingredientes alimentares"
+    pillars: [alimentos_consumo_sustentabilidade]
+    source:
+      type: hackernews
+      publisher: American Chemical Society
+      url: https://acs.digitellinc.com/live/37/session/586399
+      published_at: 2026-08-27
+    observation: "Uma pesquisa discutida no Hacker News explora levedura engenheirada para converter plástico e compostos de biomassa em aditivos alimentares."
+    debate:
+      side_a: "Tecnologia pode criar novos fluxos circulares para resíduos."
+      side_b: "A viabilidade operacional, segurança e aceitação do consumidor são barreiras maiores que a prova de laboratório."
+    evidence:
+      - "A discussão teve 119 pontos e 96 comentários no Hacker News."
+      - "O título da sessão descreve a conversão de plástico e biomassa em food additives."
+    possible_angle: "Na economia circular de alimentos, a pergunta difícil começa depois da descoberta: isso escala com segurança?"
+    author_connection: weak
+    scores: {freshness: 8, relevance: 7, debate: 8, evidence: 7, author_fit: 6, originality: 9, linkedin_fit: 7}
+    created_at: 2026-09-15
+    status: clustered
+
+  - id: signal_20260915_020
+    title: "Segurança alimentar continua disputando atenção com conteúdo de alto alcance"
+    pillars: [alimentos_consumo_sustentabilidade]
+    source:
+      type: tiktok
+      publisher: alihamzajoiya35
+      url: https://www.tiktok.com/@alihamzajoiya35/video/7685040274808016136
+      published_at: 2026-09-13
+    observation: "Conteúdo sobre FoodSafety e regulações alcançou 74 mil visualizações, mostrando que o tema circula também em formatos de conscientização pública."
+    debate:
+      side_a: "Alcance e linguagem simples aumentam a conscientização sobre regras."
+      side_b: "Viralização pode simplificar demais riscos técnicos e regulatórios."
+    evidence:
+      - "O vídeo usa as hashtags FoodSafety, regulations e PublicAwareness e registra 74.388 visualizações."
+    possible_angle: "Comunicar risco alimentar é uma operação de confiança: simplificar sem distorcer."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 7, debate: 7, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 7}
+    created_at: 2026-09-15
+    status: clustered
