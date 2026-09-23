@@ -4,6 +4,16 @@ frentes:
     name: IA Aplicada
     priority: 10
     keywords:
+      # Agentes: execução, avaliação, segurança, identidade, observabilidade e custo.
+      - AI agents production deployment
+      - AI agent evaluation production
+      - AI agent security prompt injection
+      - AI agent identity permissions
+      - AI agent observability monitoring
+      - AI agent cost token economics
+      - agentic AI enterprise adoption
+      - AI pilot to production failure
+      # Casos de uso e operação.
       - AI in supply chain use cases
       - AI logistics forecasting routing
       - AI operations productivity
@@ -22,6 +32,10 @@ frentes:
       - "Quais competências os líderes precisam desenvolver?"
       - "O debate está falando de automação ou de aumento da capacidade das equipes?"
       - "Quais casos são reais e quais são apenas marketing?"
+      - "O agente executa a ação (write real) ou só recomenda?"
+      - "Como o agente é avaliado depois do deploy?"
+      - "Quem tem autoridade para interromper o agente?"
+      - "Quanto custa cada execução e onde o custo aparece?"
 
   logistica_last_mile_cx:
     name: Logística, last mile e experiência do cliente
@@ -32,6 +46,11 @@ frentes:
       - logistics operational efficiency
       - food delivery operations
       - delivery reliability customer complaints
+      # Promessa, custo, recuperação e SLA.
+      - delivery promise reliability
+      - last mile cost per delivery
+      - customer recovery service failure
+      - delivery SLA compliance
 
   lideranca_operacoes:
     name: Liderança em operações
@@ -42,6 +61,11 @@ frentes:
       - building trust in operational teams
       - frontline workforce productivity
       - decision making under pressure leadership
+      # Cobrança, priorização, pressão e accountability na linha de frente.
+      - accountability difficult conversations leadership
+      - leader prioritization attention management
+      - operational leadership under pressure
+      - frontline accountability performance
 
   riscos_compliance_resiliencia:
     name: Riscos, compliance e resiliência
@@ -52,6 +76,12 @@ frentes:
       - AI governance compliance business
       - food safety supply chain
       - supplier risk technology
+      # Regulação, segurança de agente, incidente e evidência de auditoria.
+      - EU AI Act enforcement
+      - Cyber Resilience Act compliance
+      - AI agent security governance
+      - AI incident response
+      - AI audit evidence operational
 
   alimentos_consumo_sustentabilidade:
     name: Alimentos, consumo e sustentabilidade
@@ -62,3 +92,8 @@ frentes:
       - food supply chain innovation
       - circular economy operations
       - sustainable logistics cost
+      # Desperdício, ingredientes, segurança alimentar e clima.
+      - food waste reduction operations
+      - upcycled ingredients food
+      - food safety incident response
+      - climate risk food supply chain
