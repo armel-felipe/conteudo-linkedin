@@ -42,7 +42,8 @@ def validate_review(review):
     if not isinstance(review, dict):
         return {"valid": False, "terminal": True, "errors": ["root must be an object"]}
 
-    if set(review) != REQUIRED_FIELDS:
+    unknown_fields = set(review) - REQUIRED_FIELDS - {"evidence"}
+    if unknown_fields or not REQUIRED_FIELDS.issubset(review):
         errors.append("fields must match the review contract exactly")
 
     if not isinstance(review.get("decision"), str) or review.get("decision") not in DECISIONS:
@@ -92,6 +93,30 @@ def validate_review(review):
         "errors": errors,
         "quality_feedback": quality_feedback,
     }
+
+
+def validate_editorial_evidence(review, artifact_content, artifact_path):
+    """Require traceable, content-specific reasoning for real editorial artifacts."""
+    errors = []
+    if not isinstance(artifact_content, str) or not artifact_content.strip():
+        errors.append("artifact content must be non-empty")
+    evidence = review.get("evidence") if isinstance(review, dict) else None
+    required = ("context", "causal_chain", "decision", "consequence", "limits", "anchors")
+    if not isinstance(evidence, dict):
+        return {"valid": False, "errors": ["editorial evidence is required"]}
+    missing = [key for key in required if key not in evidence]
+    if missing:
+        errors.append("editorial evidence is missing: " + ", ".join(missing))
+    for key in required[:-1]:
+        if not isinstance(evidence.get(key), str) or not evidence[key].strip():
+            errors.append(f"editorial evidence {key} must be a non-empty string")
+    anchors = evidence.get("anchors")
+    if not isinstance(anchors, list) or not anchors or any(
+        not isinstance(anchor, str) or not anchor.strip() or anchor not in artifact_content
+        for anchor in anchors
+    ):
+        errors.append("editorial evidence anchors must quote the artifact")
+    return {"valid": not errors, "errors": errors, "artifact": artifact_path}
 
 
 def _blocked(

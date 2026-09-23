@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import re
 
-from gauntlet_loop import run_gauntlet, validate_review
+from gauntlet_loop import run_gauntlet, validate_review, validate_editorial_evidence
 
 
 ROOT = Path(__file__).parents[1]
@@ -31,24 +31,26 @@ def read_contract(path):
 def test_research_and_write_contracts_require_quality_gates():
     research = read_contract(".agents/skills/research-topic/SKILL.md")
     write = read_contract(".agents/skills/write-post/SKILL.md")
+    guide = read_contract("docs/guia-escrita.md")
 
     assert "duas fontes independentes" in research
     assert "conexão" in research
-    assert "9/10" in write
+    # O write-post delega as regras editoriais à fonte única; o gate 9/10 vive no guia.
+    assert "docs/guia-escrita.md" in write
+    assert "9/10" in guide
     assert "escrita-humana" in write
 
 
 def test_post_uses_exact_normative_criteria_in_order():
+    # A ordem canônica dos 14 critérios é imposta pelo schema e pelo gauntlet,
+    # não duplicada em markdown. O write-post referencia a fonte única.
+    schema = json.loads(read_contract("docs/schemas/gauntlet-review.json"))
+    enum = schema["properties"]["criteria"]["propertyNames"]["enum"]
+    assert tuple(enum) == NORMATIVE_CRITERIA
+
     write = read_contract(".agents/skills/write-post/SKILL.md")
-    section = re.search(
-        r"## Critérios normativos do post\n(.*?)(?=\n## )", write, re.DOTALL
-    )
-    assert section is not None
-    criteria = [
-        match.group(2).strip().lower()
-        for match in re.finditer(r"^([0-9]+)\. (.+)$", section.group(1), re.MULTILINE)
-    ]
-    assert tuple(criteria) == NORMATIVE_CRITERIA
+    assert "docs/guia-escrita.md" in write
+    assert "docs/schemas/gauntlet-review.json" in write
 
 
 def review(criteria=None, **overrides):
@@ -68,6 +70,35 @@ def test_validate_review_accepts_the_complete_normative_criteria_set():
     result = validate_review(review())
     assert result["valid"] is True
     assert result["quality_feedback"] == []
+
+
+def test_editorial_gate_rejects_perfect_but_generic_review():
+    result = validate_editorial_evidence(
+        review(),
+        "# Draft\n\nUm texto longo o bastante para representar um artefato editorial.",
+        "content/drafts/topic.md",
+    )
+    assert result["valid"] is False
+    assert "evidence" in " ".join(result["errors"])
+
+
+def test_editorial_gate_accepts_specific_context_and_causal_evidence():
+    payload = review(
+        evidence={
+            "context": "O leitor opera delivery e precisa decidir entre custo e disponibilidade.",
+            "causal_chain": "Desperdício reduz disponibilidade; medir a perda orienta a decisão.",
+            "decision": "Definir um gate antes de escalar a solução.",
+            "consequence": "Sem o gate, o fluxo pode trocar economia por risco operacional.",
+            "limits": "A fonte descreve pesquisa, não escala comercial.",
+            "anchors": ["O passo difícil vem depois."],
+        }
+    )
+    result = validate_editorial_evidence(
+        payload,
+        "# Draft\n\nO passo difícil vem depois.",
+        "content/drafts/topic.md",
+    )
+    assert result["valid"] is True
 
 
 def test_validate_review_rejects_omitted_normative_criterion():

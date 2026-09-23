@@ -178,6 +178,11 @@ feedback: []
 artifact: research/briefs/topic_c.md
 ```
 
+Para briefs e drafts reais, a review aprovada também deve conter `evidence` com
+`context`, `causal_chain`, `decision`, `consequence`, `limits` e `anchors`.
+Cada anchor precisa ser um trecho literal do artefato. Notas 10/10 sem essa
+prova são rejeitadas pelo executor e não avançam o topic.
+
 ## Execução sequencial
 
 Processe um topic por vez. Para cada item, chame os stages normativos nesta ordem:
@@ -189,6 +194,29 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 ```
 
 Cada stage usa executor e revisor separados. Cada Gauntlet executa no máximo 5 ciclos, só aprova com `coverage >= 0.99` e todos os critérios `>=9/10`; resposta inválida, artefato ausente ou falha de validação bloqueia o topic. `brief_review_gauntlet` exige duas fontes independentes quando disponíveis e conexão explícita com a experiência do autor. `critique-post` produz feedback; a correção acontece no `correction_gauntlet`. `humanize_pass_1` e `humanize_pass_2` são obrigatórios e cada um precisa de seu próprio review.
+
+### Telemetria de runtime
+
+Quando o executor ou revisor fornecer uso do modelo, o callback deve passar o
+objeto opcional `usage` para `persist_stage`:
+
+```yaml
+usage:
+  model: <nome-do-modelo>
+  input_tokens: <inteiro-nao-negativo>
+  output_tokens: <inteiro-nao-negativo>
+  cached_input_tokens: <inteiro-nao-negativo>
+```
+
+O lote persiste esse bloco no resultado do stage e grava o evento compacto em
+`runs/<run_id>/token-usage.jsonl`. Prompts, respostas e conteúdo externo não
+entram nesse arquivo. Quando o runtime não fornecer usage, não estimar nem
+inventar tokens; o relatório deve mostrar zero para essa chamada.
+
+Para `research-topic`, calcular a chave com `research_cache.py` antes de
+chamar `last30days`. Em `cache_hit`, reutilizar o brief completo e registrar a
+decisão no resultado; em `cache_miss_degraded`, não considerar o resultado como
+evidência reutilizável.
 
 O stage recebido deve ser igual ao `current_stage` persistido e todos os stages anteriores devem estar em `completed_stages`; execução fora de ordem é rejeitada. Depois de `humanize_review_2` (stage terminal do lote), `state.yaml` e o item da fila passam a `completed`, `current_stage` passa a `null`. **O lote termina no draft em revisão (`drafted`); ele NÃO marca `approved`** — a aprovação é decisão humana no QA (`qa-draft`), que acontece junto com o agendamento.
 
@@ -266,12 +294,12 @@ Scheduling remains outside this batch and belongs to the separate LinkedIn publi
 
 ## Requisitos editoriais da rodada
 
-Estes requisitos atravessam os stages e são verificados pelos revisores em cada Gauntlet:
+Fonte única: `docs/guia-escrita.md`. Resumo operacional:
 
-- **Leitor-alvo:** o leitor não conhece os casos das fontes. Todo caso citado no post se sustenta sozinho.
-- **Completude narrativa (4 batimentos):** todo caso citado responde promessa → quebra → reação → custo. Caso incompleto vira referência solta: completa ou sai.
-- **Fio narrativo:** a regra do autor abre o post; o caso entra como prova da regra; o aprendizado é consequência da história, não carimbo rotulado.
-- Detalhes em `memory/writing_style.md` e nas skills `research-topic` (captura dos batimentos no brief) e `write-post` (aplicação no draft). O critério "uso de evidências" do Gauntlet cobre a completude narrativa.
+- **Leitor-alvo:** o leitor não conhece as fontes; todo caso citado se sustenta sozinho.
+- **Completude narrativa (4 batimentos):** promessa → quebra → reação → custo. Incompleto vira referência solta.
+- **Fio narrativo:** a regra do autor abre; o caso entra como prova; aprendizado é consequência, não carimbo.
+- Detalhes completos em `docs/guia-escrita.md`. O critério "uso de evidências" cobre a completude narrativa.
 
 ## Checklist Rápido
 
