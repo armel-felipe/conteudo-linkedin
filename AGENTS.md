@@ -43,7 +43,7 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Skill único:** `publicar-linkedin`.
 - **Entrada:** posts com marco `approved` que ainda estão em `content/drafts/`. **Não entra post que já foi agendado** (já moveu para `published/`).
 - **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo; arquivo **movido literalmente** de `content/drafts/` para `content/published/` após a confirmação do agendamento/publicação.
-- **Regra de slot (obrigatória):** todo agendamento cai em dia útil (seg-sex) e na janela 10:00–12:00, padrão 10:00. Consultar slots e clusters livres com `scheduling_slots.py` antes de escolher; validar a agenda com `scheduling_registry.py --check` (fail-closed).
+- **Regra de slot (obrigatória):** todo agendamento cai em dia útil (seg-sex), na janela 10:00–12:00 (padrão 10:00) e no máximo 1 post por dia. Consultar slots e clusters livres com `scheduling_slots.py` antes de escolher; validar a agenda com `scheduling_registry.py --check` (fail-closed). Exceções (ex.: sábado) só valem se declaradas em `config/scheduling.yaml` com motivo — nunca silenciosas.
 - **Estado fim do bloco:** publicado ou agendado com confirmação na lista; arquivo em `content/published/`.
 
 ### Regras dos blocos

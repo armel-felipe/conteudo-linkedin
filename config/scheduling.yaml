@@ -1,0 +1,21 @@
+# Regras de agendamento do LinkedIn (Bloco 3).
+#
+# A regra padrão é: dia útil (seg-sex), janela 10:00–12:00, padrão 10:00,
+# no máximo 1 post por dia. Exceções são declaradas explicitamente aqui —
+# nunca silenciosas — com o motivo e a data.
+
+rules:
+  weekdays: [Monday, Tuesday, Wednesday, Thursday, Friday]
+  window:
+    start: "10:00"
+    end: "12:00"
+  default_time: "10:00"
+  step_minutes: 30
+  max_per_day: 1
+
+# Exceções à regra padrão. Cada exceção vale para um topic em uma data
+# específica e precisa de motivo. Sem entrada aqui, o gate falha.
+exceptions:
+  - topic_id: topic_20260915_06
+    date: "2026-09-26"
+    reason: "Agendamento de sábado decidido pelo autor; exceção pontual, não sistemática."
