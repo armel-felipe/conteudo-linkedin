@@ -71,6 +71,33 @@ Regra prática: se o texto colado ainda contém `**`, `__` ou uma run de `# ` de
 
 O seletor de agendamento do LinkedIn é um popover com campos de data e hora. Erros comuns: clicar em "amanhã" mas deixar a hora no padrão, ou preencher a data mas não confirmar o valor antes de clicar em "Agendar".
 
+### Regra de slot (obrigatória)
+
+Todo agendamento deve cair em um **slot válido**:
+
+- **Dias:** segunda a sexta. Fins de semana não são slots válidos.
+- **Horário:** padrão **10:00**, podendo oscilar até **12:00** (janela 10:00–12:00, granularidade de 30 min).
+
+Antes de escolher data e hora, consultar os slots livres e clusters:
+
+```bash
+# slots livres e clusters de dias consecutivos
+python scheduling_slots.py --from 2026-09-23 --to 2026-10-16 --clusters
+
+# validar um slot específico antes de agendar
+python scheduling_slots.py --validate 2026-09-25T10:30
+```
+
+Um **cluster** é uma sequência de dias úteis livres e consecutivos (fim de semana não quebra o cluster: sexta e segunda são consecutivos). Preferir o cluster mais longo quando houver vários posts a agendar.
+
+Depois de agendar, validar a agenda inteira contra a regra:
+
+```bash
+python scheduling_registry.py --check
+```
+
+Esse gate falha (exit 1) se houver conflito de horário, conflito de conteúdo ou agendamento fora da regra de slot.
+
 - **Seleção explícita obrigatória**: escolher a data solicitada e preencher a hora solicitada; nunca aceitar silenciosamente os valores padrão.
 - **Hoje mais tarde** (ex.: "hoje às 18h"): selecionar explicitamente a data de HOJE e o horário desejado.
 - **Outro dia** (ex.: "amanhã às 9h"): selecionar explicitamente o dia correto e o horário desejado.

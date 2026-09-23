@@ -6,20 +6,24 @@ Lê os markers `<!-- agendado: ... -->` de todos os posts em content/ e gera um
 registro consolidado que permite:
   1. Verificar conflitos de horário (dois posts no mesmo horário).
   2. Verificar conflitos de conteúdo (mesmo texto agendado duas vezes).
-  3. Saber o que está agendado e quando, sem depender de memória de conversa.
+  3. Verificar a regra de slot (seg-sex, 10:00–12:00) via scheduling_slots.
+  4. Saber o que está agendado e quando, sem depender de memória de conversa.
 
 Uso:
   python scheduling_registry.py [--check] [--output runs/scheduling-registry.yaml]
 
 Sem --check: gera o registro consolidado.
-Com --check: gera o registro e falha (exit 1) se houver conflito de horário
-ou de conteúdo, para ser usado como gate antes de agendar.
+Com --check: gera o registro e falha (exit 1) se houver conflito de horário,
+de conteúdo ou violação da regra de slot, para ser usado como gate antes de
+agendar.
 """
 import argparse
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
+from scheduling_slots import check_schedule
 
 ROOT = Path(__file__).resolve().parent
 CONTENT = ROOT / "content"
@@ -133,6 +137,18 @@ def main():
     posts = scan_posts()
     registry = build_registry(posts)
     time_conflicts, content_conflicts = find_conflicts(posts)
+    # Adapta o formato do registry (timestamp datetime) ao do gate de slot.
+    slot_violations = check_schedule([
+        {
+            "topic_id": p["topic_id"],
+            "file": p["file"],
+            "raw": p["raw_timestamp"],
+            "date": p["timestamp"].date(),
+            "time": p["timestamp"].time(),
+        }
+        for p in posts
+        if p["timestamp"] is not None
+    ])
 
     out = ROOT / args.output
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -151,13 +167,19 @@ def main():
         print("\nCONFLITOS DE CONTEÚDO:")
         for c in content_conflicts:
             print(f"  {c['content_snippet'][:60]}...: {', '.join(c['posts'])}")
+    if slot_violations:
+        print("\nVIOLAÇÕES DA REGRA DE SLOT (seg-sex, 10:00–12:00):")
+        for v in slot_violations:
+            print(f"  {v['topic_id']} ({v['raw']})")
+            for problem in v["problems"]:
+                print(f"      - {problem}")
 
-    if args.check and (time_conflicts or content_conflicts):
-        print("\nFALHA: há conflitos de agendamento. Resolva antes de agendar.")
+    if args.check and (time_conflicts or content_conflicts or slot_violations):
+        print("\nFALHA: há conflitos ou violações de agendamento. Resolva antes de agendar.")
         sys.exit(1)
 
     if args.check:
-        print("\nOK: sem conflitos de agendamento.")
+        print("\nOK: sem conflitos de agendamento e dentro da regra de slot.")
 
 
 def _to_yaml(data):

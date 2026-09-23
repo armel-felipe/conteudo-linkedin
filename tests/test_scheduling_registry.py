@@ -74,3 +74,27 @@ def test_find_conflicts_no_conflict_for_distinct_posts():
     time_conflicts, content_conflicts = find_conflicts(posts)
     assert time_conflicts == []
     assert content_conflicts == []
+
+
+def test_registry_check_gate_includes_slot_rule():
+    """O gate do registry integra a regra de slot (seg-sex, 10:00–12:00)."""
+    from scheduling_slots import check_schedule
+
+    posts = [
+        {
+            "topic_id": "weekend",
+            "file": "content/published/weekend.md",
+            "raw": "2026-09-26T10:00 America/Sao_Paulo",
+            "date": _parse_timestamp("2026-09-26T10:00 America/Sao_Paulo").date(),
+            "time": _parse_timestamp("2026-09-26T10:00 America/Sao_Paulo").time(),
+        },
+        {
+            "topic_id": "weekday",
+            "file": "content/published/weekday.md",
+            "raw": "2026-09-25T10:00 America/Sao_Paulo",
+            "date": _parse_timestamp("2026-09-25T10:00 America/Sao_Paulo").date(),
+            "time": _parse_timestamp("2026-09-25T10:00 America/Sao_Paulo").time(),
+        },
+    ]
+    violations = check_schedule(posts)
+    assert [v["topic_id"] for v in violations] == ["weekend"]
