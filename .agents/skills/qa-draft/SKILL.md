@@ -49,7 +49,7 @@ Aprovar e agendar são etapas distintas: a aprovação humana marca o topic como
 ### Pedir modificação
 
 - Registrar a instrução do autor (ex.: "passar escrita-humana no parágrafo 3", "ajustar limite de caracteres", "deixar mais direto na abertura").
-- O agente ajusta o draft conforme a instrução; se o autor pedir, rodar `escrita-humana` e revalidar contexto, coesão, narrativa, teto de 3000 caracteres totais e `## Fontes`.
+- O agente ajusta o draft conforme a instrução; se o autor pedir, rodar `escrita-humana` e revalidar contexto, coesão, narrativa, teto de 3000 caracteres totais, `## Fontes` e as 3–5 hashtags.
 - O draft permanece `drafted`; re-apresentar ao autor para nova decisão.
 
 ### Editar direto (autor)
@@ -70,4 +70,4 @@ Aprovar e agendar são etapas distintas: a aprovação humana marca o topic como
 - O Bloco 3 move o arquivo de `content/drafts/` para `content/published/` somente após a confirmação no LinkedIn.
 - Descartar move para `content/arquived/` (decisão exclusiva do autor).
 - Não publicar nem agendar dentro do QA; após a aprovação, o Bloco 3 é invocado explicitamente.
-- Revalidar conforme `docs/guia-escrita.md` (tamanho, esqueleto, completude narrativa e `## Fontes`) após qualquer ajuste.
+- Revalidar conforme `docs/guia-escrita.md` (tamanho, esqueleto, completude narrativa, `## Fontes` e hashtags) após qualquer ajuste.

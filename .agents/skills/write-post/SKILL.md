@@ -59,5 +59,6 @@ Depois da correção no Gauntlet, executar obrigatoriamente duas passagens separ
 4. **Verificar completude narrativa:** cada caso citado responde os 4 batimentos (promessa → quebra → reação → custo) e se sustenta para um leitor que não conhece a fonte. Caso incompleto: completar com material do brief ou remover.
 5. Verificar tamanho: faixa preferencial de 900–1500 caracteres, aceitando até 3000 caracteres totais, incluindo `## Fontes`, quando o contexto exigir.
 6. Adicionar a seção `## Fontes` ao final do post, com as fontes usadas (título, URL, data) extraídas das evidências do brief.
-7. Submeter o draft ao Gauntlet com os 14 critérios e só então executar as duas passagens obrigatórias de `escrita-humana`, com review após cada passagem.
-8. Salvar em `content/drafts/<topic_id>.md` e atualizar o status do topic para `drafted` no arquivo `research/topics/topics_*.yaml` correspondente apenas após os gates passarem. O draft **permanece `drafted`** — o writer não marca `approved` nem move o arquivo; isso cabe ao humano no QA (`qa-draft`).
+7. Adicionar **3 a 5 hashtags** após `## Fontes`, derivadas dos sinais indicadores do topic (pilares, fenômeno, mecanismo, novidade) — ver `docs/guia-escrita.md` seção 10b. Cada hashtag precisa ser rastreável a um sinal real do tema.
+8. Submeter o draft ao Gauntlet com os 14 critérios e só então executar as duas passagens obrigatórias de `escrita-humana`, com review após cada passagem.
+9. Salvar em `content/drafts/<topic_id>.md` e atualizar o status do topic para `drafted` no arquivo `research/topics/topics_*.yaml` correspondente apenas após os gates passarem. O draft **permanece `drafted`** — o writer não marca `approved` nem move o arquivo; isso cabe ao humano no QA (`qa-draft`).

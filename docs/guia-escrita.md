@@ -102,6 +102,22 @@ O revisor deve apontar como falha qualquer percentual com denominador implícito
 - Transformar toda publicação em uma sequência previsível de tese, contraponto e pergunta sem preservar a experiência concreta.
 - Post longo sem promessa explícita.
 
+## 10b. Hashtags (obrigatório)
+
+Todo draft aprovado termina com **3 a 5 hashtags**, logo após a seção `## Fontes`.
+
+- **Derivadas do tema, não genéricas.** As hashtags saem dos sinais indicadores do topic: os pilares, o fenômeno central, o mecanismo operacional e o veredito de novidade. Não usar hashtags de volume (`#IA`, `#Tecnologia`) sem relação com o caso.
+- **Alinhadas aos indicadores do topic.** Os critérios do topic (freshness, relevance, debate, evidence, author_fit, originality, linkedin_fit) e os pilares orientam a escolha — mas a lista não se limita a eles. O que importa é que cada hashtag seja rastreável a um sinal real do tema.
+- **Formato:** PascalCase, sem acento e sem espaço (`#UltimaMilha`, `#GovernancaDeIA`). Uma palavra composta vira uma hashtag, não duas.
+- **Sem repetir o óbvio do post.** A hashtag amplia o alcance temático; não substitui a tese nem repete a abertura.
+- **Registrar a origem.** No brief ou no draft, cada hashtag deve ter uma linha de justificativa ligando-a ao sinal que a originou.
+
+Exemplo (topic de última milha com foco em confiabilidade):
+
+```text
+#UltimaMilha #ConfiabilidadeDeEntrega #CustoLogistico #ExperienciaDoCliente
+```
+
 ## 11. Fontes e não-invenção
 
 - Todo fato do post tem origem no brief, com fonte/URL/data.

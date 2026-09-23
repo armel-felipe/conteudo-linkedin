@@ -64,6 +64,7 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 6. **Todo post passa por `escrita-humana`** antes de ser apresentado ao QA humano.
 7. **Nunca inventar dados**: aplicar a regra de rastreabilidade definida em `docs/guia-escrita.md`.
 8. **Todo post termina com `## Fontes`**, conforme definido em `docs/guia-escrita.md`.
+8b. **Todo draft aprovado termina com 3 a 5 hashtags**, derivadas dos sinais indicadores do topic (pilares, mecanismo, novidade) — ver `docs/guia-escrita.md` seção 10b. Gerar com `hashtags.py`.
 9. **Entrada de lote** — para executar uma rodada de um ou mais topics, usar `run-editorial-batch`; ele seleciona e congela a fila de `ready_for_research`, processa um topic por vez e persiste checkpoints.
 10. **Política Gauntlet** — briefs e posts passam pelo Gauntlet, com `coverage >= 0.99`, todos os critérios `>=9/10` e no máximo cinco ciclos; `hard_failures` sempre sobrepõem a aprovação agregada de 95%.
 11. **Falha isolada** — se um topic falhar, marcar somente esse item como `blocked`, persistir o checkpoint e continuar para o próximo item da fila; nunca liberar um item bloqueado para a etapa seguinte.
