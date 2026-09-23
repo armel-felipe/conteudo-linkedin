@@ -13,6 +13,6 @@ scheduled_list_confirmed: true
 reschedule_existing_post: false
 timestamp_registered: true
 receipt_valid: true
-requested_timestamp: "2026-09-08T10:00:00-03:00"
-displayed_timestamp: "2026-09-08T10:00:00-03:00"
+requested_timestamp: "2026-09-17T10:00:00-03:00"
+displayed_timestamp: "2026-09-17T10:00:00-03:00"
 failure_state: null

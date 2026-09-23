@@ -12,3 +12,8 @@ runs/*
 !runs/.gitkeep
 node_modules/
 *.pyc
+
+# Artefatos locais (não versionar)
+.opencode/openwork/
+index.md
+research/last30days/**/*.db
