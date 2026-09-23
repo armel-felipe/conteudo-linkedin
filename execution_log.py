@@ -45,6 +45,14 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _validate_usage_value(name: str, value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{name} must be a non-negative integer")
+    return value
+
+
 class ExecutionLogger:
     def __init__(
         self,
@@ -68,8 +76,20 @@ class ExecutionLogger:
         duration_ms: int | float | None = None,
         receipt_ref: str | None = None,
         reason: str | None = None,
+        model: str | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        cached_input_tokens: int | None = None,
         details: Any = None,
     ) -> dict[str, Any]:
+        for name, value in {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cached_input_tokens": cached_input_tokens,
+        }.items():
+            _validate_usage_value(name, value)
+        if model is not None and (not isinstance(model, str) or not model.strip()):
+            raise ValueError("model must be a non-empty string")
         record: dict[str, Any] = {
             "run_id": self.run_id,
             "timestamp": self.clock(),
@@ -83,6 +103,10 @@ class ExecutionLogger:
             "duration_ms": duration_ms,
             "receipt_ref": receipt_ref,
             "reason": reason,
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cached_input_tokens": cached_input_tokens,
             "details": details,
         }
         record.update({key: value for key, value in optional.items() if value is not None})

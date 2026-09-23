@@ -87,3 +87,25 @@ def test_receipt_validation_can_emit_sanitized_log(tmp_path):
     assert event["event"] == "completed"
     assert event["state"] == "confirmed"
     assert "cookie" not in json.dumps(event).lower()
+
+
+def test_records_optional_token_usage_and_model(tmp_path):
+    event = ExecutionLogger(tmp_path / "usage.jsonl").emit(
+        "write-post", "completed", model="test-model", input_tokens=120,
+        output_tokens=35, cached_input_tokens=80,
+    )
+    assert event["model"] == "test-model"
+    assert event["input_tokens"] == 120
+    assert event["output_tokens"] == 35
+    assert event["cached_input_tokens"] == 80
+
+
+def test_rejects_invalid_token_usage(tmp_path):
+    logger = ExecutionLogger(tmp_path / "usage.jsonl")
+    for kwargs in ({"input_tokens": -1}, {"output_tokens": True}, {"cached_input_tokens": 1.5}):
+        try:
+            logger.emit("research", "completed", **kwargs)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid token usage was accepted")

@@ -19,11 +19,25 @@ function sanitizeLogValue(value, sensitive = false) {
   return String(value);
 }
 
+function validateUsageValue(name, value) {
+  if (value === undefined || value === null) return;
+  if (!Number.isInteger(value) || value < 0) {
+    throw new TypeError(`${name} must be a non-negative integer`);
+  }
+}
+
 function createExecutionLogger(filePath, { runId = crypto.randomUUID(), clock = () => new Date().toISOString() } = {}) {
   const resolvedPath = path.resolve(filePath);
   const events = [];
 
   function emit(stage, event, options = {}) {
+    for (const name of ['input_tokens', 'output_tokens', 'cached_input_tokens']) {
+      validateUsageValue(name, options[name]);
+    }
+    if (options.model !== undefined &&
+        (typeof options.model !== 'string' || options.model.trim() === '')) {
+      throw new TypeError('model must be a non-empty string');
+    }
     const record = {
       run_id: runId,
       timestamp: clock(),
@@ -35,6 +49,10 @@ function createExecutionLogger(filePath, { runId = crypto.randomUUID(), clock = 
       duration_ms: options.duration_ms,
       receipt_ref: options.receipt_ref,
       reason: options.reason,
+      model: options.model,
+      input_tokens: options.input_tokens,
+      output_tokens: options.output_tokens,
+      cached_input_tokens: options.cached_input_tokens,
       details: options.details,
     };
     const compact = sanitizeLogValue(

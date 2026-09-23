@@ -21,6 +21,12 @@ Pesquisa aprofundada de um topic escolhido, produzindo um brief confiável com f
 - Os signals do topic em `research/signals/`
 - Skill `last30days` + busca web manual (webfetch)
 
+Para a execução editorial normal, carregar também
+`.agents/skills/last30days/references/editorial-compact-mode.md` e usar esse
+modo como contexto operacional. A `SKILL.md` completa continua sendo a
+autoridade para casos especiais e para as leis que não forem resumidas no modo
+compacto.
+
 ## Saída
 
 `research/briefs/<topic_id>.md` (formato da spec §17):
@@ -61,6 +67,19 @@ Resumo:
 8. Conectar com memory/professional_experience.md.
 9. Responder todas as research questions definidas para a frente, registrando também quando uma pergunta não puder ser respondida.
 10. Salvar em `research/briefs/<topic_id>.md`, submeter o brief ao Gauntlet e só atualizar o status do topic para `researched` após aprovação no arquivo `research/topics/topics_*.yaml` correspondente.
+
+## Cache de pesquisa
+
+Antes de executar `last30days`, calcular uma chave determinística com
+`topic_id`, janela (`window_start`/`window_end`), versão deste contrato e hash
+da configuração de fontes. Se existir um brief completo com a mesma chave,
+janela e configuração, reutilizá-lo e registrar `cache_hit` no run em vez de
+repetir a pesquisa. Não reutilizar automaticamente resultados degradados:
+`Sources: none`, erro de fontes, evidência fina ou ausência de fonte primária
+devem gerar `cache_miss_degraded` e uma nova tentativa somente quando houver
+mudança de janela, configuração ou instrução explícita. A chave e a decisão
+devem ser persistidas junto ao checkpoint, sem colocar prompts ou respostas
+brutas no log.
 
 ## Contrato de revisão do brief
 
