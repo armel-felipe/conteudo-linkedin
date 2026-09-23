@@ -21,7 +21,7 @@ sample_paths:
 - research/briefs/topic_20260901_03.md
 - research/briefs/topic_20260901_04.md
 - research/audits/source-quality-2026-09-06.yaml
-sample_fingerprint: sha256:a9460838a757dbcf05bcbc8ed2c3d8d1d8abc4fe72b3441877c0e46f0ef6ebe9
+sample_fingerprint: sha256:3816588bdea3f701355b1a821363a9c3bc67aef6f555962866a65fba3a3c8406
 fingerprint_history:
 - frozen_at: '2026-09-06'
   fingerprint: sha256:09a8624dbd8441478bd5092586bf8f1c01aaef604fa090a427de726c2cbc2541
@@ -37,6 +37,11 @@ fingerprint_history:
 - frozen_at: '2026-09-15'
   fingerprint: sha256:a9460838a757dbcf05bcbc8ed2c3d8d1d8abc4fe72b3441877c0e46f0ef6ebe9
   reason: Fingerprint verificado no início do restart do agendamento.
+- frozen_at: '2026-09-23'
+  fingerprint: sha256:3816588bdea3f701355b1a821363a9c3bc67aef6f555962866a65fba3a3c8406
+  reason: "Fila do Bloco 2 descartada por decisão do autor: os 8 temas ready_for_research
+    foram marcados archived e removidos do content/backlog.md. Fingerprint re-registrado
+    no estado atual."
 topics:
 - id: topic_20260901_01
   score_predicted: 67.5
