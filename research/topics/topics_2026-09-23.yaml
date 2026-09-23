@@ -25,6 +25,15 @@ topics:
     originality: 8
     linkedin_fit: 10
     total: 91.0
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260907_01
+    delta: 'O post de 07/09 tratou da avaliação do agente depois do deploy. Este trata do gargalo operacional
+      que impede o agente de sustentar produção: dado confiável, observabilidade, controle de custo e
+      a verificação que virou trabalho novo. O eixo é o que a operação precisa ter, não como medir o agente.'
+    new_case: Entrevista com 10 executivos apontando o dado (não o modelo) como maior desafio de produção;
+      relato de que conferir os agentes virou outro emprego.
 - id: topic_20260923_07
   title: A última milha cobra caro pela promessa que faz
   pillars:
@@ -49,6 +58,16 @@ topics:
     originality: 8
     linkedin_fit: 10
     total: 89.0
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260914_07
+    - topic_20260915_03
+    delta: 'Os posts anteriores trataram da promessa versus velocidade e do custo da última milha. Este
+      trata da origem do atraso antes da rua: alocação tardia, visibilidade limitada e incapacidade de
+      intervir quando a execução desvia do plano. O eixo é o mecanismo a montante, não a métrica da promessa.'
+    new_case: Custo da última milha subindo 12% com combustível e escassez de motorista; Shadowfax reportando
+      salto de 5x no lucro sob escrutínio de durabilidade.
 - id: topic_20260923_02
   title: O agente que age em nome do cliente esbarra no dono da plataforma
   pillars:
@@ -73,6 +92,16 @@ topics:
     originality: 9
     linkedin_fit: 9
     total: 86.5
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260915_02
+    delta: 'O post de 15/09 tratou da contestabilidade da previsão. Este trata do conflito de autoridade
+      quando o agente age em nome do cliente contra a plataforma: quem autoriza a compra, quem responde
+      pela transação e por que a plataforma barra. O eixo é a disputa de permissão entre agente e dono
+      do sistema.'
+    new_case: Amazon bloqueou o agente Muse da Meta de comprar em seu site; bancos sinalizaram desconforto
+      com compras por agente.
 - id: topic_20260923_08
   title: Prova de entrega que aceita qualquer dado não é controle
   pillars:
@@ -95,6 +124,15 @@ topics:
     originality: 9
     linkedin_fit: 9
     total: 86.0
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260914_08
+    delta: 'O post de 14/08 tratou da ausência de humano na falha e da escapatória. Este trata do mecanismo
+      de falsificação do status: um controle que aceita qualquer entrada e por isso não prova nada. O
+      eixo é a integridade do controle, não o atendimento da exceção.'
+    new_case: Issue do GitHub documentando que nome e telefone errados ainda retornam sucesso e marcam
+      o pedido como entregue.
 - id: topic_20260923_09
   title: Accountability só funciona com autoridade e consequência
   pillars:
@@ -120,6 +158,15 @@ topics:
     originality: 8
     linkedin_fit: 9
     total: 84.0
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260915_05
+    delta: 'O post de 15/09 tratou da liderança na cobrança e na alocação de atenção. Este trata da condição
+      de possibilidade da cobrança: sem autoridade, recurso e consequência, cobrar é só pressão. O eixo
+      é o que precisa existir antes da cobrança funcionar.'
+    new_case: Série de conteúdo operacional sobre cobrar resultado sem autoridade para influenciar e sobre
+      o padrão que ninguém inspeciona.
 - id: topic_20260923_04
   title: O agente que entrega valor começa pelo gargalo chato, não pela vitrine
   pillars:
@@ -142,6 +189,8 @@ topics:
     originality: 8
     linkedin_fit: 9
     total: 83.0
+  novelty:
+    verdict: new
 - id: topic_20260923_10
   title: 'Delegar não é largar: o handoff precisa de dono'
   pillars:
@@ -165,6 +214,15 @@ topics:
     originality: 8
     linkedin_fit: 9
     total: 83.0
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260914_04
+    delta: 'O post de 14/09 tratou da delegação a agentes e do gate de autonomia. Este trata do handoff
+      entre times: transformar a passagem de bastão em contrato explícito com dono e prazo. O eixo é a
+      coordenação entre pessoas, não a autonomia da IA.'
+    new_case: Tática de escrever o que um time deve ao outro e até quando; crítica ao dono que delega
+      e se afasta sem cultura de responsabilidade.
 - id: topic_20260923_06
   title: O EU AI Act saiu do papel e a obrigação desce a cadeia
   pillars:
@@ -191,6 +249,8 @@ topics:
     originality: 8
     linkedin_fit: 9
     total: 80.5
+  novelty:
+    verdict: new
 - id: topic_20260923_03
   title: Prova, permissão e infraestrutura de agente viram categoria de mercado
   pillars:
@@ -216,6 +276,15 @@ topics:
     originality: 9
     linkedin_fit: 8
     total: 79.5
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260901_03
+    delta: 'O post de 01/09 tratou da governança no encanamento da operação. Este trata da formação de
+      um mercado de prova e permissão de agente: atestado assinado, permissão just-in-time, sandbox e
+      identidade como categoria de compra. O eixo é o mercado que surge, não o desenho interno do controle.'
+    new_case: Verificação de agente com atestado criptográfico e OWASP Agentic Top 10; permissões just-in-time;
+      Série B de US$ 72M para agentes de DLP.
 - id: topic_20260923_05
   title: A capacidade ofensiva da IA já é risco operacional documentado
   pillars:
@@ -240,6 +309,8 @@ topics:
     originality: 9
     linkedin_fit: 8
     total: 77.5
+  novelty:
+    verdict: new
 - id: topic_20260923_11
   title: Desperdício de alimento é problema de operação, não de conscientização
   pillars:
@@ -264,6 +335,15 @@ topics:
     originality: 8
     linkedin_fit: 8
     total: 77.5
+  novelty:
+    verdict: revisited
+    vs_published:
+    - topic_20260915_09
+    delta: O post de 15/09 tratou da sustentabilidade como economia operacional. Este trata do desperdício
+      como custo afundado de toda a cadeia e como capacidade logística ociosa mal alocada, com shelf-life
+      como alavanca. O eixo é a alocação de capacidade, não a agenda circular.
+    new_case: Piloto Sainsbury's/GXO movendo 5.300 toneladas com economia de 42.885 milhas rodadas em
+      seis meses.
 - id: topic_20260923_12
   title: Segurança alimentar se prova por rastreabilidade, não por política
   pillars:
@@ -288,3 +368,5 @@ topics:
     originality: 8
     linkedin_fit: 8
     total: 75.5
+  novelty:
+    verdict: new

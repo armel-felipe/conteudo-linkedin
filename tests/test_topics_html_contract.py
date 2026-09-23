@@ -35,7 +35,7 @@ def test_score_opportunities_skill_defines_html_output_and_flow():
     assert "topics_YYYY-MM-DD.html" in text
     assert "obrigat" in text.lower()
     # O conteúdo mínimo do HTML está especificado.
-    for fragment in ("score", "tese", "pergunta central", "sinais", "links"):
+    for fragment in ("score", "tese", "pergunta central", "sinais", "links", "origem"):
         assert fragment in text.lower(), fragment
 
 

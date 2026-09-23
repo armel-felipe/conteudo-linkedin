@@ -8,6 +8,8 @@
 
 `topic_20260923_01`
 
+Novidade: Revisitado — delta: o gargalo operacional (dado, observabilidade, custo, verificação), não a avaliação pós-deploy.
+
 Pilares: IA Aplicada
 
 Tese: O gargalo do agente em produção não é capacidade do modelo: é dado confiável, observabilidade, controle de custo e verificação — sem isso, a automação só transfere o esforço para a conferência.
@@ -23,6 +25,8 @@ Status: ready_for_research
 ## 89.00 — A última milha cobra caro pela promessa que faz
 
 `topic_20260923_07`
+
+Novidade: Revisitado — delta: a origem do atraso antes da rua (alocação, visibilidade, intervenção), não a métrica da promessa.
 
 Pilares: Logística, last mile e CX
 
@@ -40,6 +44,8 @@ Status: ready_for_research
 
 `topic_20260923_02`
 
+Novidade: Revisitado — delta: o conflito de autoridade entre agente e plataforma, não a contestabilidade da previsão.
+
 Pilares: IA Aplicada / Riscos, compliance e resiliência
 
 Tese: Autonomia que age em nome de alguém sem identidade, autorização explícita e trilha de auditoria não é conveniência: é acesso não autorizado — e a plataforma vai barrar.
@@ -55,6 +61,8 @@ Status: ready_for_research
 ## 86.00 — Prova de entrega que aceita qualquer dado não é controle
 
 `topic_20260923_08`
+
+Novidade: Revisitado — delta: a integridade do controle (aceita qualquer entrada), não a escapatória humana na falha.
 
 Pilares: Logística, last mile e CX / Riscos, compliance e resiliência
 
@@ -72,6 +80,8 @@ Status: ready_for_research
 
 `topic_20260923_09`
 
+Novidade: Revisitado — delta: a condição da cobrança (autoridade, recurso, consequência), não a liderança na cobrança.
+
 Pilares: Liderança em operações
 
 Tese: Cobrança sem autoridade, recurso e consequência é só pressão: o padrão que ninguém inspeciona deixa de existir, e repetir a mesma coisa cinco vezes é sintoma de accountability, não de comunicação.
@@ -87,6 +97,8 @@ Status: ready_for_research
 ## 83.00 — O agente que entrega valor começa pelo gargalo chato, não pela vitrine
 
 `topic_20260923_04`
+
+Novidade: Novo — nenhum post publicado sobre priorização do caso de uso do agente.
 
 Pilares: IA Aplicada
 
@@ -104,6 +116,8 @@ Status: ready_for_research
 
 `topic_20260923_10`
 
+Novidade: Revisitado — delta: o handoff entre times como contrato explícito, não a delegação a agentes.
+
 Pilares: Liderança em operações
 
 Tese: Autonomia sem responsabilidade combinada não é delegação, é ausência: o handoff sem dono explícito é onde a operação perde o prazo, e a conversa que o gestor evita é paga pelo melhor funcionário.
@@ -119,6 +133,8 @@ Status: ready_for_research
 ## 80.50 — O EU AI Act saiu do papel e a obrigação desce a cadeia
 
 `topic_20260923_06`
+
+Novidade: Novo — nenhum post publicado sobre regulação de IA.
 
 Pilares: Riscos, compliance e resiliência
 
@@ -136,6 +152,8 @@ Status: ready_for_research
 
 `topic_20260923_03`
 
+Novidade: Revisitado — delta: o mercado de prova e permissão de agente, não o desenho interno do controle.
+
 Pilares: IA Aplicada / Riscos, compliance e resiliência
 
 Tese: Quando o agente ganha autonomia, a prova de capacidade e a permissão escopada deixam de ser detalhe técnico e viram item de compra — com atestado, sandbox e identidade próprios.
@@ -151,6 +169,8 @@ Status: ready_for_research
 ## 77.50 — A capacidade ofensiva da IA já é risco operacional documentado
 
 `topic_20260923_05`
+
+Novidade: Novo — nenhum post publicado sobre capacidade ofensiva da IA.
 
 Pilares: IA Aplicada / Riscos, compliance e resiliência
 
