@@ -21,7 +21,9 @@ Criticar a primeira versão do post antes da aprovação, procurando especificam
 
 ## Critérios
 
-clareza, originalidade, credibilidade, tom humano, densidade, relevância, consistência, uso de evidências, risco de alucinação, linguagem genérica de IA
+Os 14 critérios normativos, coverage >= 0.99, critérios >= 9/10, hard_failures vazio e requisito de evidence vivem em `docs/guia-escrita.md` e `docs/schemas/gauntlet-review.json`.
+
+Para a crítica, avaliar: clareza, originalidade, credibilidade, tom humano, densidade, relevância, consistência, uso de evidências, risco de alucinação e linguagem genérica de IA.
 
 ## Frases-clichê a procurar (quando usadas de forma genérica)
 
@@ -44,7 +46,8 @@ Lista de críticas por critério, com:
 2. Avaliar cada critério (0-10) com justificativa.
 3. Procurar frases-clichê e tom genérico.
 4. Verificar que todo fato tem origem no brief (risco de alucinação).
-5. Verificar tamanho (900-1500 caracteres) e esqueleto.
+4b. Verificar clareza dos termos operacionais e denominador explícito dos percentuais conforme `docs/guia-escrita.md` §9b.
+5. Verificar tamanho, esqueleto e fontes conforme `docs/guia-escrita.md`.
 6. Entregar a lista de críticas. O executor corrige o draft; depois o post passa por `escrita-humana` e pela aprovação do autor.
 
 ## Regras
@@ -52,3 +55,8 @@ Lista de críticas por critério, com:
 - Crítica específica, não genérica ("melhore o texto" é proibido).
 - Não reescrever — apontar e sugerir.
 - Se o draft estiver bom, dizer o que está bom (nem tudo é falha).
+## Gate substantivo obrigatório
+
+A crítica aprovada deve citar trechos do draft em `evidence.anchors` e explicar
+contexto do leitor, cadeia causal, decisão, consequência e limites. Uma review
+estruturalmente válida sem essa evidência não aprova o post.

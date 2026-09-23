@@ -71,10 +71,12 @@ research-topic → brief_review_gauntlet → write-post → critique-post
 
 - **research-topic** — pesquisa a fundo e gera o `research/briefs/topic_*.md` (fatos, números, argumentos dos dois lados, incertezas, fontes com URL e data).
 - **brief_review_gauntlet** — gate: exige ≥2 fontes independentes e conexão com a experiência do autor.
-- **write-post** — escreve o rascunho em `content/drafts/topic_*.md` (900–1500 caracteres, estrutura editorial, seção `## Fontes`). **Não pesquisa** — só usa o brief.
+- **write-post** — escreve o rascunho em `content/drafts/topic_*.md` seguindo o `docs/guia-escrita.md` (fonte única de regras editoriais: formato, esqueleto, leitor, completude narrativa, voz, termos operacionais e seção `## Fontes`). **Não pesquisa** — só usa o brief.
 - **critique-post** — crítica o rascunho (clareza, originalidade, tom humano, risco de alucinação, clichês de IA…).
 - **correction_gauntlet** — corrige o rascunho conforme a crítica.
 - **humanize_pass_1 / review_1** e **humanize_pass_2 / review_2** — duas passadas obrigatórias de escrita humana.
+
+**Regras de escrita e conteúdo:** o `docs/guia-escrita.md` é a fonte única para formato, esqueleto, leitor, completude narrativa, voz, clareza de termos operacionais e preenchimento da seção `## Fontes`. As skills de bloco 2 referenciam esse guia; mudanças editoriais entram lá primeiro.
 
 **Regras que valem para você ao operar o bloco 2:**
 

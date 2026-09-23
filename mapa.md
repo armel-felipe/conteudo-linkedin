@@ -1,5 +1,7 @@
 # Mapa de Skills
 
+> **Escrita e conteúdo:** a fonte única de regras editoriais é `docs/guia-escrita.md` (formato, esqueleto, leitor, completude narrativa, voz, clareza de termos operacionais e seção `## Fontes`). Skills e `AGENTS.md` referenciam esse guia; mudanças editoriais entram lá primeiro.
+
 Guia de todas as skills do projeto: objetivo, vínculo com o pipeline e como invocar.
 Referenciado pelo `AGENTS.md`.
 
@@ -14,7 +16,7 @@ Referenciado pelo `AGENTS.md`.
 | `cluster-signals` | Agrupar signals em temas | Etapa 2 (2x/semana) | "roda cluster-signals" |
 | `score-opportunities` | Pontuar temas (0-100) e gerar backlog | Etapa 3 (2x/semana) | "roda score-opportunities" |
 | `research-topic` | Pesquisa aprofundada → brief | Etapa 4 (ao publicar) | "pesquisa o topic X" |
-| `write-post` | Escrever post a partir do brief + memória | Etapa 5 (ao publicar) | "escreve o post do topic X" |
+| `write-post` | Escrever post a partir do brief + memória, seguindo `docs/guia-escrita.md` (fonte única de regras editoriais) | Etapa 5 (ao publicar) | "escreve o post do topic X" |
 | `critique-post` | Criticar o draft antes da aprovação | Etapa 6 (ao publicar) | "critica o draft X" |
 | `gauntlet-loop` | Validar uma tarefa nova em ciclos isolados com gates determinísticos e bloqueio fail-closed | Procedimento transversal de revisão | "roda o gauntlet da tarefa X" |
 | `run-editorial-batch` | Selecionar e executar uma fila congelada de topics, sequencialmente, com checkpoints e bloqueio individual | Novo ponto de entrada para pesquisa e redação em lote | "roda um lote editorial com --topics N" |

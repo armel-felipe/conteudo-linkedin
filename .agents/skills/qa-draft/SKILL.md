@@ -17,7 +17,7 @@ Revisão humana de drafts do pipeline. O autor decide o destino de cada draft em
 ## Entrada
 
 - Drafts em `content/drafts/` com status `drafted` (o autor informa qual ou quais).
-- `memory/writing_style.md`, `memory/opinions.md`, `memory/professional_experience.md` para orientar ajustes.
+- `docs/guia-escrita.md` (regras canônicas de escrita e preenchimento), `memory/writing_style.md`, `memory/opinions.md`, `memory/professional_experience.md` para orientar ajustes.
 - O brief correspondente em `research/briefs/` quando precisar conferir fatos/fontes.
 
 ## Fluxo
@@ -49,7 +49,7 @@ Aprovar e agendar são etapas distintas: a aprovação humana marca o topic como
 ### Pedir modificação
 
 - Registrar a instrução do autor (ex.: "passar escrita-humana no parágrafo 3", "ajustar limite de caracteres", "deixar mais direto na abertura").
-- O agente ajusta o draft conforme a instrução; se o autor pedir, rodar `escrita-humana` e revalidar (brief, tamanho 900–1500 car, `## Fontes`).
+- O agente ajusta o draft conforme a instrução; se o autor pedir, rodar `escrita-humana` e revalidar contexto, coesão, narrativa, teto de 3000 caracteres totais e `## Fontes`.
 - O draft permanece `drafted`; re-apresentar ao autor para nova decisão.
 
 ### Editar direto (autor)
@@ -70,4 +70,4 @@ Aprovar e agendar são etapas distintas: a aprovação humana marca o topic como
 - O Bloco 3 move o arquivo de `content/drafts/` para `content/published/` somente após a confirmação no LinkedIn.
 - Descartar move para `content/arquived/` (decisão exclusiva do autor).
 - Não publicar nem agendar dentro do QA; após a aprovação, o Bloco 3 é invocado explicitamente.
-- Revalidar tamanho (900–1500 caracteres / 150–250 palavras) e presença de `## Fontes` após qualquer ajuste.
+- Revalidar conforme `docs/guia-escrita.md` (tamanho, esqueleto, completude narrativa e `## Fontes`) após qualquer ajuste.

@@ -57,14 +57,16 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 2. **Cada etapa gera um artefato persistente** (signals, topics, backlog, brief, draft). Nada depende só do contexto de conversa.
 3. **Pesquisa separada de redação**: quem pesquisa não escreve; quem escreve recebe briefing estruturado e NÃO pesquisa.
 4. **LinkedIn é fonte complementar**, não principal.
-5. **Posts**: 900–1500 caracteres / 150–250 palavras; esqueleto ABERTURA→SITUAÇÃO→APLICAÇÃO→PROBLEMA→DECISÃO→APRENDIZADO→PERGUNTA.
+5. **Posts**: seguir integralmente `docs/guia-escrita.md`, fonte única de escrita e preenchimento.
 6. **Todo post passa por `escrita-humana`** antes de ser apresentado ao QA humano.
-7. **Nunca inventar dados** — todo fato do post tem origem no brief, com fonte/URL/data.
-8. **Todo post termina com `## Fontes`** — todo post em `content/drafts/` deve terminar com uma seção `## Fontes` listando as fontes usadas (título, URL, data), herdadas do brief.
+7. **Nunca inventar dados**: aplicar a regra de rastreabilidade definida em `docs/guia-escrita.md`.
+8. **Todo post termina com `## Fontes`**, conforme definido em `docs/guia-escrita.md`.
 9. **Entrada de lote** — para executar uma rodada de um ou mais topics, usar `run-editorial-batch`; ele seleciona e congela a fila de `ready_for_research`, processa um topic por vez e persiste checkpoints.
 10. **Política Gauntlet** — briefs e posts passam pelo Gauntlet, com `coverage >= 0.99`, todos os critérios `>=9/10` e no máximo cinco ciclos; `hard_failures` sempre sobrepõem a aprovação agregada de 95%.
 11. **Falha isolada** — se um topic falhar, marcar somente esse item como `blocked`, persistir o checkpoint e continuar para o próximo item da fila; nunca liberar um item bloqueado para a etapa seguinte.
 12. **Escrita humana obrigatória** — todo post deve passar por `humanize_pass_1` → `humanize_review_1` → `humanize_pass_2` → `humanize_review_2`; cada revisor usa o contrato JSON compartilhado e `hard_failures` bloqueia a aprovação humana.
+13. **Contexto, coesão, clareza e completude**: aplicar o contrato editorial de `docs/guia-escrita.md`.
+14. **Variação de abertura**: aplicar as regras de abertura e estrutura narrativa de `docs/guia-escrita.md`.
 
 ## Skills
 
@@ -101,3 +103,7 @@ O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Em qual
 ## Estados de conteúdo
 
 discovered → clustered → candidate → ready_for_research → researched → drafted → approved → published → archived
+
+## Fonte única de escrita
+
+Toda regra de escrita, preenchimento de conteúdo, completude narrativa, esqueleto, limites de tamanho, fontes e revisão vive em `docs/guia-escrita.md`. As skills `write-post`, `critique-post`, `qa-draft` e `run-editorial-batch` citam esse arquivo; não duplicar as regras em outros lugares.
