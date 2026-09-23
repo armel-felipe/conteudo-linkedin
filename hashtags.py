@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""hashtags.py — Gera hashtags para um draft a partir dos sinais do topic.
+"""hashtags.py — Gera hashtags para um draft a partir das fontes do topic.
 
-As hashtags são derivadas dos **sinais indicadores** do topic: pilares,
-fenômeno central, mecanismo operacional e veredito de novidade. Não são
-genéricas nem de volume — cada uma precisa ser rastreável a um sinal real.
+As hashtags são **trazidas pelas fontes**: cada sinal carrega
+`source.source_hashtags`, extraídas do post/artigo original. O gerador
+prioriza essas hashtags reais e só recorre a vocabulário derivado do tema
+quando a fonte não trouxe nenhuma.
 
 Uso:
   # Hashtags para um topic
@@ -22,6 +23,7 @@ import argparse
 import re
 import sys
 import unicodedata
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -33,7 +35,26 @@ SIGNALS_DIR = ROOT / "research" / "signals"
 MIN_HASHTAGS = 3
 MAX_HASHTAGS = 5
 
-# Vocabulário por pilar: hashtags ancoradas no domínio do tema.
+# Ruído de plataforma: hashtags de alcance que não descrevem o tema.
+NOISE = re.compile(
+    r"^#(x27|x200B|fyp|foryou|viral|vibe|techtok|trend|explore|"
+    r"japanesecooking|garbagegold|dumpsterdiv\w*|managersbelike|corporatelife|"
+    r"workplace|kitchenhacks|freezerhacks|foodhacks|foodstorage|groce\w*|"
+    r"easypeasyguide|thematrix|savehumanity|nottoolate|robot|survey\w*|"
+    r"womenintech|aipoweredwomen|business|productivity|aitools|automation)$",
+    re.IGNORECASE,
+)
+
+# Ruído de identidade: cargo, nome de programa/marca ou hashtag genérica
+# que não descreve o fenômeno do tema.
+IDENTITY_NOISE = re.compile(
+    r"^#(coo|ceo|cto|cfo|founders?|startups?|businesstips|lostintech|"
+    r"agentverify|owasp)$",
+    re.IGNORECASE,
+)
+
+# Vocabulário de fallback, usado só quando a fonte não trouxe hashtags.
+# Ancorado no domínio do tema, não em palavras genéricas.
 PILLAR_TAGS = {
     "ia_aplicada": ["IAAplicada", "AgentesDeIA", "IAEmProducao"],
     "logistica_last_mile_cx": ["UltimaMilha", "Logistica", "ExperienciaDoCliente"],
@@ -42,12 +63,9 @@ PILLAR_TAGS = {
     "alimentos_consumo_sustentabilidade": ["CadeiaAlimentar", "Sustentabilidade", "Desperdicio"],
 }
 
-# Vocabulário por mecanismo detectado no texto do topic.
-# Cada padrão precisa ser específico: termos genéricos ("custo", "dado")
-# só contam quando aparecem em contexto que os torna o mecanismo do tema.
 MECHANISM_TAGS = {
     r"prova de entrega|proof of delivery|status de entrega|marcad[oa] como entregue": "ProvaDeEntrega",
-    r"custo (da|por|unitári|operacion)|margem|economia unit|53%": "CustoOperacional",
+    r"custo (da|por|unitári|operacion)|margem|economia unit": "CustoOperacional",
     r"confiabil|promessa cumprida|previsibilidade|no prazo": "ConfiabilidadeDeEntrega",
     r"permiss|autoriza|identidade do agente|just-in-time": "PermissoesDeAgente",
     r"observab|tracing|monitorar o agente|visibilidade": "Observabilidade",
@@ -70,6 +88,12 @@ def _slug(text: str) -> str:
     ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
     words = re.findall(r"[A-Za-z0-9]+", ascii_text)
     return "".join(w[:1].upper() + w[1:] for w in words)
+
+
+def _normalize_tag(tag: str) -> str:
+    """Normaliza a hashtag da fonte para PascalCase consistente."""
+    body = tag.lstrip("#")
+    return "#" + _slug(body)
 
 
 def load_topics(topics_dir: Path | None = None) -> dict[str, dict]:
@@ -95,41 +119,57 @@ def load_signals(signals_dir: Path | None = None) -> dict[str, dict]:
     return signals
 
 
-def _topic_text(topic: dict, signals: dict[str, dict]) -> str:
-    parts = [
-        str(topic.get("title", "")),
-        str(topic.get("possible_thesis", "")),
-        str(topic.get("central_question", "")),
-    ]
-    for signal_id in topic.get("signals") or []:
-        signal = signals.get(signal_id)
-        if not signal:
-            continue
-        parts.append(str(signal.get("title", "")))
-        parts.append(str(signal.get("observation", "")))
-    return " ".join(parts).lower()
-
-
 def _core_text(topic: dict) -> str:
-    """Núcleo do tema: título, tese e pergunta. Onde o mecanismo é central."""
     return " ".join(
         str(topic.get(field, ""))
         for field in ("title", "possible_thesis", "central_question")
     ).lower()
 
 
-def generate_hashtags(topic: dict, signals: dict[str, dict]) -> list[dict]:
-    """Hashtags com justificativa, ordenadas por força do sinal.
+def source_hashtags(topic: dict, signals: dict[str, dict]) -> list[dict]:
+    """Hashtags trazidas pelas fontes dos sinais do topic, por frequência."""
+    counter: Counter[str] = Counter()
+    origins: dict[str, list[str]] = {}
+    for signal_id in topic.get("signals") or []:
+        signal = signals.get(signal_id)
+        if not signal:
+            continue
+        tags = (signal.get("source") or {}).get("source_hashtags") or []
+        for tag in tags:
+            if NOISE.match(tag) or IDENTITY_NOISE.match(tag):
+                continue
+            normalized = _normalize_tag(tag)
+            # Descarta truncamentos da fonte (ex.: "#Accounta").
+            if len(normalized) < 6:
+                continue
+            counter[normalized] += 1
+            origins.setdefault(normalized, []).append(signal_id)
 
-    Um mecanismo só vira hashtag quando aparece no **núcleo** do tema
-    (título, tese ou pergunta) ou em pelo menos dois sinais. Isso evita
-    hashtags de ruído — palavras comuns como "custo" que aparecem em
-    qualquer texto não viram tag.
+    # Remove truncamentos: uma tag que é prefixo de outra mais longa e
+    # aparece menos vezes é ruído de corte da fonte.
+    tags_sorted = sorted(counter, key=len, reverse=True)
+    for tag in list(counter):
+        body = tag.lstrip("#").lower()
+        for longer in tags_sorted:
+            longer_body = longer.lstrip("#").lower()
+            if longer_body != body and longer_body.startswith(body):
+                del counter[tag]
+                origins.pop(tag, None)
+                break
 
-    Retorna lista de {tag, origin, reason}. Entre 3 e 5 itens.
-    """
+    return [
+        {
+            "tag": tag,
+            "origin": "fonte",
+            "reason": f"trazida por {len(origins[tag])} sinal(is): {', '.join(origins[tag])}",
+        }
+        for tag, _ in counter.most_common()
+    ]
+
+
+def fallback_hashtags(topic: dict, signals: dict[str, dict]) -> list[dict]:
+    """Vocabulário derivado do tema, usado só quando a fonte não trouxe nada."""
     core = _core_text(topic)
-    full = _topic_text(topic, signals)
     candidates: list[dict] = []
     seen: set[str] = set()
 
@@ -139,40 +179,14 @@ def generate_hashtags(topic: dict, signals: dict[str, dict]) -> list[dict]:
         seen.add(tag)
         candidates.append({"tag": f"#{tag}", "origin": origin, "reason": reason})
 
-    # 1. Mecanismos no núcleo do tema (mais forte).
     for pattern, tag in MECHANISM_TAGS.items():
         if re.search(pattern, core):
             add(tag, "mecanismo (núcleo)", f"presente no título/tese: /{pattern}/")
 
-    # 2. Mecanismos recorrentes nos sinais (aparecem em 2+ sinais).
-    for pattern, tag in MECHANISM_TAGS.items():
-        if tag in seen:
-            continue
-        hits = 0
-        for signal_id in topic.get("signals") or []:
-            signal = signals.get(signal_id)
-            if not signal:
-                continue
-            signal_text = " ".join(
-                str(signal.get(field, ""))
-                for field in ("title", "observation", "possible_angle")
-            ).lower()
-            if re.search(pattern, signal_text):
-                hits += 1
-        if hits >= 2:
-            add(tag, "mecanismo (sinais)", f"presente em {hits} sinais: /{pattern}/")
-
-    # 3. Pilares do topic.
     for pillar in topic.get("pillars") or []:
         for tag in PILLAR_TAGS.get(pillar, []):
             add(tag, f"pilar:{pillar}", f"pilar do topic ({pillar})")
 
-    # 4. Novidade: tema revisitado ganha tag de ângulo novo.
-    novelty = topic.get("novelty") or {}
-    if novelty.get("verdict") == "revisited":
-        add("AnguloNovo", "novidade", "tema revisitado com delta declarado")
-
-    # 5. Fallback: derivar do título se ainda faltar.
     if len(candidates) < MIN_HASHTAGS:
         for word in re.findall(r"[A-Za-zÀ-ú]{5,}", str(topic.get("title", ""))):
             tag = _slug(word)
@@ -181,7 +195,28 @@ def generate_hashtags(topic: dict, signals: dict[str, dict]) -> list[dict]:
             if len(candidates) >= MAX_HASHTAGS:
                 break
 
-    return candidates[:MAX_HASHTAGS]
+    return candidates
+
+
+def generate_hashtags(topic: dict, signals: dict[str, dict]) -> list[dict]:
+    """Hashtags do topic: fontes primeiro, fallback do tema se faltar.
+
+    Retorna lista de {tag, origin, reason}. Entre 3 e 5 itens.
+    """
+    from_source = source_hashtags(topic, signals)
+    chosen = from_source[:MAX_HASHTAGS]
+
+    if len(chosen) < MIN_HASHTAGS:
+        seen = {c["tag"] for c in chosen}
+        for item in fallback_hashtags(topic, signals):
+            if item["tag"] in seen:
+                continue
+            chosen.append(item)
+            seen.add(item["tag"])
+            if len(chosen) >= MAX_HASHTAGS:
+                break
+
+    return chosen[:MAX_HASHTAGS]
 
 
 def hashtags_for_topic(topic_id: str, *, topics_dir=None, signals_dir=None) -> list[dict]:

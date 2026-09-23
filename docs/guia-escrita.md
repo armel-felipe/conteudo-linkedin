@@ -106,16 +106,22 @@ O revisor deve apontar como falha qualquer percentual com denominador implícito
 
 Todo draft aprovado termina com **3 a 5 hashtags**, logo após a seção `## Fontes`.
 
-- **Derivadas do tema, não genéricas.** As hashtags saem dos sinais indicadores do topic: os pilares, o fenômeno central, o mecanismo operacional e o veredito de novidade. Não usar hashtags de volume (`#IA`, `#Tecnologia`) sem relação com o caso.
-- **Alinhadas aos indicadores do topic.** Os critérios do topic (freshness, relevance, debate, evidence, author_fit, originality, linkedin_fit) e os pilares orientam a escolha — mas a lista não se limita a eles. O que importa é que cada hashtag seja rastreável a um sinal real do tema.
-- **Formato:** PascalCase, sem acento e sem espaço (`#UltimaMilha`, `#GovernancaDeIA`). Uma palavra composta vira uma hashtag, não duas.
-- **Sem repetir o óbvio do post.** A hashtag amplia o alcance temático; não substitui a tese nem repete a abertura.
-- **Registrar a origem.** No brief ou no draft, cada hashtag deve ter uma linha de justificativa ligando-a ao sinal que a originou.
+- **Trazidas pelas fontes.** As hashtags vêm do material pesquisado: cada sinal carrega `source.source_hashtags`, extraídas do post/artigo original. O gerador prioriza essas hashtags reais — não inventa vocabulário próprio.
+- **Fallback só quando a fonte não traz.** Se os sinais do topic não tiverem hashtags, o gerador deriva do tema (mecanismo central e pilar). Nesse caso, a origem fica registrada como `mecanismo` ou `pilar`, não como `fonte`.
+- **Ruído é filtrado.** Hashtags de alcance de plataforma (`#fyp`, `#viral`, `#TechTok`), de identidade (`#COO`, `#Founders`) e truncamentos da fonte (`#Accounta`) não entram.
+- **Formato:** PascalCase, sem acento e sem espaço (`#UltimaMilha`, `#AIgovernance`).
+- **Registrar a origem.** Cada hashtag tem uma linha de justificativa ligando-a ao sinal que a trouxe.
 
-Exemplo (topic de última milha com foco em confiabilidade):
+Gerar com:
+
+```bash
+python hashtags.py <topic_id> --explain
+```
+
+Exemplo (topic de última milha, hashtags trazidas pelas fontes):
 
 ```text
-#UltimaMilha #ConfiabilidadeDeEntrega #CustoLogistico #ExperienciaDoCliente
+#Delivery #Logistics #SupplyChain #Trucking
 ```
 
 ## 11. Fontes e não-invenção

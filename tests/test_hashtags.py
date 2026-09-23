@@ -1,7 +1,9 @@
 """Testes do gerador de hashtags (hashtags.py).
 
-As hashtags são derivadas dos sinais indicadores do topic: pilares,
-mecanismo central e veredito de novidade. Regra: 3 a 5 por draft.
+As hashtags são **trazidas pelas fontes**: cada sinal carrega
+`source.source_hashtags`. O gerador prioriza essas hashtags reais e só
+recorre a vocabulário derivado do tema quando a fonte não trouxe nenhuma.
+Regra: 3 a 5 por draft.
 """
 
 import pytest
@@ -9,10 +11,13 @@ import pytest
 from hashtags import (
     MAX_HASHTAGS,
     MIN_HASHTAGS,
+    _normalize_tag,
     _slug,
+    fallback_hashtags,
     generate_hashtags,
     hashtags_for_topic,
     load_topics,
+    source_hashtags,
 )
 
 SIGNALS = {
@@ -20,13 +25,22 @@ SIGNALS = {
         "id": "signal_1",
         "title": "Prova de entrega que aceita qualquer dado não é controle",
         "observation": "Nome e telefone errados ainda marcam o pedido como entregue.",
-        "possible_angle": "Controle que aceita qualquer entrada é teatro de conformidade.",
+        "source": {"source_hashtags": ["#LastMile", "#SupplyChain", "#Delivery"]},
     },
     "signal_2": {
         "id": "signal_2",
         "title": "Mentira no status de entrega custa mais que a falha admitida",
         "observation": "Marcar como entregue remove o recurso do cliente.",
-        "possible_angle": "A integridade do status é o controle.",
+        "source": {"source_hashtags": ["#LastMile", "#OrderAccuracy"]},
+    },
+}
+
+SIGNALS_NO_TAGS = {
+    "signal_3": {
+        "id": "signal_3",
+        "title": "Agente em produção",
+        "observation": "Observabilidade e qualidade de dado.",
+        "source": {},
     },
 }
 
@@ -45,7 +59,7 @@ def _topic(**overrides):
     return topic
 
 
-# --- slug -----------------------------------------------------------------
+# --- slug e normalização --------------------------------------------------
 
 
 def test_slug_removes_accents_and_uses_pascal_case():
@@ -53,7 +67,85 @@ def test_slug_removes_accents_and_uses_pascal_case():
     assert _slug("governança de IA") == "GovernancaDeIA"
 
 
-# --- geração --------------------------------------------------------------
+def test_normalize_tag_keeps_hash_and_pascal_case():
+    assert _normalize_tag("#lastmile") == "#Lastmile"
+    assert _normalize_tag("#SupplyChain") == "#SupplyChain"
+
+
+# --- hashtags das fontes --------------------------------------------------
+
+
+def test_source_hashtags_are_used_first():
+    tags = [t["tag"] for t in source_hashtags(_topic(), SIGNALS)]
+    assert "#LastMile" in tags
+    assert "#SupplyChain" in tags
+
+
+def test_source_hashtags_ranked_by_frequency():
+    """#LastMile aparece em 2 sinais, deve vir antes das de 1."""
+    tags = [t["tag"] for t in source_hashtags(_topic(), SIGNALS)]
+    assert tags[0] == "#LastMile"
+
+
+def test_source_hashtags_have_origin_and_reason():
+    for item in source_hashtags(_topic(), SIGNALS):
+        assert item["origin"] == "fonte"
+        assert "sinal" in item["reason"]
+
+
+def test_platform_noise_is_filtered():
+    signals = {
+        "s": {
+            "id": "s",
+            "source": {"source_hashtags": ["#fyp", "#viral", "#LastMile", "#TechTok"]},
+        }
+    }
+    tags = [t["tag"] for t in source_hashtags(_topic(signals=["s"]), signals)]
+    assert tags == ["#LastMile"]
+
+
+def test_identity_noise_is_filtered():
+    signals = {
+        "s": {
+            "id": "s",
+            "source": {"source_hashtags": ["#COO", "#Founders", "#Leadership"]},
+        }
+    }
+    tags = [t["tag"] for t in source_hashtags(_topic(signals=["s"]), signals)]
+    assert tags == ["#Leadership"]
+
+
+def test_truncated_tag_is_removed_when_longer_variant_exists():
+    signals = {
+        "s": {
+            "id": "s",
+            "source": {"source_hashtags": ["#Accounta", "#Accountability"]},
+        }
+    }
+    tags = [t["tag"] for t in source_hashtags(_topic(signals=["s"]), signals)]
+    assert tags == ["#Accountability"]
+
+
+# --- fallback -------------------------------------------------------------
+
+
+def test_fallback_used_when_source_has_no_tags():
+    tags = generate_hashtags(_topic(signals=["signal_3"]), SIGNALS_NO_TAGS)
+    assert MIN_HASHTAGS <= len(tags) <= MAX_HASHTAGS
+    assert all(t["origin"] != "fonte" for t in tags)
+
+
+def test_fallback_mechanism_from_core():
+    tags = {t["tag"] for t in fallback_hashtags(_topic(), SIGNALS)}
+    assert "#ProvaDeEntrega" in tags
+
+
+def test_fallback_pillar_tags():
+    tags = {t["tag"] for t in fallback_hashtags(_topic(), SIGNALS)}
+    assert "#UltimaMilha" in tags
+
+
+# --- geração combinada ----------------------------------------------------
 
 
 def test_generates_between_min_and_max():
@@ -62,75 +154,39 @@ def test_generates_between_min_and_max():
 
 
 def test_hashtags_are_prefixed_and_unique():
-    tags = generate_hashtags(_topic(), SIGNALS)
-    rendered = [t["tag"] for t in tags]
+    rendered = [t["tag"] for t in generate_hashtags(_topic(), SIGNALS)]
     assert all(t.startswith("#") for t in rendered)
     assert len(rendered) == len(set(rendered))
 
 
-def test_each_hashtag_has_origin_and_reason():
-    for item in generate_hashtags(_topic(), SIGNALS):
-        assert item["origin"]
-        assert item["reason"]
+def test_source_tags_take_priority_over_fallback():
+    """Com 3+ hashtags de fonte, o fallback não entra."""
+    tags = generate_hashtags(_topic(), SIGNALS)
+    assert all(t["origin"] == "fonte" for t in tags)
 
 
-def test_mechanism_from_core_is_used():
-    tags = {t["tag"] for t in generate_hashtags(_topic(), SIGNALS)}
-    assert "#ProvaDeEntrega" in tags
-
-
-def test_pillar_tags_are_used():
-    tags = {t["tag"] for t in generate_hashtags(_topic(), SIGNALS)}
-    assert "#UltimaMilha" in tags
-
-
-def test_revisited_topic_gets_angle_tag():
-    topic = _topic(novelty={"verdict": "revisited", "vs_published": ["topic_old"], "delta": "x" * 80})
-    tags = {t["tag"] for t in generate_hashtags(topic, SIGNALS)}
-    assert "#AnguloNovo" in tags
-
-
-def test_new_topic_does_not_get_angle_tag():
-    tags = {t["tag"] for t in generate_hashtags(_topic(), SIGNALS)}
-    assert "#AnguloNovo" not in tags
-
-
-def test_generic_word_alone_does_not_create_tag():
-    """'custo' solto num sinal não deve virar hashtag de custo."""
-    topic = _topic(
-        title="Accountability só funciona com autoridade",
-        possible_thesis="Cobrança sem autoridade é só pressão.",
-        central_question="O que faz a cobrança pegar?",
-        pillars=["lideranca_operacoes"],
-        signals=[],
-    )
-    tags = {t["tag"] for t in generate_hashtags(topic, {})}
-    assert "#CustoOperacional" not in tags
-
-
-def test_fallback_derives_from_title_when_few_signals():
-    topic = _topic(
-        title="Rastreabilidade de cacau vira rede de identidade",
-        possible_thesis="Rastreabilidade sustenta prova e resposta.",
-        central_question="Como provar origem?",
-        pillars=[],
-        signals=[],
-        novelty={"verdict": "new"},
-    )
-    tags = generate_hashtags(topic, {})
+def test_fallback_completes_when_source_has_few_tags():
+    signals = {
+        "s": {"id": "s", "source": {"source_hashtags": ["#LastMile"]}},
+    }
+    tags = generate_hashtags(_topic(signals=["s"]), signals)
     assert len(tags) >= MIN_HASHTAGS
+    assert tags[0]["origin"] == "fonte"
+    assert any(t["origin"] != "fonte" for t in tags)
 
 
 def test_never_exceeds_max():
-    topic = _topic(
-        title="Agentes de IA em produção com observabilidade e permissões e custo",
-        possible_thesis="Governança de IA, regulação, segurança e qualidade de dado.",
-        central_question="Como avaliar o agente em produção?",
-        pillars=["ia_aplicada", "riscos_compliance_resiliencia"],
-        signals=["signal_1", "signal_2"],
-        novelty={"verdict": "revisited", "vs_published": ["topic_old"], "delta": "x" * 80},
-    )
-    assert len(generate_hashtags(topic, SIGNALS)) <= MAX_HASHTAGS
+    signals = {
+        "s": {
+            "id": "s",
+            "source": {
+                "source_hashtags": [
+                    "#A", "#B", "#C", "#D", "#E", "#F", "#G", "#H",
+                ]
+            },
+        }
+    }
+    assert len(generate_hashtags(_topic(signals=["s"]), signals)) <= MAX_HASHTAGS
 
 
 # --- integração com os topics reais ---------------------------------------
