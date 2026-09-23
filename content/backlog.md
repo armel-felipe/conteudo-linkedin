@@ -1,37 +1,173 @@
 # Content Backlog
 
-> Backlog ranqueado após a leva de sinais de 2026-09-15. Temas elegíveis têm `status: ready_for_research` nos arquivos de topics.
+> Temas com `status: ready_for_research` nos arquivos `research/topics/topics_*.yaml`.
+> Temas já `approved` não aparecem aqui nem são elegíveis para o Bloco 2.
+> Leva de 2026-09-23: 12 topics candidatos pontuados; top 10 entram no backlog.
 
-## Fila operacional
+## 91.00 — O agente em produção trava na operação, não no modelo
 
-**Fila vazia.** Não há temas `ready_for_research` no momento.
+`topic_20260923_01`
 
-Os temas que estavam na fila do Bloco 2 foram descartados por decisão do autor em 2026-09-23 e marcados como `archived` nos arquivos de topics:
+Pilares: IA Aplicada
 
-| topic_id | Tema | Score |
-|---|---:|---:|
-| `topic_20260915_07` | Governança de IA é uma cadeia operacional de prova | 91,0 |
-| `topic_20260915_04` | A velocidade da entrega precisa caber na margem | 87,5 |
-| `topic_20260915_01` | A IA só entrega valor quando atravessa o caminho entre insight e execução | 85,5 |
-| `topic_20260915_08` | IA em segurança alimentar deve acelerar o risco sem apagar a responsabilidade | 82,0 |
-| `topic_20260914_02` | Agent washing: o que se vende como agente autônomo é automação com passos extras | 78,0 |
-| `topic_20260914_05` | O gargalo dos agentes não é mais inteligência — é infraestrutura e custo | 78,0 |
-| `topic_20260914_06` | Avaliar agente em produção: a régua não é a demo | 78,0 |
-| `topic_20260914_03` | Governança de IA se prova por evidência operacional, não por política | — |
+Tese: O gargalo do agente em produção não é capacidade do modelo: é dado confiável, observabilidade, controle de custo e verificação — sem isso, a automação só transfere o esforço para a conferência.
 
-Temas `archived` saem do fluxo de aprovação e não voltam a ser considerados.
+Por que agora: Relato de que "conferir os agentes virou outro emprego", entrevista com 10 executivos apontando o dado (não o modelo) como maior desafio de produção, e a tese de que quem vence controla custo e enxerga a falha em detalhe.
 
-## Como reabastecer a fila
+Evidências disponíveis: 6
 
-A fila do Bloco 2 é reabastecida pelo Bloco 1:
+Experiência pessoal relacionada: Alta
 
-```text
-Rode discover-signals
-Rode cluster-signals
-Rode score-opportunities
-```
+Status: ready_for_research
 
-O `score-opportunities` pontua os temas candidatos e grava os elegíveis como `ready_for_research` neste backlog.
+## 89.00 — A última milha cobra caro pela promessa que faz
+
+`topic_20260923_07`
+
+Pilares: Logística, last mile e CX
+
+Tese: A última milha não é competição por minutos: é a promessa cumprida dentro da margem — e o atraso que importa nasce antes da rua, na alocação, na visibilidade e na capacidade de intervir.
+
+Por que agora: Custo da última milha subindo 12% com combustível e escassez de motorista, Shadowfax reportando salto de 5x no lucro sob escrutínio, e a tese de que o atraso começa antes da rua.
+
+Evidências disponíveis: 4
+
+Experiência pessoal relacionada: Alta
+
+Status: ready_for_research
+
+## 86.50 — O agente que age em nome do cliente esbarra no dono da plataforma
+
+`topic_20260923_02`
+
+Pilares: IA Aplicada / Riscos, compliance e resiliência
+
+Tese: Autonomia que age em nome de alguém sem identidade, autorização explícita e trilha de auditoria não é conveniência: é acesso não autorizado — e a plataforma vai barrar.
+
+Por que agora: Amazon bloqueando o agente Muse da Meta (151 pontos no HN), bancos sinalizando desconforto com compras por agente e o agente lendo mensagens privadas sem pedido.
+
+Evidências disponíveis: 3
+
+Experiência pessoal relacionada: Média
+
+Status: ready_for_research
+
+## 86.00 — Prova de entrega que aceita qualquer dado não é controle
+
+`topic_20260923_08`
+
+Pilares: Logística, last mile e CX / Riscos, compliance e resiliência
+
+Tese: Controle que aceita qualquer entrada não é controle: é teatro de conformidade — e a mentira no status de entrega custa mais ao cliente do que a falha admitida.
+
+Por que agora: Issue crítica documentando que nome e telefone errados ainda marcam o pedido como entregue, e reclamação de que admitir a perda gera reembolso enquanto marcar "entregue" remove o recurso do cliente.
+
+Evidências disponíveis: 2
+
+Experiência pessoal relacionada: Alta
+
+Status: ready_for_research
+
+## 84.00 — Accountability só funciona com autoridade e consequência
+
+`topic_20260923_09`
+
+Pilares: Liderança em operações
+
+Tese: Cobrança sem autoridade, recurso e consequência é só pressão: o padrão que ninguém inspeciona deixa de existir, e repetir a mesma coisa cinco vezes é sintoma de accountability, não de comunicação.
+
+Por que agora: Série de conteúdo operacional sobre time que para de tratar prazo como compromisso, cobrança sobre resultado sem autoridade para influenciar e o custo de evitar a conversa difícil.
+
+Evidências disponíveis: 4
+
+Experiência pessoal relacionada: Alta
+
+Status: ready_for_research
+
+## 83.00 — O agente que entrega valor começa pelo gargalo chato, não pela vitrine
+
+`topic_20260923_04`
+
+Pilares: IA Aplicada
+
+Tese: O agente que dá retorno não substitui o sistema nem brilha na demo: ele orquestra o que já existe e ataca o gargalo operacional doloroso, um de cada vez.
+
+Por que agora: Casos de agente em pequenos negócios concentrados em follow-up, CRM e admin, e levantamento de casos enterprise descrevendo o agente como camada de orquestração sobre o ERP existente.
+
+Evidências disponíveis: 2
+
+Experiência pessoal relacionada: Alta
+
+Status: ready_for_research
+
+## 83.00 — Delegar não é largar: o handoff precisa de dono
+
+`topic_20260923_10`
+
+Pilares: Liderança em operações
+
+Tese: Autonomia sem responsabilidade combinada não é delegação, é ausência: o handoff sem dono explícito é onde a operação perde o prazo, e a conversa que o gestor evita é paga pelo melhor funcionário.
+
+Por que agora: Tática de transformar o handoff em contrato explícito entre times, crítica ao dono que delega e se afasta, e o custo de fazer o forte compensar quem o gestor não gerencia.
+
+Evidências disponíveis: 3
+
+Experiência pessoal relacionada: Alta
+
+Status: ready_for_research
+
+## 80.50 — O EU AI Act saiu do papel e a obrigação desce a cadeia
+
+`topic_20260923_06`
+
+Pilares: Riscos, compliance e resiliência
+
+Tese: A obrigação de transparência do AI Act segue o cliente, não o CNPJ, e desce a cadeia até quem só customiza o modelo — a trilha de auditoria que ela exige é controle operacional antes de ser exigência regulatória.
+
+Por que agora: Enforcement ativo desde 2 de agosto, análise jurídica de que as obrigações fluem pela cadeia, Omnibus concedendo 16 meses extras e o alerta de que a regra alcança quem tem cliente europeu.
+
+Evidências disponíveis: 5
+
+Experiência pessoal relacionada: Média
+
+Status: ready_for_research
+
+## 79.50 — Prova, permissão e infraestrutura de agente viram categoria de mercado
+
+`topic_20260923_03`
+
+Pilares: IA Aplicada / Riscos, compliance e resiliência
+
+Tese: Quando o agente ganha autonomia, a prova de capacidade e a permissão escopada deixam de ser detalhe técnico e viram item de compra — com atestado, sandbox e identidade próprios.
+
+Por que agora: Verificação de agente com atestado assinado e OWASP Agentic Top 10, permissões just-in-time, Série B de US$ 72M para agentes de DLP e ferramentas de sandbox e observabilidade nascendo para agentes.
+
+Evidências disponíveis: 4
+
+Experiência pessoal relacionada: Média
+
+Status: ready_for_research
+
+## 77.50 — A capacidade ofensiva da IA já é risco operacional documentado
+
+`topic_20260923_05`
+
+Pilares: IA Aplicada / Riscos, compliance e resiliência
+
+Tese: A capacidade ofensiva da IA deixou de ser teórica: regulador documenta exploits autônomos e avaliação independente encontra fuga de modelo — a defesa precisa ser mais rápida que o ciclo de release.
+
+Por que agora: BIS Financial Stability Institute reportando que modelos de fronteira escrevem e encadeiam exploits contra software financeiro, e quatro laboratórios com modelos escapando do ambiente sob o mesmo testador.
+
+Evidências disponíveis: 2
+
+Experiência pessoal relacionada: Média
+
+Status: ready_for_research
+
+## Fora do backlog
+
+- **77.50 — Desperdício de alimento é problema de operação, não de conscientização** (`topic_20260923_11`): empate no corte com `topic_20260923_05`; pilar de prioridade 4 e conexão média com a experiência do autor. Permanece `candidate`.
+- **75.50 — Segurança alimentar se prova por rastreabilidade, não por política** (`topic_20260923_12`): score abaixo do corte; pilar de prioridade 4. Permanece `candidate`.
 
 ## Como transformar temas em drafts
 
@@ -50,7 +186,7 @@ Rode run-editorial-batch --topics 3
 Para escolher temas específicos, use os IDs separados por vírgula:
 
 ```text
-Rode run-editorial-batch --topics topic_20260915_07,topic_20260915_04
+Rode run-editorial-batch --topics topic_20260923_01,topic_20260923_07
 ```
 
 O lote pesquisa, escreve, revisa e humaniza os temas selecionados. Ao final, os arquivos aparecem em `content/drafts/` para QA humano. Ele não aprova, agenda ou publica automaticamente.

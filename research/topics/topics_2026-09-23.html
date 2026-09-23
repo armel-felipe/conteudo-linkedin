@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topics 2026-09-23 — Bloco 1</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1d2129; --line: #2a2f3a;
+    --txt: #e6e9ef; --dim: #9aa3b2; --accent: #6ea8fe; --ok: #4ade80; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--txt);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 28px 32px 20px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.01em; }
+  .sub { color: var(--dim); font-size: 13px; }
+  .sub a { color: var(--accent); text-decoration: none; }
+  .sub a:hover { text-decoration: underline; }
+  main { padding: 24px 32px 60px; max-width: 1100px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 14px; }
+  .card.ready { border-left: 3px solid var(--ok); }
+  .card.cand { border-left: 3px solid var(--warn); opacity: .82; }
+  .top { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .score { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums;
+    min-width: 62px; color: var(--accent); }
+  .card.cand .score { color: var(--warn); }
+  .title { font-size: 17px; font-weight: 600; flex: 1; min-width: 260px; }
+  .id { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--dim); }
+  .pillars { margin: 10px 0 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--panel2); border: 1px solid var(--line); color: var(--dim); }
+  .thesis { margin: 12px 0 0; color: #cfd6e2; }
+  .q { margin: 8px 0 0; color: var(--dim); font-style: italic; }
+  .meta { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
+    display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--dim); }
+  .meta b { color: var(--txt); font-weight: 600; }
+  .bars { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px 16px; font-size: 12px; color: var(--dim); }
+  .bar { display: flex; align-items: center; gap: 8px; }
+  .bar span:first-child { width: 82px; }
+  .track { flex: 1; height: 5px; background: var(--panel2); border-radius: 3px; overflow: hidden; }
+  .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .card.cand .fill { background: var(--warn); }
+  .bar span:last-child { width: 16px; text-align: right; font-variant-numeric: tabular-nums; }
+  .links { margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; }
+  .links a { color: var(--accent); text-decoration: none; }
+  .links a:hover { text-decoration: underline; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--dim); margin: 30px 0 12px; font-weight: 600; }
+  .note { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; color: var(--dim); font-size: 13px; }
+  .note b { color: var(--txt); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Topics — leva 2026-09-23</h1>
+  <div class="sub">
+    12 topics pontuados · 10 <b style="color:var(--ok)">ready_for_research</b> · 2 <b style="color:var(--warn)">candidate</b><br>
+    Artefatos:
+    <a href="research/topics/topics_2026-09-23.yaml">topics_2026-09-23.yaml</a> ·
+    <a href="research/signals/signals_2026-09-23.yaml">signals_2026-09-23.yaml</a> ·
+    <a href="content/backlog.md">content/backlog.md</a>
+  </div>
+</header>
+<main>
+
+<h2>Fila do Bloco 2 — ready_for_research</h2>
+
+<div class="card ready">
+  <div class="top"><div class="score">91.0</div>
+    <div class="title">O agente em produção trava na operação, não no modelo</div>
+    <div class="id">topic_20260923_01</div></div>
+  <div class="pillars"><span class="pill">ia_aplicada</span></div>
+  <div class="thesis">O gargalo do agente em produção não é capacidade do modelo: é dado confiável, observabilidade, controle de custo e verificação — sem isso, a automação só transfere o esforço para a conferência.</div>
+  <div class="q">Por que o agente que funciona na demo piora em produção, e o que a operação precisa ter para sustentá-lo?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:100%"></div></div><span>10</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:100%"></div></div><span>10</span></div>
+  </div>
+  <div class="meta"><span>6 sinais</span><span>Conexão: <b>Alta</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">6 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">89.0</div>
+    <div class="title">A última milha cobra caro pela promessa que faz</div>
+    <div class="id">topic_20260923_07</div></div>
+  <div class="pillars"><span class="pill">logistica_last_mile_cx</span></div>
+  <div class="thesis">A última milha não é competição por minutos: é a promessa cumprida dentro da margem — e o atraso que importa nasce antes da rua, na alocação, na visibilidade e na capacidade de intervir.</div>
+  <div class="q">Quando o custo da última milha sobe e a promessa aperta, o que sustenta a margem sem destruir a confiança?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:100%"></div></div><span>10</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:70%"></div></div><span>7</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:100%"></div></div><span>10</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:100%"></div></div><span>10</span></div>
+  </div>
+  <div class="meta"><span>4 sinais</span><span>Conexão: <b>Alta</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">4 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">86.5</div>
+    <div class="title">O agente que age em nome do cliente esbarra no dono da plataforma</div>
+    <div class="id">topic_20260923_02</div></div>
+  <div class="pillars"><span class="pill">ia_aplicada</span><span class="pill">riscos_compliance_resiliencia</span></div>
+  <div class="thesis">Autonomia que age em nome de alguém sem identidade, autorização explícita e trilha de auditoria não é conveniência: é acesso não autorizado — e a plataforma vai barrar.</div>
+  <div class="q">Quem autoriza e quem responde quando o agente compra, acessa ou decide em nome do usuário?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:100%"></div></div><span>10</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:70%"></div></div><span>7</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+  </div>
+  <div class="meta"><span>3 sinais</span><span>Conexão: <b>Média</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">3 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">86.0</div>
+    <div class="title">Prova de entrega que aceita qualquer dado não é controle</div>
+    <div class="id">topic_20260923_08</div></div>
+  <div class="pillars"><span class="pill">logistica_last_mile_cx</span><span class="pill">riscos_compliance_resiliencia</span></div>
+  <div class="thesis">Controle que aceita qualquer entrada não é controle: é teatro de conformidade — e a mentira no status de entrega custa mais ao cliente do que a falha admitida.</div>
+  <div class="q">O que separa uma prova de entrega real de um carimbo decorativo de conformidade?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+  </div>
+  <div class="meta"><span>2 sinais</span><span>Conexão: <b>Alta</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">2 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">84.0</div>
+    <div class="title">Accountability só funciona com autoridade e consequência</div>
+    <div class="id">topic_20260923_09</div></div>
+  <div class="pillars"><span class="pill">lideranca_operacoes</span></div>
+  <div class="thesis">Cobrança sem autoridade, recurso e consequência é só pressão: o padrão que ninguém inspeciona deixa de existir, e repetir a mesma coisa cinco vezes é sintoma de accountability, não de comunicação.</div>
+  <div class="q">Por que cobrar resultado sem autoridade correspondente não muda nada, e o que faz a cobrança pegar?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:70%"></div></div><span>7</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+  </div>
+  <div class="meta"><span>4 sinais</span><span>Conexão: <b>Alta</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">4 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">83.0</div>
+    <div class="title">O agente que entrega valor começa pelo gargalo chato, não pela vitrine</div>
+    <div class="id">topic_20260923_04</div></div>
+  <div class="pillars"><span class="pill">ia_aplicada</span></div>
+  <div class="thesis">O agente que dá retorno não substitui o sistema nem brilha na demo: ele orquestra o que já existe e ataca o gargalo operacional doloroso, um de cada vez.</div>
+  <div class="q">Onde o agente realmente entrega valor: no caso complexo e autônomo ou no gargalo repetitivo que ninguém quer fazer?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:60%"></div></div><span>6</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+  </div>
+  <div class="meta"><span>2 sinais</span><span>Conexão: <b>Alta</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">2 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">83.0</div>
+    <div class="title">Delegar não é largar: o handoff precisa de dono</div>
+    <div class="id">topic_20260923_10</div></div>
+  <div class="pillars"><span class="pill">lideranca_operacoes</span></div>
+  <div class="thesis">Autonomia sem responsabilidade combinada não é delegação, é ausência: o handoff sem dono explícito é onde a operação perde o prazo, e a conversa que o gestor evita é paga pelo melhor funcionário.</div>
+  <div class="q">Como delegar sem abandonar a operação, e onde a passagem de bastão perde o prazo?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:60%"></div></div><span>6</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+  </div>
+  <div class="meta"><span>3 sinais</span><span>Conexão: <b>Alta</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">3 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">80.5</div>
+    <div class="title">O EU AI Act saiu do papel e a obrigação desce a cadeia</div>
+    <div class="id">topic_20260923_06</div></div>
+  <div class="pillars"><span class="pill">riscos_compliance_resiliencia</span></div>
+  <div class="thesis">A obrigação de transparência do AI Act segue o cliente, não o CNPJ, e desce a cadeia até quem só customiza o modelo — a trilha de auditoria que ela exige é controle operacional antes de ser exigência regulatória.</div>
+  <div class="q">O que muda na operação quando a regra de IA deixa de ser projeto distante e passa a ser exigível?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:70%"></div></div><span>7</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+  </div>
+  <div class="meta"><span>5 sinais</span><span>Conexão: <b>Média</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">5 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">79.5</div>
+    <div class="title">Prova, permissão e infraestrutura de agente viram categoria de mercado</div>
+    <div class="id">topic_20260923_03</div></div>
+  <div class="pillars"><span class="pill">ia_aplicada</span><span class="pill">riscos_compliance_resiliencia</span></div>
+  <div class="thesis">Quando o agente ganha autonomia, a prova de capacidade e a permissão escopada deixam de ser detalhe técnico e viram item de compra — com atestado, sandbox e identidade próprios.</div>
+  <div class="q">Como provar o que um agente pode fazer, e com que permissão, antes de soltá-lo na operação?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:70%"></div></div><span>7</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:70%"></div></div><span>7</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+  </div>
+  <div class="meta"><span>4 sinais</span><span>Conexão: <b>Média</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">4 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<div class="card ready">
+  <div class="top"><div class="score">77.5</div>
+    <div class="title">A capacidade ofensiva da IA já é risco operacional documentado</div>
+    <div class="id">topic_20260923_05</div></div>
+  <div class="pillars"><span class="pill">ia_aplicada</span><span class="pill">riscos_compliance_resiliencia</span></div>
+  <div class="thesis">A capacidade ofensiva da IA deixou de ser teórica: regulador documenta exploits autônomos e avaliação independente encontra fuga de modelo — a defesa precisa ser mais rápida que o ciclo de release.</div>
+  <div class="q">Quando o modelo escreve o exploit e o agente escapa do ambiente, quem defende a operação e em que prazo?</div>
+  <div class="bars">
+    <div class="bar"><span>freshness</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>relevance</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>debate</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+    <div class="bar"><span>evidence</span><div class="track"><div class="fill" style="width:70%"></div></div><span>7</span></div>
+    <div class="bar"><span>author_fit</span><div class="track"><div class="fill" style="width:60%"></div></div><span>6</span></div>
+    <div class="bar"><span>originality</span><div class="track"><div class="fill" style="width:90%"></div></div><span>9</span></div>
+    <div class="bar"><span>linkedin_fit</span><div class="track"><div class="fill" style="width:80%"></div></div><span>8</span></div>
+  </div>
+  <div class="meta"><span>2 sinais</span><span>Conexão: <b>Média</b></span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">2 sinais</a><a href="content/backlog.md">backlog</a></div>
+</div>
+
+<h2>Fora do backlog — candidate</h2>
+
+<div class="card cand">
+  <div class="top"><div class="score">77.5</div>
+    <div class="title">Desperdício de alimento é problema de operação, não de conscientização</div>
+    <div class="id">topic_20260923_11</div></div>
+  <div class="pillars"><span class="pill">alimentos_consumo_sustentabilidade</span></div>
+  <div class="thesis">O alimento mais caro é o que já foi produzido e nunca vendido: desperdício é custo afundado de toda a cadeia e capacidade ociosa mal alocada, resolvível com coordenação e shelf-life — não com conscientização.</div>
+  <div class="q">O que reduz desperdício de alimento de verdade: doação e campanha, ou capacidade logística e shelf-life?</div>
+  <div class="meta"><span>3 sinais</span><span>Conexão: <b>Alta</b></span><span>Empate no corte com <b>_05</b>; pilar de prioridade 4</span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">3 sinais</a></div>
+</div>
+
+<div class="card cand">
+  <div class="top"><div class="score">75.5</div>
+    <div class="title">Segurança alimentar se prova por rastreabilidade, não por política</div>
+    <div class="id">topic_20260923_12</div></div>
+  <div class="pillars"><span class="pill">alimentos_consumo_sustentabilidade</span><span class="pill">riscos_compliance_resiliencia</span></div>
+  <div class="thesis">A escala do recall mede a qualidade da rastreabilidade a montante: segurança alimentar só se prova quando a rede sustenta prontidão, prova e resposta — não quando existe uma política escrita.</div>
+  <div class="q">Quando o recall acontece em escala, o que a operação precisa ter para provar origem e responder rápido?</div>
+  <div class="meta"><span>3 sinais</span><span>Conexão: <b>Média</b></span><span>Score abaixo do corte</span></div>
+  <div class="links"><a href="research/topics/topics_2026-09-23.yaml">topic yaml</a><a href="research/signals/signals_2026-09-23.yaml">3 sinais</a></div>
+</div>
+
+<h2>Notas</h2>
+<div class="note">
+  <b>3 sinais ficaram órfãos</b> (não agruparam com ninguém, permanecem <code>discovered</code>):
+  <code>signal_20260923_014</code> (agentes degradando a internet),
+  <code>signal_20260923_018</code> (Google CC doméstico) e
+  <code>signal_20260923_024</code> (carregadores alternativos de última milha).<br><br>
+  <b>Cobertura parcial da pesquisa:</b> <code>polymarket</code> falhou nas 5 rodadas e <code>instagram</code> veio degradado em duas.
+</div>
+
+</main>
+</body>
+</html>

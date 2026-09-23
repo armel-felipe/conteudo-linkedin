@@ -1,0 +1,290 @@
+topics:
+- id: topic_20260923_01
+  title: O agente em produção trava na operação, não no modelo
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260923_004
+  - signal_20260923_005
+  - signal_20260923_006
+  - signal_20260923_009
+  - signal_20260923_011
+  - signal_20260923_012
+  central_question: Por que o agente que funciona na demo piora em produção, e o que a operação precisa
+    ter para sustentá-lo?
+  possible_thesis: 'O gargalo do agente em produção não é capacidade do modelo: é dado confiável, observabilidade,
+    controle de custo e verificação — sem isso, a automação só transfere o esforço para a conferência.'
+  author_connection: strong
+  status: ready_for_research
+  scores:
+    freshness: 9
+    relevance: 10
+    debate: 9
+    evidence: 8
+    author_fit: 9
+    originality: 8
+    linkedin_fit: 10
+    total: 91.0
+- id: topic_20260923_07
+  title: A última milha cobra caro pela promessa que faz
+  pillars:
+  - logistica_last_mile_cx
+  signals:
+  - signal_20260923_019
+  - signal_20260923_021
+  - signal_20260923_022
+  - signal_20260923_023
+  central_question: Quando o custo da última milha sobe e a promessa aperta, o que sustenta a margem sem
+    destruir a confiança?
+  possible_thesis: 'A última milha não é competição por minutos: é a promessa cumprida dentro da margem
+    — e o atraso que importa nasce antes da rua, na alocação, na visibilidade e na capacidade de intervir.'
+  author_connection: strong
+  status: ready_for_research
+  scores:
+    freshness: 8
+    relevance: 10
+    debate: 8
+    evidence: 7
+    author_fit: 10
+    originality: 8
+    linkedin_fit: 10
+    total: 89.0
+- id: topic_20260923_02
+  title: O agente que age em nome do cliente esbarra no dono da plataforma
+  pillars:
+  - ia_aplicada
+  - riscos_compliance_resiliencia
+  signals:
+  - signal_20260923_001
+  - signal_20260923_002
+  - signal_20260923_003
+  central_question: Quem autoriza e quem responde quando o agente compra, acessa ou decide em nome do
+    usuário?
+  possible_thesis: 'Autonomia que age em nome de alguém sem identidade, autorização explícita e trilha
+    de auditoria não é conveniência: é acesso não autorizado — e a plataforma vai barrar.'
+  author_connection: medium
+  status: ready_for_research
+  scores:
+    freshness: 10
+    relevance: 9
+    debate: 9
+    evidence: 8
+    author_fit: 7
+    originality: 9
+    linkedin_fit: 9
+    total: 86.5
+- id: topic_20260923_08
+  title: Prova de entrega que aceita qualquer dado não é controle
+  pillars:
+  - logistica_last_mile_cx
+  - riscos_compliance_resiliencia
+  signals:
+  - signal_20260923_020
+  - signal_20260923_025
+  central_question: O que separa uma prova de entrega real de um carimbo decorativo de conformidade?
+  possible_thesis: 'Controle que aceita qualquer entrada não é controle: é teatro de conformidade — e
+    a mentira no status de entrega custa mais ao cliente do que a falha admitida.'
+  author_connection: strong
+  status: ready_for_research
+  scores:
+    freshness: 8
+    relevance: 9
+    debate: 8
+    evidence: 8
+    author_fit: 9
+    originality: 9
+    linkedin_fit: 9
+    total: 86.0
+- id: topic_20260923_09
+  title: Accountability só funciona com autoridade e consequência
+  pillars:
+  - lideranca_operacoes
+  signals:
+  - signal_20260923_026
+  - signal_20260923_027
+  - signal_20260923_030
+  - signal_20260923_032
+  central_question: Por que cobrar resultado sem autoridade correspondente não muda nada, e o que faz
+    a cobrança pegar?
+  possible_thesis: 'Cobrança sem autoridade, recurso e consequência é só pressão: o padrão que ninguém
+    inspeciona deixa de existir, e repetir a mesma coisa cinco vezes é sintoma de accountability, não
+    de comunicação.'
+  author_connection: strong
+  status: ready_for_research
+  scores:
+    freshness: 8
+    relevance: 9
+    debate: 8
+    evidence: 7
+    author_fit: 9
+    originality: 8
+    linkedin_fit: 9
+    total: 84.0
+- id: topic_20260923_04
+  title: O agente que entrega valor começa pelo gargalo chato, não pela vitrine
+  pillars:
+  - ia_aplicada
+  signals:
+  - signal_20260923_010
+  - signal_20260923_017
+  central_question: 'Onde o agente realmente entrega valor: no caso complexo e autônomo ou no gargalo
+    repetitivo que ninguém quer fazer?'
+  possible_thesis: 'O agente que dá retorno não substitui o sistema nem brilha na demo: ele orquestra
+    o que já existe e ataca o gargalo operacional doloroso, um de cada vez.'
+  author_connection: strong
+  status: ready_for_research
+  scores:
+    freshness: 8
+    relevance: 9
+    debate: 8
+    evidence: 6
+    author_fit: 9
+    originality: 8
+    linkedin_fit: 9
+    total: 83.0
+- id: topic_20260923_10
+  title: 'Delegar não é largar: o handoff precisa de dono'
+  pillars:
+  - lideranca_operacoes
+  signals:
+  - signal_20260923_028
+  - signal_20260923_029
+  - signal_20260923_031
+  central_question: Como delegar sem abandonar a operação, e onde a passagem de bastão perde o prazo?
+  possible_thesis: 'Autonomia sem responsabilidade combinada não é delegação, é ausência: o handoff sem
+    dono explícito é onde a operação perde o prazo, e a conversa que o gestor evita é paga pelo melhor
+    funcionário.'
+  author_connection: strong
+  status: ready_for_research
+  scores:
+    freshness: 8
+    relevance: 9
+    debate: 8
+    evidence: 6
+    author_fit: 9
+    originality: 8
+    linkedin_fit: 9
+    total: 83.0
+- id: topic_20260923_06
+  title: O EU AI Act saiu do papel e a obrigação desce a cadeia
+  pillars:
+  - riscos_compliance_resiliencia
+  signals:
+  - signal_20260923_033
+  - signal_20260923_034
+  - signal_20260923_035
+  - signal_20260923_036
+  - signal_20260923_038
+  central_question: O que muda na operação quando a regra de IA deixa de ser projeto distante e passa
+    a ser exigível?
+  possible_thesis: A obrigação de transparência do AI Act segue o cliente, não o CNPJ, e desce a cadeia
+    até quem só customiza o modelo — a trilha de auditoria que ela exige é controle operacional antes
+    de ser exigência regulatória.
+  author_connection: medium
+  status: ready_for_research
+  scores:
+    freshness: 9
+    relevance: 8
+    debate: 8
+    evidence: 8
+    author_fit: 7
+    originality: 8
+    linkedin_fit: 9
+    total: 80.5
+- id: topic_20260923_03
+  title: Prova, permissão e infraestrutura de agente viram categoria de mercado
+  pillars:
+  - ia_aplicada
+  - riscos_compliance_resiliencia
+  signals:
+  - signal_20260923_007
+  - signal_20260923_008
+  - signal_20260923_015
+  - signal_20260923_016
+  central_question: Como provar o que um agente pode fazer, e com que permissão, antes de soltá-lo na
+    operação?
+  possible_thesis: Quando o agente ganha autonomia, a prova de capacidade e a permissão escopada deixam
+    de ser detalhe técnico e viram item de compra — com atestado, sandbox e identidade próprios.
+  author_connection: medium
+  status: ready_for_research
+  scores:
+    freshness: 9
+    relevance: 8
+    debate: 8
+    evidence: 7
+    author_fit: 7
+    originality: 9
+    linkedin_fit: 8
+    total: 79.5
+- id: topic_20260923_05
+  title: A capacidade ofensiva da IA já é risco operacional documentado
+  pillars:
+  - ia_aplicada
+  - riscos_compliance_resiliencia
+  signals:
+  - signal_20260923_013
+  - signal_20260923_037
+  central_question: Quando o modelo escreve o exploit e o agente escapa do ambiente, quem defende a operação
+    e em que prazo?
+  possible_thesis: 'A capacidade ofensiva da IA deixou de ser teórica: regulador documenta exploits autônomos
+    e avaliação independente encontra fuga de modelo — a defesa precisa ser mais rápida que o ciclo de
+    release.'
+  author_connection: medium
+  status: ready_for_research
+  scores:
+    freshness: 9
+    relevance: 8
+    debate: 8
+    evidence: 7
+    author_fit: 6
+    originality: 9
+    linkedin_fit: 8
+    total: 77.5
+- id: topic_20260923_11
+  title: Desperdício de alimento é problema de operação, não de conscientização
+  pillars:
+  - alimentos_consumo_sustentabilidade
+  signals:
+  - signal_20260923_041
+  - signal_20260923_042
+  - signal_20260923_043
+  central_question: 'O que reduz desperdício de alimento de verdade: doação e campanha, ou capacidade
+    logística e shelf-life?'
+  possible_thesis: 'O alimento mais caro é o que já foi produzido e nunca vendido: desperdício é custo
+    afundado de toda a cadeia e capacidade ociosa mal alocada, resolvível com coordenação e shelf-life
+    — não com conscientização.'
+  author_connection: strong
+  status: candidate
+  scores:
+    freshness: 8
+    relevance: 8
+    debate: 7
+    evidence: 7
+    author_fit: 8
+    originality: 8
+    linkedin_fit: 8
+    total: 77.5
+- id: topic_20260923_12
+  title: Segurança alimentar se prova por rastreabilidade, não por política
+  pillars:
+  - alimentos_consumo_sustentabilidade
+  - riscos_compliance_resiliencia
+  signals:
+  - signal_20260923_039
+  - signal_20260923_040
+  - signal_20260923_044
+  central_question: Quando o recall acontece em escala, o que a operação precisa ter para provar origem
+    e responder rápido?
+  possible_thesis: 'A escala do recall mede a qualidade da rastreabilidade a montante: segurança alimentar
+    só se prova quando a rede sustenta prontidão, prova e resposta — não quando existe uma política escrita.'
+  author_connection: medium
+  status: candidate
+  scores:
+    freshness: 8
+    relevance: 8
+    debate: 7
+    evidence: 7
+    author_fit: 7
+    originality: 8
+    linkedin_fit: 8
+    total: 75.5

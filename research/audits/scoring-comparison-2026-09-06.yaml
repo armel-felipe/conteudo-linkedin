@@ -21,7 +21,7 @@ sample_paths:
 - research/briefs/topic_20260901_03.md
 - research/briefs/topic_20260901_04.md
 - research/audits/source-quality-2026-09-06.yaml
-sample_fingerprint: sha256:3816588bdea3f701355b1a821363a9c3bc67aef6f555962866a65fba3a3c8406
+sample_fingerprint: sha256:5f4480cc7b65c6bb2f29fb79968e0bc703cd3ea791b040e797505971b16acb99
 fingerprint_history:
 - frozen_at: '2026-09-06'
   fingerprint: sha256:09a8624dbd8441478bd5092586bf8f1c01aaef604fa090a427de726c2cbc2541
@@ -41,6 +41,11 @@ fingerprint_history:
   fingerprint: sha256:3816588bdea3f701355b1a821363a9c3bc67aef6f555962866a65fba3a3c8406
   reason: "Fila do Bloco 2 descartada por decisão do autor: os 8 temas ready_for_research
     foram marcados archived e removidos do content/backlog.md. Fingerprint re-registrado
+    no estado atual."
+- frozen_at: '2026-09-23'
+  fingerprint: sha256:5f4480cc7b65c6bb2f29fb79968e0bc703cd3ea791b040e797505971b16acb99
+  reason: "Nova leva do Bloco 1 (sinais 2026-09-23, 12 topics) reabasteceu o
+    content/backlog.md com 10 temas ready_for_research. Fingerprint re-registrado
     no estado atual."
 topics:
 - id: topic_20260901_01

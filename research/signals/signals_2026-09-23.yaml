@@ -29,7 +29,7 @@ signals:
     author_connection: medium
     scores: {freshness: 9, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_002
     title: "Amazon bloqueia o agente de compras Muse, da Meta"
@@ -50,7 +50,7 @@ signals:
     author_connection: medium
     scores: {freshness: 10, relevance: 9, debate: 9, evidence: 8, author_fit: 7, originality: 9, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_003
     title: "Agente Muse, da Meta, leu mensagens privadas sem ser solicitado"
@@ -70,7 +70,7 @@ signals:
     author_connection: medium
     scores: {freshness: 9, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_004
     title: "Agente brilha na demo e piora devagar em produção"
@@ -91,7 +91,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_005
     title: "Os agentes fizeram o trabalho; conferir virou outro emprego"
@@ -112,7 +112,7 @@ signals:
     author_connection: strong
     scores: {freshness: 9, relevance: 9, debate: 9, evidence: 7, author_fit: 9, originality: 9, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_006
     title: "O gargalo para colocar agente em produção é o dado, não o modelo"
@@ -133,7 +133,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_007
     title: "Verificação de agente vira produto com atestado assinado"
@@ -154,7 +154,7 @@ signals:
     author_connection: medium
     scores: {freshness: 9, relevance: 8, debate: 8, evidence: 7, author_fit: 7, originality: 9, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_008
     title: "Permissão de agente migra para just-in-time e escopo por intenção"
@@ -174,7 +174,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_009
     title: "O que muda quando o agente sai da demo controlada"
@@ -194,7 +194,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_010
     title: "Os casos úteis de agente em pequenos negócios não são os vistosos"
@@ -215,7 +215,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_011
     title: "Quem vence com agente controla custo e vê a falha, não troca de modelo"
@@ -236,7 +236,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_012
     title: "Agente operando SaaS de produção com 22 ferramentas conectadas"
@@ -256,7 +256,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_013
     title: "Modelos de fronteira já escrevem e encadeiam exploits contra software bancário"
@@ -276,7 +276,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 8, debate: 8, evidence: 7, author_fit: 6, originality: 9, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_014
     title: "Agentes de IA já estão degradando a internet aberta"
@@ -316,7 +316,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 7, debate: 7, evidence: 7, author_fit: 6, originality: 8, linkedin_fit: 7}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_016
     title: "Infraestrutura para agente vira categoria: sandbox, git host e observabilidade"
@@ -338,7 +338,7 @@ signals:
     author_connection: medium
     scores: {freshness: 9, relevance: 8, debate: 7, evidence: 7, author_fit: 7, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_017
     title: "Casos de agente que realmente foram ao ar em 2026"
@@ -358,7 +358,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 7, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_018
     title: "Google reposiciona agente CC de assistente pessoal para gestão da casa"
@@ -402,7 +402,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_020
     title: "Verificação de entrega própria é cosmética: nome e telefone errados ainda marcam como entregue"
@@ -422,7 +422,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 8, author_fit: 9, originality: 9, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_021
     title: "Custo da última milha sobe 12% com combustível e escassez de motorista"
@@ -443,7 +443,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_022
     title: "Shadowfax reporta salto de 5x no lucro e melhora de economia unitária"
@@ -463,7 +463,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 8, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_023
     title: "Atraso na entrega não começa na rua"
@@ -483,7 +483,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_024
     title: "Carregadores alternativos de última milha crescem rápido nos EUA"
@@ -523,7 +523,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   # ============================================================
   # lideranca_operacoes (prioridade 8)
@@ -547,7 +547,7 @@ signals:
     author_connection: strong
     scores: {freshness: 9, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_027
     title: "Time sem accountability para de tratar prazo como compromisso"
@@ -568,7 +568,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_028
     title: "Delegar não é largar: sem cultura de responsabilidade o problema se multiplica"
@@ -588,7 +588,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_029
     title: "Transformar a passagem de bastão em contrato entre times"
@@ -608,7 +608,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_030
     title: "Não se cobra resultado sobre o que a pessoa não tinha autoridade para influenciar"
@@ -628,7 +628,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_031
     title: "Fazer o forte compensar quem você não gerencia esgota o time"
@@ -648,7 +648,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_032
     title: "Repetir a mesma coisa cinco vezes é problema de accountability, não de comunicação"
@@ -668,7 +668,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   # ============================================================
   # riscos_compliance_resiliencia (prioridade 8)
@@ -693,7 +693,7 @@ signals:
     author_connection: medium
     scores: {freshness: 9, relevance: 9, debate: 8, evidence: 8, author_fit: 7, originality: 8, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_034
     title: "A regra de trilha de auditoria de IA salva mesmo quem não vende na UE"
@@ -713,7 +713,7 @@ signals:
     author_connection: strong
     scores: {freshness: 9, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 9, linkedin_fit: 9}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_035
     title: "Omnibus deu 16 meses extras de compliance e revelou quem esperava permissão"
@@ -733,7 +733,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_036
     title: "O EU AI Act não é problema só da Europa"
@@ -754,7 +754,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 8, debate: 8, evidence: 7, author_fit: 7, originality: 7, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_037
     title: "Quatro laboratórios contrataram o mesmo testador e todos tiveram modelo escapando"
@@ -776,7 +776,7 @@ signals:
     author_connection: medium
     scores: {freshness: 9, relevance: 8, debate: 8, evidence: 6, author_fit: 6, originality: 9, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_038
     title: "Estados-membros da UE planejam 'expropriação digital' em favor de empresas de IA"
@@ -797,7 +797,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 8, debate: 9, evidence: 7, author_fit: 6, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   # ============================================================
   # alimentos_consumo_sustentabilidade (prioridade 4)
@@ -821,7 +821,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 8, debate: 7, evidence: 7, author_fit: 7, originality: 7, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_040
     title: "Chipotle testa plataforma de segurança alimentar com a Palantir"
@@ -841,7 +841,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 8, debate: 7, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_041
     title: "Tecnologia libera capacidade de frete ociosa e corta desperdício de alimento"
@@ -861,7 +861,7 @@ signals:
     author_connection: strong
     scores: {freshness: 9, relevance: 8, debate: 7, evidence: 8, author_fit: 8, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_042
     title: "O alimento mais caro é o que já foi produzido e nunca vendido"
@@ -882,7 +882,7 @@ signals:
     author_connection: strong
     scores: {freshness: 8, relevance: 8, debate: 7, evidence: 7, author_fit: 8, originality: 8, linkedin_fit: 8}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_043
     title: "Estender shelf-life é alavanca direta de redução de desperdício"
@@ -902,7 +902,7 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 7, debate: 7, evidence: 6, author_fit: 7, originality: 7, linkedin_fit: 7}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
 
   - id: signal_20260923_044
     title: "Rastreabilidade de cacau vira rede de identidade de produto para comércio confiável"
@@ -922,4 +922,4 @@ signals:
     author_connection: medium
     scores: {freshness: 8, relevance: 7, debate: 7, evidence: 6, author_fit: 6, originality: 8, linkedin_fit: 7}
     created_at: 2026-09-23
-    status: discovered
+    status: clustered
