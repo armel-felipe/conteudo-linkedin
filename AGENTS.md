@@ -13,8 +13,9 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Objetivo:** descobrir o que está acontecendo, agrupar em temas, pontuar e formar o backlog de oportunidades `ready_for_research`.
 - **Skills (fluxo canônico):** `discover-signals` → `analyze-discussions` (opcional, sob demanda) → `cluster-signals` → `score-opportunities`.
 - **Ferramenta de pesquisa do bloco:** skill `last30days` (primária).
-- **Saídas persistentes:** `research/signals/signals_*.yaml` (signals `discovered`/`clustered`), `research/topics/topics_*.yaml` (temas `candidate` e depois `ready_for_research`), `content/backlog.md` (ranqueado por score).
-- **Estado fim do bloco:** backlog com temas `ready_for_research`. **O bloco 1 não gera posts.**
+- **Saídas persistentes:** `research/signals/signals_*.yaml` (signals `discovered`/`clustered`), `research/topics/topics_*.yaml` (temas `candidate` e depois `ready_for_research`), `research/topics/topics_*.html` (**visualização navegável dos temas, obrigatória**), `content/backlog.md` (ranqueado por score).
+- **Estado fim do bloco:** backlog com temas `ready_for_research` **e** o HTML de temas gerado. **O bloco 1 não gera posts.**
+- **HTML de temas (obrigatório):** ao fim do `score-opportunities`, gerar `research/topics/topics_YYYY-MM-DD.html` — página navegável com score, critérios, tese, pergunta central, nº de sinais, conexão com o autor e links para os artefatos. O HTML é versionado junto com os topics. Sem ele, o Bloco 1 não está concluído.
 
 ### Bloco 2 — Gerar o post (de tema a draft em revisão)
 

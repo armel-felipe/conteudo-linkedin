@@ -42,9 +42,9 @@ discover-signals → (analyze-discussions, opcional) → cluster-signals → sco
 | Descobrir sinais | `Rode discover-signals para as cinco frentes` | Coleta 20–50 sinais por frente e salva em `research/signals/signals_YYYY-MM-DD.yaml`. Usa a skill `last30days` como principal fonte. |
 | Aprofundar um debate *(opcional)* | `Analise o debate do signal X` | Adiciona um bloco de discussão a um signal promissor. |
 | Agrupar em temas | `Rode cluster-signals` | Agrupa sinais do mesmo fenômeno em temas e salva em `research/topics/topics_YYYY-MM-DD.yaml`. |
-| Pontuar o backlog | `Rode score-opportunities` | Dá nota 0–100 a cada tema e ordena o backlog em `content/backlog.md`. |
+| Pontuar o backlog | `Rode score-opportunities` | Dá nota 0–100 a cada tema, ordena o backlog em `content/backlog.md` e gera o HTML navegável dos temas em `research/topics/topics_YYYY-MM-DD.html`. |
 
-**Saída do bloco:** backlog com temas `status: ready_for_research`. **Este bloco não escreve posts.**
+**Saída do bloco:** backlog com temas `status: ready_for_research` **e** o HTML de temas (`research/topics/topics_YYYY-MM-DD.html`, obrigatório e versionado). **Este bloco não escreve posts.**
 
 ## Bloco 2 — Gerar o post (de tema a texto aprovado)
 
@@ -169,7 +169,7 @@ Cada skill é invocada por frase no OpenWork. O agente lê a skill e executa só
 | `discover-signals` | 1 | Descobre 20–50 sinais por frente e persiste em `research/signals/` | diariamente |
 | `analyze-discussions` | 1 | Aprofunda o debate de um signal promissor | opcional, sob demanda |
 | `cluster-signals` | 1 | Agrupa sinais em temas com pergunta central e tese | 2×/semana |
-| `score-opportunities` | 1 | Pontua 0–100 cada tema e ordena o backlog | 2×/semana |
+| `score-opportunities` | 1 | Pontua 0–100 cada tema, ordena o backlog e gera o HTML navegável de temas | 2×/semana |
 | `run-editorial-batch` | 2 | Roda pesquisa → escrita → humanização em lote (gera drafts em revisão) | quando quiser gerar drafts |
 | `qa-draft` | 2.5 | Revisão humana de drafts: aprovar, pedir modificação ou editar direto | depois do lote, antes de publicar |
 | `research-topic` | 2 | Pesquisa a fundo e gera o brief | dentro do lote |

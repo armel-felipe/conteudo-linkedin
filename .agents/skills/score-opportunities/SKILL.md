@@ -31,6 +31,17 @@ Cada critério é avaliado de 0 a 10; a soma ponderada (máximo 10) é multiplic
 
 ## Saída
 
+Duas saídas obrigatórias:
+
+1. `content/backlog.md` (formato da spec §15)
+2. `research/topics/topics_YYYY-MM-DD.html` — **visualização navegável dos temas (obrigatória)**
+
+### HTML de temas (obrigatório)
+
+Ao fim da pontuação, gerar `research/topics/topics_YYYY-MM-DD.html` com um card por topic contendo: score em destaque, título, `topic_id`, pilar(es), tese, pergunta central, barras dos 7 critérios, nº de sinais, conexão com o autor e links para os artefatos (`topics_*.yaml`, `signals_*.yaml`, `content/backlog.md`). Separar visualmente os temas `ready_for_research` dos `candidate`. O arquivo é versionado junto com os topics. Sem ele, a etapa não está concluída.
+
+### Backlog
+
 `content/backlog.md` (formato da spec §15):
 
 ```markdown
@@ -59,9 +70,11 @@ Status: ready_for_research
 4. Ordenar por score decrescente.
 5. Escrever o backlog com os top 5-10.
 6. Atualizar o status do topic para `ready_for_research` no arquivo `research/topics/topics_*.yaml` quando entrar no backlog.
+7. Gerar `research/topics/topics_YYYY-MM-DD.html` com a visualização navegável dos temas (obrigatório).
 
 ## Regras
 
 - Pontuar com base nas evidências reais do topic (não no potencial imaginado).
 - author_fit alto exige conexão real com memory/professional_experience.md.
 - Não inflar notas para "empurrar" um tema favorito.
+- O HTML de temas é obrigatório e versionado: sem ele, a etapa não está concluída.

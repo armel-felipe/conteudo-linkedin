@@ -14,7 +14,7 @@ Referenciado pelo `AGENTS.md`.
 | `discover-signals` | Encontrar sinais relevantes por frente (20-50/dia) | Etapa 1 do fluxo | "roda discover-signals" |
 | `analyze-discussions` | Analisar o debate de um signal (opcional) | Etapa 1.5, sob demanda | "analisa o debate do signal X" |
 | `cluster-signals` | Agrupar signals em temas | Etapa 2 (2x/semana) | "roda cluster-signals" |
-| `score-opportunities` | Pontuar temas (0-100) e gerar backlog | Etapa 3 (2x/semana) | "roda score-opportunities" |
+| `score-opportunities` | Pontuar temas (0-100), gerar backlog e o HTML navegável de temas `research/topics/topics_*.html` (obrigatório) | Etapa 3 (2x/semana) | "roda score-opportunities" |
 | `research-topic` | Pesquisa aprofundada → brief | Etapa 4 (ao publicar) | "pesquisa o topic X" |
 | `write-post` | Escrever post a partir do brief + memória, seguindo `docs/guia-escrita.md` (fonte única de regras editoriais) | Etapa 5 (ao publicar) | "escreve o post do topic X" |
 | `critique-post` | Criticar o draft antes da aprovação | Etapa 6 (ao publicar) | "critica o draft X" |
