@@ -1,0 +1,925 @@
+# Signals - 2026-09-23
+# Leva de descoberta do Bloco 1. Janela pesquisada: 2026-09-13 a 2026-09-23 (--days=10).
+# Frentes rodadas por prioridade: ia_aplicada, logistica_last_mile_cx, lideranca_operacoes,
+# riscos_compliance_resiliencia, alimentos_consumo_sustentabilidade.
+# Fontes brutas: /private/var/folders/.../T/opencode/signals-20260923/raw/*-raw.md
+# Aviso de cobertura: polymarket falhou em todas as rodadas; instagram degradado em duas.
+
+signals:
+  # ============================================================
+  # ia_aplicada (prioridade 10)
+  # ============================================================
+
+  - id: signal_20260923_001
+    title: "Bancos ficam desconfortáveis com pessoas comprando por agentes de IA"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: hackernews
+      publisher: Gizmodo (via Hacker News)
+      url: https://gizmodo.com/big-banks-say-theyre-uneasy-about-people-shopping-via-ai-agents-2000815443
+      published_at: 2026-09-23
+    observation: "Grandes bancos sinalizam desconforto com compras feitas por agentes de IA em nome do usuário, expondo a tensão entre automação de compra e controle de risco."
+    debate:
+      side_a: "Agentes que compram pelo cliente são a próxima interface natural do comércio."
+      side_b: "Sem identidade, autorização e trilha de auditoria, a compra por agente é risco de fraude e disputa."
+    evidence:
+      - "Título e cobertura do Gizmodo: bancos 'uneasy' com shopping via AI agents."
+      - "O mesmo tema aparece no bloqueio da Amazon ao agente Muse da Meta: https://www.theregister.com/ai-and-ml/2026/09/21/amazon-shows-metas-muse-ai-shopping-agent-the-door/5297777"
+    possible_angle: "Quando o agente gasta dinheiro em nome do cliente, quem responde pela transação errada?"
+    author_connection: medium
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_002
+    title: "Amazon bloqueia o agente de compras Muse, da Meta"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: hackernews
+      publisher: Forbes / The Register (via Hacker News)
+      url: https://www.forbes.com/sites/jonmarkman/2026/09/21/amazon-blocks-metas-new-muse-ai-agent-from-shopping-on-amazoncom/
+      published_at: 2026-09-21
+    observation: "A Amazon barrou o agente Muse da Meta de comprar em seu site, citando acesso não autorizado e privacidade — a plataforma reage quando o agente age em nome do usuário."
+    debate:
+      side_a: "Plataformas devem aceitar agentes como representantes legítimos do cliente."
+      side_b: "Sem contrato e autorização explícita, o agente é acesso não autorizado e a plataforma tem o direito de barrar."
+    evidence:
+      - "Forbes: Amazon blocks Meta's new Muse AI agent from shopping on amazon.com (151 pts, 158 comentários no HN)."
+      - "The Register: Amazon shows Meta's Muse AI shopping agent the door."
+    possible_angle: "O agente que compra pelo cliente esbarra no dono da plataforma — quem define as regras do acesso automatizado?"
+    author_connection: medium
+    scores: {freshness: 10, relevance: 9, debate: 9, evidence: 8, author_fit: 7, originality: 9, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_003
+    title: "Agente Muse, da Meta, leu mensagens privadas sem ser solicitado"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: hackernews
+      publisher: Inc. (via Hacker News)
+      url: https://www.inc.com/jason-aten/metas-new-muse-ai-agent-read-my-private-messages-i-never-asked-it-to/91408202
+      published_at: 2026-09-22
+    observation: "Relato de que o agente Muse acessou mensagens privadas sem pedido explícito do usuário, mostrando que o limite de escopo do agente é uma decisão de produto, não um detalhe técnico."
+    debate:
+      side_a: "Agentes precisam de contexto amplo para serem úteis."
+      side_b: "Acesso a dado privado sem pedido explícito é violação de confiança, mesmo que o agente 'ajude'."
+    evidence:
+      - "Inc.: 'Meta's New Muse AI Agent Read My Private Messages. I Never Asked It To.'"
+    possible_angle: "O escopo de acesso do agente precisa ser explícito e auditável — não inferido pelo modelo."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_004
+    title: "Agente brilha na demo e piora devagar em produção"
+    pillars: [ia_aplicada]
+    source:
+      type: instagram
+      publisher: edhonour
+      url: https://www.instagram.com/reel/DdNmCoBpqSm/
+      published_at: 2026-09-13
+    observation: "A degradação silenciosa do agente em produção só é visível com tracing; sem medir cada mudança contra o estado anterior, a equipe está adivinhando."
+    debate:
+      side_a: "O agente funciona; basta monitorar uptime e erros."
+      side_b: "Sem tracing e comparação contra a versão anterior, a piora do agente é invisível até virar prejuízo."
+    evidence:
+      - "edhonour: 'A lot of AI agents look great in a demo and slowly get worse in production... if you aren't tracing your AI workflows, you probably won't know why.'"
+      - "Reddit r/AI_Agents: 'the jump from wow it works to wait why did it say that... demo phase lasts 2 days and then you're in the weeds for 6 months.'"
+    possible_angle: "O custo real do agente não é construí-lo, é perceber que ele piorou antes que o cliente perceba."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_005
+    title: "Os agentes fizeram o trabalho; conferir virou outro emprego"
+    pillars: [ia_aplicada, lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: lostintechpod
+      url: https://www.tiktok.com/@lostintechpod/video/7688112148777602317
+      published_at: 2026-09-21
+    observation: "Ao usar agentes em papéis de negócio, a verificação do que eles fizeram virou uma carga de trabalho nova — a automação moveu o esforço, não o eliminou."
+    debate:
+      side_a: "O agente assume o trabalho repetitivo e libera a equipe."
+      side_b: "Sem confiança no output, a equipe só troca execução por conferência — e a conferência não escala."
+    evidence:
+      - "lostintechpod: 'The agents did work. Checking them became another job.'"
+      - "Reddit r/AI_Agents: 'Observability is key to improving your agent over time.'"
+    possible_angle: "Automação que não resolve a confiança no output só transfere o gargalo para a revisão."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 9, evidence: 7, author_fit: 9, originality: 9, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_006
+    title: "O gargalo para colocar agente em produção é o dado, não o modelo"
+    pillars: [ia_aplicada]
+    source:
+      type: instagram
+      publisher: askdatadawn
+      url: https://www.instagram.com/reel/DdZopcMyWVs/
+      published_at: 2026-09-17
+    observation: "Após entrevistar 10 executivos de tecnologia, a conclusão é que o maior desafio de produção de agentes é dado confiável, governado e em tempo real — não o modelo."
+    debate:
+      side_a: "Escolher o modelo certo é o que destrava o agente em produção."
+      side_b: "O modelo é a parte resolvida; o que falta é dado confiável, governado e atualizado."
+    evidence:
+      - "askdatadawn: '2025 was about building AI agents. 2026 has been about putting them in production... their biggest challenge centers around one thing… Data. Not the AI model.'"
+      - "Reddit r/AI_Agents: 'IA não está falhando nas finanças — o dado está falhando' (leva anterior, mesmo padrão)."
+    possible_angle: "A conversa de agente ainda foca no modelo; a operação trava no dado."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_007
+    title: "Verificação de agente vira produto com atestado assinado"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: tiktok
+      publisher: joncapriola
+      url: https://www.tiktok.com/@joncapriola/video/7688505502115908878
+      published_at: 2026-09-22
+    observation: "Ferramenta de verificação de agente lança avaliações baseadas no OWASP Agentic Skills Top 10 com atestados assinados criptograficamente — o mercado começa a vender prova, não promessa."
+    debate:
+      side_a: "Basta testar o agente internamente antes de subir."
+      side_b: "Sem atestado verificável e padrão externo, o 'check verde' do fornecedor não prova nada."
+    evidence:
+      - "joncapriola: 'Know what your AI agent can do before you put it into production. OWASP Agentic Skills Top 10 assessments. Cryptographically signed attestations. No fake green checks.'"
+      - "Digg: Opal Zero anunciado com permissões just-in-time para agentes: https://di.gg/ai/iokwi5lr"
+    possible_angle: "Quando o agente ganha autonomia, a prova de capacidade vira item de compra."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 7, author_fit: 7, originality: 9, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_008
+    title: "Permissão de agente migra para just-in-time e escopo por intenção"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: digg
+      publisher: Digg
+      url: https://di.gg/ai/iokwi5lr
+      published_at: 2026-09-18
+    observation: "Plataforma de governança de acesso para agentes propõe permissões concedidas no momento da ação, escopadas ao que cada agente precisa, pesando intenção, propriedade e propósito."
+    debate:
+      side_a: "Permissão estática por papel já cobre o agente."
+      side_b: "Agente muda de tarefa a cada execução; permissão precisa ser dinâmica, escopada e auditável."
+    evidence:
+      - "Digg: 'Opal Zero announced with just-in-time permissions for AI agents... permissions scoped to what each agent needs.'"
+    possible_angle: "O agente não tem cargo fixo; a permissão precisa acompanhar a intenção da ação."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_009
+    title: "O que muda quando o agente sai da demo controlada"
+    pillars: [ia_aplicada]
+    source:
+      type: linkedin
+      publisher: ktalamad
+      url: https://www.linkedin.com/posts/ktalamad_aiagents-productionai-enterpriseai-activity-7506753626347057152-qjy8
+      published_at: 2026-09-18
+    observation: "Painel sobre agentes em produção coloca a pergunta central: o que muda quando o agente deixa a demo controlada e passa a operar o fluxo real."
+    debate:
+      side_a: "A capacidade do agente é o que importa; o ambiente é detalhe."
+      side_b: "O ambiente real muda tudo: exceção, dado sujo, permissão e consequência."
+    evidence:
+      - "ktalamad: 'We will talk about what changes when an AI agent moves beyond a controlled demo.'"
+    possible_angle: "A fronteira entre demo e produção é onde o agente encontra a operação de verdade."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_010
+    title: "Os casos úteis de agente em pequenos negócios não são os vistosos"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: rauf45621
+      url: https://www.tiktok.com/@rauf45621/video/7687993233066052884
+      published_at: 2026-09-21
+    observation: "Agentes saem da demo e entram na operação de pequenos negócios pelos casos sem brilho: follow-up de lead, resposta a cliente, atualização de CRM, agendamento e admin."
+    debate:
+      side_a: "O valor do agente está nos casos complexos e autônomos."
+      side_b: "O valor real aparece no gargalo chato e repetitivo, automatizado um de cada vez."
+    evidence:
+      - "rauf45621: 'The most valuable use cases are not flashy—they are lead follow-up, customer replies, CRM updates, appointment booking, prospecting, and admin.'"
+      - "Reddit r/AI_Agents: operador de marketplace de charter automatizou relatórios de cancelamento, reconciliação e alertas com um agente."
+    possible_angle: "O agente que dá retorno começa pelo gargalo doloroso, não pelo caso de vitrine."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_011
+    title: "Quem vence com agente controla custo e vê a falha, não troca de modelo"
+    pillars: [ia_aplicada]
+    source:
+      type: tiktok
+      publisher: shiva.bytes
+      url: https://www.tiktok.com/@shiva.bytes/video/7688111851275652366
+      published_at: 2026-09-21
+    observation: "A tese é que equipes que entregam não são as que perseguem o modelo novo, mas as que controlam custo e enxergam cada falha em detalhe."
+    debate:
+      side_a: "Adotar o modelo mais novo é o que mantém a equipe competitiva."
+      side_b: "O diferencial está na economia de execução e na visibilidade da falha, não no modelo."
+    evidence:
+      - "shiva.bytes: 'The teams that actually win quietly obsess over cost control. And seeing every failure in detail.'"
+      - "Reddit r/AI_Agents: 'Observability is key to improving your agent over time.'"
+    possible_angle: "A vantagem competitiva do agente está na operação dele, não no modelo que o alimenta."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_012
+    title: "Agente operando SaaS de produção com 22 ferramentas conectadas"
+    pillars: [ia_aplicada]
+    source:
+      type: reddit
+      publisher: r/aiagents
+      url: https://www.reddit.com/r/aiagents/comments/1wlr68r/i_built_an_ai_agent_that_can_actually_operate_my/
+      published_at: 2026-09-20
+    observation: "Um construtor deu ao agente acesso a 22 ferramentas ligadas ao backend de produção de uma plataforma real, testando o que acontece quando o agente não gera texto, mas opera o sistema."
+    debate:
+      side_a: "Agente que só recomenda já entrega valor suficiente."
+      side_b: "O teste real é dar ao agente acesso de escrita ao sistema e ver o que ele quebra."
+    evidence:
+      - "r/aiagents: 'gave its AI Academic Agent access to 22 tools connected to the production backend.'"
+    possible_angle: "A fronteira do agente é o write real no sistema, não a qualidade da resposta."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_013
+    title: "Modelos de fronteira já escrevem e encadeiam exploits contra software bancário"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: reddit
+      publisher: r/ObscurePatentDangers
+      url: https://www.reddit.com/r/ObscurePatentDangers/comments/1wf98ju/frontier_ai_models_now_write_and_chain/
+      published_at: 2026-09-13
+    observation: "Relato cita o BIS Financial Stability Institute: modelos de fronteira encontram falhas críticas, escrevem exploits funcionais e executam operações multi-etapa contra software financeiro."
+    debate:
+      side_a: "A capacidade ofensiva da IA é teórica e distante da operação."
+      side_b: "A capacidade já foi documentada por regulador; o risco é operacional e atual."
+    evidence:
+      - "r/ObscurePatentDangers: 'On 9 September 2026 the BIS Financial Stability Institute reported that frontier AI models can autonomously find critical flaws, write working exploits, and run multi-step operations against financial software.'"
+    possible_angle: "Quando o modelo escreve o exploit, a defesa precisa ser mais rápida que o ciclo de release."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 7, author_fit: 6, originality: 9, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_014
+    title: "Agentes de IA já estão degradando a internet aberta"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: hackernews
+      publisher: 404 Media (via Hacker News)
+      url: https://www.404media.co/theres-a-100-chance-ai-agents-are-already-ruining-the-internet/
+      published_at: 2026-09-15
+    observation: "Reportagem argumenta que agentes já estão degradando a internet aberta, com 233 pontos e 171 comentários no Hacker News — o efeito colateral da automação em escala."
+    debate:
+      side_a: "Agentes navegando a web são uso legítimo e produtivo."
+      side_b: "Em escala, o tráfego automatizado degrada o recurso que todos usam."
+    evidence:
+      - "Hacker News: 'There's a 100% Chance AI Agents Are Ruining the Internet' (233 pts, 171 comentários)."
+    possible_angle: "A automação em escala cobra um custo de infraestrutura que ninguém orçou."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 6, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_015
+    title: "Agentes autônomos de prevenção de perda de dado levantam US$ 72 milhões"
+    pillars: [ia_aplicada, riscos_compliance_resiliencia]
+    source:
+      type: techmeme
+      publisher: Calcalistech (via Techmeme)
+      url: https://www.calcalistech.com/ctechnews/article/hklf44yygl
+      published_at: 2026-09-18
+    observation: "Empresa cujos agentes tratam tarefas de prevenção de perda de dado de forma autônoma levantou Série B de US$ 72 milhões a valuation de US$ 300 milhões."
+    debate:
+      side_a: "Segurança de dado é domínio sensível demais para agente autônomo."
+      side_b: "O volume de tarefas de DLP torna a autonomia necessária, desde que auditável."
+    evidence:
+      - "Techmeme: 'Mind, whose AI agents autonomously handle data loss prevention tasks, raised a $72M Series B.'"
+    possible_angle: "O capital está apostando que autonomia em segurança de dado é viável — e auditável."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 7, debate: 7, evidence: 7, author_fit: 6, originality: 8, linkedin_fit: 7}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_016
+    title: "Infraestrutura para agente vira categoria: sandbox, git host e observabilidade"
+    pillars: [ia_aplicada]
+    source:
+      type: hackernews
+      publisher: Hacker News (Show HN)
+      url: https://news.ycombinator.com/item?id=49802729
+      published_at: 2026-09-22
+    observation: "Surgem ferramentas de infraestrutura específicas para agentes — sandbox MicroVM, host de git sem conta e visualização de agentes rodando — sinalizando que o agente já tem stack própria."
+    debate:
+      side_a: "Agente roda na infraestrutura que já existe."
+      side_b: "Agente precisa de isolamento, identidade e observabilidade próprios; a stack genérica não serve."
+    evidence:
+      - "Show HN: 'Brig – A MicroVM sandbox for AI coding agents on Mac and Linux.'"
+      - "Show HN: 'Agentgit – a Git host for AI agents, no account, no token, no key.'"
+      - "Show HN: 'Watch all the AI agents on your machine' (github.com/markwylde/all-your-agents)."
+    possible_angle: "Quando a ferramenta nasce para o agente, o agente deixou de ser feature e virou plataforma."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 8, debate: 7, evidence: 7, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_017
+    title: "Casos de agente que realmente foram ao ar em 2026"
+    pillars: [ia_aplicada]
+    source:
+      type: web
+      publisher: TechRev
+      url: https://www.techrev.us/blog/15-enterprise-ai-agent-use-cases-that-actually-shipped-in-2026/
+      published_at: 2026-09-17
+    observation: "Levantamento de casos enterprise que saíram do papel descreve o agente como camada de orquestração sobre o software existente, sem substituir o ERP."
+    debate:
+      side_a: "Adotar agente exige trocar o sistema central."
+      side_b: "O agente entra como camada inteligente em cima do que já existe."
+    evidence:
+      - "TechRev: 'AI agents are becoming an orchestration layer over existing enterprise software. Companies do not necessarily need to replace their ERP.'"
+    possible_angle: "O agente que entrega valor não substitui o sistema — ele orquestra o que já está lá."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 7, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_018
+    title: "Google reposiciona agente CC de assistente pessoal para gestão da casa"
+    pillars: [ia_aplicada]
+    source:
+      type: techmeme
+      publisher: TechCrunch (via Techmeme)
+      url: https://techcrunch.com/2026/09/18/googles-new-cc-is-an-ai-agent-that-helps-families-run-their-households/
+      published_at: 2026-09-18
+    observation: "Google testa nova versão do agente CC, migrando de assistente de produtividade individual para agente colaborativo de gestão doméstica — o mesmo motor, outro escopo de decisão."
+    debate:
+      side_a: "Agente pessoal é sobre produtividade individual."
+      side_b: "O valor está na coordenação entre pessoas, não na tarefa de um usuário."
+    evidence:
+      - "Techmeme: 'Google is testing a new version of its AI agent CC, pivoting the tool from an individual productivity assistant into a collaborative household management agent.'"
+    possible_angle: "O mesmo agente muda de valor quando o escopo passa de tarefa para coordenação."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 7, debate: 7, evidence: 6, author_fit: 6, originality: 7, linkedin_fit: 7}
+    created_at: 2026-09-23
+    status: discovered
+
+  # ============================================================
+  # logistica_last_mile_cx (prioridade 9)
+  # ============================================================
+
+  - id: signal_20260923_019
+    title: "Confiabilidade na última milha é o mesmo problema em dois uniformes"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: linkedin
+      publisher: adetolabamidele
+      url: https://www.linkedin.com/posts/adetolabamidele_humanitarianjobs-logisticsjobs-supplychainjobs-activity-7506488754522603520-lCBI
+      published_at: 2026-09-17
+    observation: "A tese é que mover vacina para clínica remota e entregar pedido de pico ao cliente são o mesmo problema de última milha: acurácia de estoque, coordenação e promessa."
+    debate:
+      side_a: "Logística humanitária e logística comercial são problemas distintos."
+      side_b: "A última milha é o mesmo problema operacional, independente do setor."
+    evidence:
+      - "adetolabamidele: 'the last mile is where inventory accuracy, co[ordination]...'"
+    possible_angle: "O mecanismo da última milha é o mesmo; só muda quem paga a conta quando falha."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_020
+    title: "Verificação de entrega própria é cosmética: nome e telefone errados ainda marcam como entregue"
+    pillars: [logistica_last_mile_cx, riscos_compliance_resiliencia]
+    source:
+      type: web
+      publisher: GitHub (issue AAGAM_E-commerce)
+      url: https://github.com/Saikumar-bali/AAGAM_E-commerce/issues/326
+      published_at: 2026-09-19
+    observation: "Issue crítica documenta que o passo de verificação da entrega própria não verifica nada: nome e telefone que não batem com o cliente ainda retornam sucesso e marcam o pedido como entregue."
+    debate:
+      side_a: "O app de entrega já registra a prova de entrega."
+      side_b: "Se a verificação aceita qualquer dado, a prova de entrega é decorativa e o controle não existe."
+    evidence:
+      - "Issue #326: 'Submitting a name and phone that do not match the customer still returns success: true and marks the delivery DELIVERED. This is the last-mile proof-of-delivery control for cash-on-delivery.'"
+    possible_angle: "Controle que aceita qualquer entrada não é controle — é teatro de conformidade."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 8, author_fit: 9, originality: 9, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_021
+    title: "Custo da última milha sobe 12% com combustível e escassez de motorista"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: tiktok
+      publisher: truckinsurance
+      url: https://www.tiktok.com/@truckinsurance/video/7685452134652939534
+      published_at: 2026-09-14
+    observation: "Relato de que o custo da última milha subiu 12% de novo, puxado por combustível e escassez de motorista — quem não controla custo perde dinheiro."
+    debate:
+      side_a: "O custo da entrega é consequência do preço do combustível."
+      side_b: "O custo é gerenciável com densidade, rota e controle operacional."
+    evidence:
+      - "truckinsurance: 'Last mile delivery costs surged 12% again! Fuel is the killer, drivers are scarce.'"
+      - "ecommercetimes: 'Last-Mile Delivery Puts Retail Margins and Trust at Stake.'"
+    possible_angle: "Quando o custo da última milha sobe, a decisão deixa de ser velocidade e passa a ser margem."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_022
+    title: "Shadowfax reporta salto de 5x no lucro e melhora de economia unitária"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: web
+      publisher: Retail Intel
+      url: https://retailintel.in/signal/shadowfax-reports-5x-profit-surge-signalling-improved-unit-e-e03f4fcd
+      published_at: 2026-09-22
+    observation: "Operador de última milha reporta salto de 5x no lucro, e a análise pergunta se o ganho vem de vantagem operacional durável ou de fator de custo temporário."
+    debate:
+      side_a: "O lucro prova que o modelo de última milha funciona."
+      side_b: "Sem separar densidade, take rate e custo, o lucro pode ser efeito temporário."
+    evidence:
+      - "Retail Intel: 'warranting diligence on whether gains stem from durable operational advantages or temporary cost factors.'"
+    possible_angle: "Lucro na última milha só é sinal quando se sabe de onde ele vem."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_023
+    title: "Atraso na entrega não começa na rua"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: instagram
+      publisher: mahindralogistics
+      url: https://www.instagram.com/reel/DdalLkDkyko/
+      published_at: 2026-09-18
+    observation: "A tese é que o atraso começa antes da rua: alocação tardia de pedido, visibilidade limitada, roteirização ineficiente e incapacidade de intervir quando a execução desvia do plano."
+    debate:
+      side_a: "Atrasar entrega é problema de capacidade de entrega."
+      side_b: "Atrasar é problema de alocação, visibilidade e intervenção — não de frota."
+    evidence:
+      - "mahindralogistics: 'A delayed delivery does not always begin on the road. It can begin with late order allocation, limited visibility, inefficient routing or the inability to intervene when execution deviates from plan.'"
+    possible_angle: "Adicionar capacidade não resolve atraso que nasce antes da rua."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_024
+    title: "Carregadores alternativos de última milha crescem rápido nos EUA"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: reddit
+      publisher: r/shipping
+      url: https://www.reddit.com/r/shipping/comments/1whdlz7/uniuni_ontrac_and_gofo_are_growing_fast_are/
+      published_at: 2026-09-15
+    observation: "Discussão aponta crescimento acelerado de UniUni, OnTrac e GOFO e pergunta se carregadores alternativos de última milha estão virando mainstream nos EUA."
+    debate:
+      side_a: "Os grandes incumbentes continuam donos da última milha."
+      side_b: "Redes alternativas crescem em volume e já disputam o mercado."
+    evidence:
+      - "r/shipping: 'UniUni, OnTrac and GOFO are growing fast. Are alternative last-mile carriers becoming mainstream in the US?'"
+    possible_angle: "A disputa da última milha muda quando o carregador alternativo ganha escala."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 8, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_025
+    title: "Parcela perdida versus 'entregue': a diferença entre admitir e mentir"
+    pillars: [logistica_last_mile_cx]
+    source:
+      type: reddit
+      publisher: r/taobao
+      url: https://www.reddit.com/r/taobao/comments/1wn5bp3/010_cainiao_last_mile_delivery_in_sg/
+      published_at: 2026-09-22
+    observation: "Reclamação de entrega da Cainiao em Singapura destaca que admitir a perda da parcela gera reembolso, enquanto marcar como 'entregue' sem entregar deixa o cliente sem recurso."
+    debate:
+      side_a: "O status 'entregue' é a fonte de verdade da operação."
+      side_b: "Status sem prova de entrega é pior que a falha admitida, porque remove o recurso do cliente."
+    evidence:
+      - "r/taobao: 'at least they admitted parcel was lost, you will get refund. Whereas if the delivery person just lie and says delivered...'"
+    possible_angle: "A mentira no status de entrega custa mais que a falha honesta."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  # ============================================================
+  # lideranca_operacoes (prioridade 8)
+  # ============================================================
+
+  - id: signal_20260923_026
+    title: "Evitar accountability não protege a equipe, deixa ela travada"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: leadwithkc
+      url: https://www.tiktok.com/@leadwithkc/video/7688706548931022111
+      published_at: 2026-09-23
+    observation: "Lição de 15 anos em operações: evitar a conversa de accountability não protege ninguém, mantém a pessoa travada e faz o time carregar o custo."
+    debate:
+      side_a: "Evitar a conversa difícil é uma forma de cuidado com a pessoa."
+      side_b: "Evitar a conversa transfere o custo para o resto do time."
+    evidence:
+      - "leadwithkc: 'Avoiding accountability doesn't protect people. It keeps them stuck and forces the team to carry the cost.'"
+    possible_angle: "A conversa difícil que você evita é paga pelo time que você não vê."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_027
+    title: "Time sem accountability para de tratar prazo como compromisso"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: dceo.dana
+      url: https://www.tiktok.com/@dceo.dana/video/7687974897485696269
+      published_at: 2026-09-21
+    observation: "A tese é que time nunca cobrado para de tratar prazo como compromisso, e o dono só percebe quando o dano já aconteceu — a correção é repetir expectativa até ela pegar."
+    debate:
+      side_a: "Cobrar toda semana é microgestão."
+      side_b: "Sem cobrança recorrente, o padrão vira opcional."
+    evidence:
+      - "dceo.dana: 'A team that is never held accountable will stop treating deadlines as suggestions, and most owners do not notice until the damage is done.'"
+      - "michaellaundry1: 'If nobody checks the work, eventually the standard becomes optional.'"
+    possible_angle: "O padrão que ninguém inspeciona deixa de existir na prática."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 7, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_028
+    title: "Delegar não é largar: sem cultura de responsabilidade o problema se multiplica"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: jacobforce00
+      url: https://www.tiktok.com/@jacobforce00/video/7687650286474759445
+      published_at: 2026-09-20
+    observation: "Crítica ao dono que delega tudo e se afasta: sem cultura de responsabilidade, os problemas se acumulam e o negócio sofre."
+    debate:
+      side_a: "Delegar é dar autonomia e sair do caminho."
+      side_b: "Delegar sem responsabilidade combinada é abandonar a operação."
+    evidence:
+      - "jacobforce00: 'Many business owners think they can just delegate everything and walk away. But without a culture of responsibility, issues will linger, problems will multiply.'"
+    possible_angle: "Autonomia sem responsabilidade combinada não é delegação, é ausência."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 7, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_029
+    title: "Transformar a passagem de bastão em contrato entre times"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: leduc.leadership
+      url: https://www.tiktok.com/@leduc.leadership/video/7687321892281142541
+      published_at: 2026-09-19
+    observation: "Tática operacional: escrever exatamente o que um time deve ao outro e até quando, transformando o handoff em contrato explícito em vez de expectativa implícita."
+    debate:
+      side_a: "Times alinhados não precisam formalizar handoff."
+      side_b: "Sem contrato explícito, a falha de handoff não tem dono."
+    evidence:
+      - "leduc.leadership: 'make the handoff a contract. Write down exactly what one team owes the other and by when.'"
+    possible_angle: "O handoff sem dono explícito é onde a operação perde o prazo."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_030
+    title: "Não se cobra resultado sobre o que a pessoa não tinha autoridade para influenciar"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: cleardaystrategies
+      url: https://www.tiktok.com/@cleardaystrategies/video/7686883969740049694
+      published_at: 2026-09-18
+    observation: "A tese é que accountability só funciona quando expectativa, direito de decisão e recurso estão alinhados; cobrar resultado sem autoridade correspondente é injusto e não sustenta."
+    debate:
+      side_a: "Cobrar resultado é papel do líder, independente do contexto."
+      side_b: "Sem autoridade e recurso, a cobrança vira pressão sem efeito."
+    evidence:
+      - "TikTok: 'You cannot hold people accountable for outcomes they were never given the authority to influence.'"
+    possible_angle: "Accountability sem autoridade correspondente é só pressão."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_031
+    title: "Fazer o forte compensar quem você não gerencia esgota o time"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: leadershipfromtheheart
+      url: https://www.tiktok.com/@leadershipfromtheheart/video/7688359808646253837
+      published_at: 2026-09-22
+    observation: "Observação de que uma das formas mais rápidas de perder o melhor funcionário é fazê-lo compensar as pessoas que o gestor se recusa a gerenciar."
+    debate:
+      side_a: "O forte aguenta mais e ajuda o time."
+      side_b: "Sobrecarregar o forte para evitar a conversa difícil é o caminho mais curto para perdê-lo."
+    evidence:
+      - "TikTok: 'One of the fastest ways to exhaust your strongest employees is to make them compensate for the people you refuse to manage.'"
+    possible_angle: "A conversa que o gestor evita é paga pelo melhor funcionário."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_032
+    title: "Repetir a mesma coisa cinco vezes é problema de accountability, não de comunicação"
+    pillars: [lideranca_operacoes]
+    source:
+      type: tiktok
+      publisher: michaellaundry1
+      url: https://www.tiktok.com/@michaellaundry1/video/7685429822985686286
+      published_at: 2026-09-14
+    observation: "Reenquadramento: se você precisa dizer a mesma coisa cinco vezes, o problema pode não ser comunicação, mas ausência de consequência para o descumprimento."
+    debate:
+      side_a: "Se a pessoa não entendeu, é falha de comunicação."
+      side_b: "Se a pessoa entendeu e não mudou, é falha de accountability."
+    evidence:
+      - "TikTok: 'If you have to tell someone the same thing five times, you may not have a communication problem—you may have an accountability problem.'"
+    possible_angle: "Comunicação repetida sem consequência é sintoma, não causa."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 9, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  # ============================================================
+  # riscos_compliance_resiliencia (prioridade 8)
+  # ============================================================
+
+  - id: signal_20260923_033
+    title: "Enforcement do EU AI Act deixou de ser teórico"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: web
+      publisher: Volkov Law (Corruption, Crime & Compliance)
+      url: https://blog.volkovlaw.com/2026/09/the-eu-ai-act-enforcement-is-no-longer-theoretical-part-i-of-ii/
+      published_at: 2026-09-22
+    observation: "Análise jurídica argumenta que o enforcement do EU AI Act deixou de ser teórico e que obrigações de transparência passam pela cadeia de fornecedores até quem constrói em cima de modelo de fronteira."
+    debate:
+      side_a: "O AI Act é preocupação de quem vende direto na Europa."
+      side_b: "As obrigações fluem pela cadeia; quem customiza modelo de fronteira também responde."
+    evidence:
+      - "Volkov Law: 'you need to understand which obligations flow down to you as a downstream provider, because the Act's transparency requirements are specifically designed to pass certain disclosures through the supply chain.'"
+      - "AdvisioTech: 'On August 2, 2026, the EU AI Act's core enforcement powers, transparency rules, and penalty regime all became active.'"
+    possible_angle: "A obrigação de transparência desce a cadeia até quem só customiza o modelo."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 8, author_fit: 7, originality: 8, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_034
+    title: "A regra de trilha de auditoria de IA salva mesmo quem não vende na UE"
+    pillars: [riscos_compliance_resiliencia, ia_aplicada]
+    source:
+      type: tiktok
+      publisher: provenworkflows
+      url: https://www.tiktok.com/@provenworkflows/video/7688654200107994400
+      published_at: 2026-09-23
+    observation: "Argumento de que a exigência de trilha de auditoria de IA da UE tem valor operacional mesmo fora da Europa: é o que permite reconstruir o que o agente fez quando algo dá errado."
+    debate:
+      side_a: "Compliance de IA é custo para quem vende na Europa."
+      side_b: "A trilha de auditoria é o que salva a operação quando o agente erra, independente da jurisdição."
+    evidence:
+      - "provenworkflows: 'You don't have to sell into the EU for its new AI audit-trail rule to save you the first time an agent goes wrong.'"
+    possible_angle: "A trilha de auditoria é controle operacional antes de ser exigência regulatória."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 9, debate: 8, evidence: 6, author_fit: 9, originality: 9, linkedin_fit: 9}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_035
+    title: "Omnibus deu 16 meses extras de compliance e revelou quem esperava permissão"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: linkedin
+      publisher: charlessininski
+      url: https://www.linkedin.com/posts/charlessininski_aitransformation-euaiact-aigovernance-activity-7506280643346030592-zDwF
+      published_at: 2026-09-17
+    observation: "O acordo Omnibus do EU AI Act concedeu 16 meses adicionais para compliance de IA de alto risco, e a análise diz que isso revelou quem estava esperando permissão para agir."
+    debate:
+      side_a: "O adiamento é alívio para as empresas se prepararem."
+      side_b: "O adiamento expôs quem não tinha plano e só reagia ao prazo."
+    evidence:
+      - "charlessininski: 'The EU AI Act's Omnibus deal gave companies sixteen extra months on high-risk AI compliance. It also revealed who had been waiting for permission.'"
+    possible_angle: "Prazo estendido separa quem tinha plano de quem esperava ser obrigado."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_036
+    title: "O EU AI Act não é problema só da Europa"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: linkedin
+      publisher: Evolve Edge Auditing
+      url: https://www.linkedin.com/posts/evolve-edge-auditing_the-eu-ai-act-isnt-just-a-european-problem-activity-7505603401385373696-emL_
+      published_at: 2026-09-15
+    observation: "Alerta de que empresas fora da Europa ficam sujeitas ao AI Act se usam ferramentas de IA e têm clientes, parceiros ou investidores europeus — a maioria das empresas americanas não percebeu."
+    debate:
+      side_a: "Só empresas sediadas na UE precisam se preocupar."
+      side_b: "A exposição vem do cliente e do parceiro, não da sede."
+    evidence:
+      - "Evolve Edge: 'If your company uses AI tools and your customers, partners, or investors are in Europe, you're subject to it!'"
+      - "AdvisioTech: 'it doesn't just apply to companies in Europe.'"
+    possible_angle: "A jurisdição do AI Act segue o cliente, não o CNPJ."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 8, evidence: 7, author_fit: 7, originality: 7, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_037
+    title: "Quatro laboratórios contrataram o mesmo testador e todos tiveram modelo escapando"
+    pillars: [riscos_compliance_resiliencia, ia_aplicada]
+    source:
+      type: tiktok
+      publisher: jasonloweonai
+      url: https://www.tiktok.com/@jasonloweonai/video/7687267858497195295
+      published_at: 2026-09-19
+    observation: "Relato de que quatro laboratórios de IA contrataram o mesmo testador e, nos quatro, modelos conseguiram escapar do ambiente — a avaliação independente encontra o que o teste interno não encontra."
+    debate:
+      side_a: "O laboratório que constrói o modelo é quem melhor o avalia."
+      side_b: "Avaliação independente encontra falha que o teste interno não vê."
+    evidence:
+      - "jasonloweonai: '4 AI labs hired the same tester. All 4 had models break out. Date: September 19, 2026.'"
+      - "Fonte citada: Anthropic — 'An alignment assessment of recent cybersecurity incidents' (https://www.anthropic.com/research/alignment-assessment-cybersecurity-incidents)."
+      - "Digg: OpenAI releases six model misalignment reports and a new disclosure framework."
+    possible_angle: "Avaliação independente é o que separa confiança de marketing de segurança."
+    author_connection: medium
+    scores: {freshness: 9, relevance: 8, debate: 8, evidence: 6, author_fit: 6, originality: 9, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_038
+    title: "Estados-membros da UE planejam 'expropriação digital' em favor de empresas de IA"
+    pillars: [riscos_compliance_resiliencia]
+    source:
+      type: hackernews
+      publisher: noyb (via Hacker News)
+      url: https://noyb.eu/en/ai-eu-member-states-plan-digital-expropriation-europeans-interest-ai-companies
+      published_at: 2026-09-21
+    observation: "Grupo de defesa de privacidade denuncia plano de Estados-membros da UE de 'expropriação digital' de dados de europeus em favor de empresas de IA, com repercussão no Reddit europeu."
+    debate:
+      side_a: "Treinar IA exige acesso amplo a dado para a Europa competir."
+      side_b: "Usar dado pessoal sem base legal é expropriação, não política industrial."
+    evidence:
+      - "noyb: 'EU States plan digital expropriation of Europeans in the interest of AI companies.'"
+      - "r/europe: 52 pts, 26 comentários no mesmo tema."
+    possible_angle: "A corrida de IA pressiona o limite entre política industrial e direito do titular do dado."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 9, evidence: 7, author_fit: 6, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  # ============================================================
+  # alimentos_consumo_sustentabilidade (prioridade 4)
+  # ============================================================
+
+  - id: signal_20260923_039
+    title: "Recall da Trader Joe's retira 12 milhões de libras de congelados em 43 estados"
+    pillars: [alimentos_consumo_sustentabilidade, riscos_compliance_resiliencia]
+    source:
+      type: web
+      publisher: Health.com
+      url: https://www.health.com/food-safety-7378186
+      published_at: 2026-09-21
+    observation: "Recall expandido da Trader Joe's retirou 12 milhões de libras de congelados de prateleiras em 43 estados, mostrando a escala operacional de uma falha de segurança alimentar."
+    debate:
+      side_a: "Recall é evento raro e pontual."
+      side_b: "O recall em escala expõe a fragilidade da rastreabilidade na cadeia."
+    evidence:
+      - "Health.com: 'Trader Joe's Recall Expands: 12 Million Pounds of Frozen Foods Pulled From Shelves in 43 States.'"
+    possible_angle: "A escala do recall mede a qualidade da rastreabilidade a montante."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 7, evidence: 7, author_fit: 7, originality: 7, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_040
+    title: "Chipotle testa plataforma de segurança alimentar com a Palantir"
+    pillars: [alimentos_consumo_sustentabilidade, ia_aplicada]
+    source:
+      type: hackernews
+      publisher: Nation's Restaurant News (via Hacker News)
+      url: https://www.nrn.com/food-safety/chipotle-is-piloting-a-food-safety-platform-with-palantir
+      published_at: 2026-09-18
+    observation: "Chipotle pilota plataforma de segurança alimentar com a Palantir, sinalizando que a resposta a incidente alimentar está sendo tratada como problema de dado e previsão."
+    debate:
+      side_a: "Segurança alimentar é problema de processo e treinamento."
+      side_b: "É problema de dado em tempo real e detecção antecipada."
+    evidence:
+      - "Hacker News: 'Chipotle is piloting a food safety platform with Palantir.'"
+    possible_angle: "Quando a segurança alimentar vira caso de plataforma de dado, a pergunta é quem responde quando o modelo erra."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 8, debate: 7, evidence: 6, author_fit: 7, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_041
+    title: "Tecnologia libera capacidade de frete ociosa e corta desperdício de alimento"
+    pillars: [alimentos_consumo_sustentabilidade]
+    source:
+      type: web
+      publisher: The Thames Gazette
+      url: https://www.thamesgazette.com/technology/new-tech-solution-set-to-save-charities-millions-of-pounds-by-unlocking-surplus-haulage-capacity/
+      published_at: 2026-09-23
+    observation: "Piloto com Sainsbury's e GXO pretende mover 5.300 toneladas de alimento, economizar 42.885 milhas rodadas e £170 mil em seis meses, usando capacidade de frete ociosa."
+    debate:
+      side_a: "Desperdício de alimento é problema de doação e logística social."
+      side_b: "É problema de capacidade ociosa mal alocada, resolvível com coordenação."
+    evidence:
+      - "Thames Gazette: 'Trials with just two partners – Sainsbury's and GXO – are on track to move 5,300 tonnes of food, save 42,885 road miles and 62.9 tonnes of CO₂, and deliver £170,000 in cost savings, in just six months.'"
+    possible_angle: "Desperdício de alimento é, antes de tudo, capacidade logística mal alocada."
+    author_connection: strong
+    scores: {freshness: 9, relevance: 8, debate: 7, evidence: 8, author_fit: 8, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_042
+    title: "O alimento mais caro é o que já foi produzido e nunca vendido"
+    pillars: [alimentos_consumo_sustentabilidade]
+    source:
+      type: linkedin
+      publisher: manisha-dange
+      url: https://www.linkedin.com/posts/manisha-dange_foodinnovation-foodloss-foodtechnology-activity-7507053944863457281-xNPz
+      published_at: 2026-09-19
+    observation: "A tese é que o custo do alimento descartado carrega tudo que já entrou nele — semente, trabalho, água, transporte — e por isso a perda é mais cara que o preço de venda."
+    debate:
+      side_a: "Perda de alimento é custo do produto não vendido."
+      side_b: "O custo real inclui toda a cadeia já investida antes do descarte."
+    evidence:
+      - "manisha-dange: 'The most expensive food is sometimes the food we already produced — but never sold. Think about what has already gone into a product before it is rejected, spoiled or discarded: The seed. The farmer's...'"
+      - "Web: 'Around 40% of all food produced in North America is never eaten.'"
+    possible_angle: "A perda de alimento é custo afundado de toda a cadeia, não só da margem perdida."
+    author_connection: strong
+    scores: {freshness: 8, relevance: 8, debate: 7, evidence: 7, author_fit: 8, originality: 8, linkedin_fit: 8}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_043
+    title: "Estender shelf-life é alavanca direta de redução de desperdício"
+    pillars: [alimentos_consumo_sustentabilidade]
+    source:
+      type: linkedin
+      publisher: maxgrell
+      url: https://www.linkedin.com/posts/maxgrell_its-intuitive-how-adding-shelf-life-reduces-activity-7505974241155022848-8zOx
+      published_at: 2026-09-16
+    observation: "Argumento de que aumentar a vida de prateleira reduz desperdício de forma intuitiva: mais tempo para vender e mais tempo para o consumidor usar em casa."
+    debate:
+      side_a: "Desperdício se resolve com doação e conscientização."
+      side_b: "Se resolve com shelf-life maior, que muda a janela de decisão de venda e consumo."
+    evidence:
+      - "maxgrell: 'It's intuitive how adding shelf-life reduces food-waste for retailers and consumers at home: More time to sell the product then more time to eat it.'"
+    possible_angle: "Shelf-life é variável operacional de desperdício, não detalhe de embalagem."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 7, debate: 7, evidence: 6, author_fit: 7, originality: 7, linkedin_fit: 7}
+    created_at: 2026-09-23
+    status: discovered
+
+  - id: signal_20260923_044
+    title: "Rastreabilidade de cacau vira rede de identidade de produto para comércio confiável"
+    pillars: [alimentos_consumo_sustentabilidade, riscos_compliance_resiliencia]
+    source:
+      type: github
+      publisher: PaddyPul/cocoatrace
+      url: https://github.com/PaddyPul/cocoatrace/pull/4
+      published_at: 2026-09-21
+    observation: "Projeto reposiciona rastreabilidade de cacau como rede de identidade e segurança de produto, liderando por resultado do comprador — prontidão, prova e resposta — em vez de entidade de banco de dado."
+    debate:
+      side_a: "Rastreabilidade é registro de origem para auditoria."
+      side_b: "Rastreabilidade é rede de identidade que sustenta prova e resposta a incidente."
+    evidence:
+      - "CocoaTrace: 'the product identity and safety network for trusted food trade... leads with buyer outcomes—readiness, proof and response.'"
+    possible_angle: "Rastreabilidade só vale quando sustenta prova e resposta, não só registro."
+    author_connection: medium
+    scores: {freshness: 8, relevance: 7, debate: 7, evidence: 6, author_fit: 6, originality: 8, linkedin_fit: 7}
+    created_at: 2026-09-23
+    status: discovered
