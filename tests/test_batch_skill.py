@@ -80,6 +80,47 @@ def test_selection_filters_ready_orders_and_supports_all_n_and_explicit_ids(tmp_
     ]
 
 
+def test_selection_normalizes_editorial_topic_schema_id_and_nested_score(tmp_path):
+    (tmp_path / "content").mkdir()
+    (tmp_path / "research" / "topics").mkdir(parents=True)
+    (tmp_path / "content" / "backlog.md").write_text(
+        "## 82.00 - Editorial topic\n\n"
+        "topic_editorial\n"
+        "Status: ready_for_research\n"
+    )
+    (tmp_path / "research" / "topics" / "topics_20260915.yaml").write_text(
+        yaml.safe_dump({"topics": [{
+            "id": "topic_editorial",
+            "title": "Editorial topic",
+            "scores": {"total": 82.0},
+            "status": "ready_for_research",
+        }]})
+    )
+
+    selected = load_and_select_topics(
+        tmp_path / "content" / "backlog.md",
+        tmp_path / "research" / "topics",
+        "topic_editorial",
+    )
+
+    assert selected[0]["topic_id"] == "topic_editorial"
+    assert selected[0]["score"] == 82.0
+
+
+def test_persist_rejects_generic_review_for_real_editorial_artifact(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics", "1"
+    ))
+    with pytest.raises(ValueError, match="editorial review evidence gate"):
+        persist_stage(
+            tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+            "research/briefs/topic_c.md", "# Brief\n\n" + ("Conteúdo editorial suficiente. " * 30),
+            {"artifact": "research/briefs/topic_c.md"},
+            valid_review("research/briefs/topic_c.md"),
+        )
+
+
 def test_explicit_selection_rejects_missing_or_non_ready_ids(tmp_path):
     write_fixture(tmp_path)
     source = (tmp_path / "content" / "backlog.md", tmp_path / "research" / "topics")
@@ -1340,3 +1381,22 @@ def test_temporary_cycle_file_blocks_and_is_preserved(tmp_path):
     assert blocked["status"] == "blocked"
     assert blocked["failure_reasons"][0]["code"] == "temporary_file_present"
     assert temporary.read_text() == "interrupted"
+
+
+def test_persist_stage_records_optional_runtime_token_usage(tmp_path):
+    write_fixture(tmp_path)
+    freeze_manifest(tmp_path / "runs", "run_001", "1", load_and_select_topics(
+        tmp_path / "content/backlog.md", tmp_path / "research/topics", "1"
+    ))
+    persist_stage(
+        tmp_path / "runs", tmp_path, "run_001", "topic_c", "research-topic", 1,
+        "content/draft.md", "draft", valid_result("content/draft.md"),
+        valid_review("content/draft.md"),
+        usage={"model": "runtime-model", "input_tokens": 100, "output_tokens": 20,
+               "cached_input_tokens": 40},
+    )
+    result = yaml.safe_load((tmp_path / "runs/run_001/topics/topic_c/results/research-topic-cycle-01.yaml").read_text())
+    assert result["usage"]["input_tokens"] == 100
+    log = (tmp_path / "runs/run_001/token-usage.jsonl").read_text()
+    assert '"stage":"research-topic"' in log
+    assert '"input_tokens":100' in log

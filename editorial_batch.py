@@ -9,7 +9,8 @@ from pathlib import Path
 
 import yaml
 
-from gauntlet_loop import validate_review
+from execution_log import ExecutionLogger
+from gauntlet_loop import validate_editorial_evidence, validate_review
 
 
 CANONICAL_STAGES = [
@@ -170,7 +171,12 @@ def _topics_from_files(topics_dir):
     for path in sorted(Path(topics_dir).glob("topics_*.yaml")):
         document = yaml.safe_load(path.read_text()) or {}
         for topic in document.get("topics", []):
-            topics[topic["topic_id"]] = topic
+            normalized = dict(topic)
+            normalized["topic_id"] = normalized.get("topic_id", normalized.get("id"))
+            if "score" not in normalized:
+                normalized["score"] = (normalized.get("scores") or {}).get("total")
+            if normalized["topic_id"]:
+                topics[normalized["topic_id"]] = normalized
     return topics
 
 
@@ -632,6 +638,7 @@ def persist_stage(
     artifact_content,
     result,
     review,
+    usage=None,
 ):
     if not _valid_id(run_id, "run_") or not _valid_id(topic_id, "topic_"):
         raise ValueError("run or topic id is invalid")
@@ -641,10 +648,29 @@ def persist_stage(
         raise ValueError("artifact path must be clean relative path")
     if not _review_is_structural(review, artifact_path):
         raise ValueError("review is invalid")
+    if (artifact_path.startswith(("research/briefs/", "content/drafts/"))
+            and isinstance(artifact_content, str) and len(artifact_content) >= 500):
+        evidence_check = validate_editorial_evidence(review, artifact_content, artifact_path)
+        if not evidence_check["valid"]:
+            raise ValueError("editorial review evidence gate failed: " + "; ".join(evidence_check["errors"]))
     if not _review_passes(review, artifact_path):
         raise ValueError("review quality gate failed")
     if not isinstance(result, dict) or result.get("artifact") != artifact_path:
         raise ValueError("result artifact is invalid")
+    stage_result = dict(result)
+    if usage is not None:
+        if not isinstance(usage, dict):
+            raise ValueError("usage must be an object")
+        allowed_usage = {"model", "input_tokens", "output_tokens", "cached_input_tokens"}
+        if set(usage) - allowed_usage:
+            raise ValueError("usage contains unsupported fields")
+        for field in allowed_usage - {"model"}:
+            value = usage.get(field)
+            if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+                raise ValueError(f"usage.{field} must be a non-negative integer")
+        if "model" in usage and (not isinstance(usage["model"], str) or not usage["model"].strip()):
+            raise ValueError("usage.model must be a non-empty string")
+        stage_result["usage"] = dict(usage)
     root = Path(workspace_root).resolve()
     artifact = (root / artifact_path).resolve()
     if root not in artifact.parents:
@@ -685,7 +711,7 @@ def persist_stage(
     expected_intent = {
         "idempotency_key": key, "stage": stage, "cycle": cycle,
         "artifact_path": artifact_path, "result_path": result_relative,
-        "review_path": review_relative, "result": result, "review": review,
+        "review_path": review_relative, "result": stage_result, "review": review,
         "artifact_fingerprint": "sha256:" + sha256(str(artifact_content).encode()).hexdigest(),
     }
     if pending_intent:
@@ -735,7 +761,7 @@ def persist_stage(
                 raise ValueError("checkpoint is divergent")
             stored_result = _load_yaml(root / event["result_path"], "result")
             stored_review = _load_yaml(root / event["review_path"], "review")
-            if (stored_result != result or stored_review != review or event.get("result") != result
+            if (stored_result != stage_result or stored_review != review or event.get("result") != stage_result
                     or event.get("review") != review):
                 raise ValueError("checkpoint payload is divergent")
             state = _load_yaml(state_file, "state")
@@ -747,7 +773,18 @@ def persist_stage(
         raise ValueError("stage does not match current_stage")
     if any(prerequisite not in state.get("completed_stages", []) for prerequisite in CANONICAL_STAGES[:CANONICAL_STAGES.index(stage)]):
         raise ValueError("stage prerequisites are incomplete")
-    existing_paths = [path for path in pending_paths if path.exists()]
+    existing_paths = []
+    for path in pending_paths:
+        if not path.exists():
+            continue
+        if path == artifact and path.is_file():
+            try:
+                if (not pending_intent
+                        and path.read_bytes() == str(artifact_content).encode()):
+                    continue
+            except OSError:
+                pass
+        existing_paths.append(path)
     if existing_paths:
         if pending_intent is None:
             return _blocked_partial_cycle(
@@ -759,7 +796,7 @@ def persist_stage(
             complete_payload = (
                 all(path.is_file() for path in pending_paths)
                 and pending_intent.get("artifact_fingerprint", "") == "sha256:" + sha256(artifact.read_bytes()).hexdigest()
-                and _load_yaml(result_file, "result") == result
+                and _load_yaml(result_file, "result") == stage_result
                 and _load_yaml(review_file, "review") == review
             )
         except (OSError, UnicodeDecodeError, ValueError):
@@ -775,7 +812,7 @@ def persist_stage(
         "event_id": f"evt_{len(existing['events']) + 1:04d}",
         "phase": "intent", "idempotency_key": key, "stage": stage, "cycle": cycle,
         "artifact_path": artifact_path, "result_path": result_relative,
-        "review_path": review_relative, "result": result, "review": review,
+        "review_path": review_relative, "result": stage_result, "review": review,
         "artifact_fingerprint": "sha256:" + sha256(str(artifact_content).encode()).hexdigest(),
     }
     if pending_intent is None:
@@ -786,14 +823,14 @@ def persist_stage(
     if not artifact.exists():
         _atomic_write_bytes(artifact, str(artifact_content).encode())
     if not result_file.exists():
-        _atomic_write(result_file, result)
+        _atomic_write(result_file, stage_result)
     digest = "sha256:" + sha256(artifact.read_bytes()).hexdigest()
     if not review_file.exists():
         _atomic_write(review_file, review)
     state["completed_stages"] = [*state.get("completed_stages", []), stage]
     state["current_stage"] = None if stage == TERMINAL_STAGE else CANONICAL_STAGES[CANONICAL_STAGES.index(stage) + 1]
     state["checkpoint"] = {
-        "stage": stage, "cycle": cycle, "result": result,
+        "stage": stage, "cycle": cycle, "result": stage_result,
         "review": review,
         "last_artifact": artifact_path, "input_fingerprint": digest,
         "result_path": result_relative, "review_path": review_relative,
@@ -809,7 +846,7 @@ def persist_stage(
     commit["phase"] = "commit"
     commit.update({"artifact_path": artifact_path, "result_path": result_relative, "review_path": review_relative})
     commit["committed_at"] = datetime.now(timezone.utc).isoformat()
-    commit["result"] = result
+    commit["result"] = stage_result
     commit["review"] = review
     existing["events"].append(commit)
     _atomic_write(events, existing)
@@ -828,4 +865,7 @@ def persist_stage(
     _update_metrics(manifest, existing["events"], root)
     _atomic_write(events, existing)
     _atomic_write(manifest_path, manifest)
+    if usage is not None:
+        logger = ExecutionLogger(Path(runs_dir) / run_id / "token-usage.jsonl", run_id=run_id)
+        logger.finish(stage, "completed", **stage_result["usage"])
     return manifest
