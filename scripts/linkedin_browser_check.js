@@ -20,17 +20,17 @@ function selectLinkedInPage(pages) {
 }
 
 function browserRouteOrder() {
-  return ['browser_native', 'image-analyzer', 'playwright', 'stop'];
+  return ['browser_native', 'playwright_mcp', 'playwright', 'stop'];
 }
 
 function resolveBrowserRoute({
   visualAttempt = null,
-  imageAnalyzerAttempt = null,
+  playwrightMcpAttempt = null,
   playwrightAttempt = null,
 }) {
   const attempts = [
     ['browser_native', visualAttempt],
-    ['image-analyzer', imageAnalyzerAttempt],
+    ['playwright_mcp', playwrightMcpAttempt],
     ['playwright', playwrightAttempt],
   ].filter(([, attempt]) => attempt);
   const attemptedRoutes = [];
@@ -89,7 +89,7 @@ function normalizePlaywrightAttempt(value) {
 }
 
 function visualFallbackOrder() {
-  return ['browser_native', 'image-analyzer', 'stop'];
+  return ['browser_native', 'playwright_mcp', 'stop'];
 }
 
 function screenshotPathFromEnvironment(value = process.env.OPENWORK_BROWSER_SCREENSHOT_PATH) {
@@ -144,7 +144,7 @@ async function runBrowserCheck({
   playwrightAdapter,
   playwrightAdapterFactory = defaultPlaywrightAdapterFactory,
   visualAdapter = null,
-  imageAnalyzerAdapter = null,
+  playwrightMcpAdapter = null,
   logPath = path.resolve('runs', 'browser-check.jsonl'),
   runId,
 } = {}) {
@@ -175,33 +175,33 @@ async function runBrowserCheck({
     return { ...result, log_path: logger.path, events: logger.events };
   }
 
-  let imageAnalyzerAttempt;
-  if (imageAnalyzerAdapter) {
+  let playwrightMcpAttempt;
+  if (playwrightMcpAdapter) {
     try {
-      imageAnalyzerAttempt = normalizePlaywrightAttempt(await imageAnalyzerAdapter.inspect());
-      if (imageAnalyzerAttempt.ambiguous === true) imageAnalyzerAttempt.mutation_confirmed = true;
+      playwrightMcpAttempt = normalizePlaywrightAttempt(await playwrightMcpAdapter.inspect());
+      if (playwrightMcpAttempt.ambiguous === true) playwrightMcpAttempt.mutation_confirmed = true;
     } catch (error) {
-      imageAnalyzerAttempt = {
+      playwrightMcpAttempt = {
         ok: false,
         reason: error.mutation_confirmed || error.ambiguous ? 'ambiguous_mutation' : error.message,
         mutation_confirmed: error.mutation_confirmed === true || error.ambiguous === true,
         observed_state: error.observed_state || null,
       };
     }
-    if (imageAnalyzerAttempt.mutation_confirmed || imageAnalyzerAttempt.reason === 'ambiguous_mutation') {
-      const result = resolveBrowserRoute({ visualAttempt, imageAnalyzerAttempt });
+    if (playwrightMcpAttempt.mutation_confirmed || playwrightMcpAttempt.reason === 'ambiguous_mutation') {
+      const result = resolveBrowserRoute({ visualAttempt, playwrightMcpAttempt });
       logger.finish('browser', 'blocked', { route_attempted: result.attempted_routes, effective_route: result.effective_route, state: result.observed_state, reason: result.reason });
       return { ...result, log_path: logger.path, events: logger.events };
     }
-    if (imageAnalyzerAttempt.ok === true) {
-      const result = resolveBrowserRoute({ visualAttempt, imageAnalyzerAttempt });
+    if (playwrightMcpAttempt.ok === true) {
+      const result = resolveBrowserRoute({ visualAttempt, playwrightMcpAttempt });
       logger.finish('browser', 'completed', { route_attempted: result.attempted_routes, effective_route: result.effective_route, state: result.observed_state, reason: result.reason });
       return { ...result, log_path: logger.path, events: logger.events };
     }
   }
 
   logger.finish('browser', 'fallback', {
-    route_attempted: ['browser_native', ...(imageAnalyzerAttempt ? ['image-analyzer'] : []), 'playwright'],
+    route_attempted: ['browser_native', ...(playwrightMcpAttempt ? ['playwright_mcp'] : []), 'playwright'],
     reason: visualAttempt.reason || 'native_failed',
   });
   let playwrightAttempt;
@@ -221,7 +221,7 @@ async function runBrowserCheck({
     if (adapter?.close) await adapter.close();
   }
 
-  const result = resolveBrowserRoute({ visualAttempt, imageAnalyzerAttempt, playwrightAttempt });
+  const result = resolveBrowserRoute({ visualAttempt, playwrightMcpAttempt, playwrightAttempt });
   logger.finish('browser', result.effective_route === 'stop' ? 'blocked' : 'completed', {
     route_attempted: result.attempted_routes,
     effective_route: result.effective_route,

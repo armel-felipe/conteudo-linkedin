@@ -144,6 +144,20 @@ git mv content/drafts/<arquivo>.md content/published/<arquivo>.md
 - O estado correto de cada pasta é sempre: `drafts/` = posts ainda não agendados; `published/` = posts já agendados ou com publicação disparada; `arquived/` = descartados (decisão humana); `approved/` = vazia.
 - Um arquivo de post vive em **exatamente uma** pasta de `content/` por vez.
 
+## Encerramento do navegador (OBRIGATÓRIO ao término)
+
+Ao concluir a tarefa (agendamento/publicação confirmado, ou encerramento por falha), **encerrar a sessão do browser**:
+
+1. Fechar cada aba aberta pela tarefa.
+2. Quando só restar a última aba (a ferramenta não permite fechar a última), **navegá-la para `about:blank`**.
+3. Nunca deixar a página de trabalho (ex.: LinkedIn) aberta ao concluir.
+
+```text
+scheduled_list_confirmed → timestamp_registered → move_file → browser_session_closed
+```
+
+O encerramento do navegador é tão obrigatório quanto a verificação em "Publicações agendadas" e a movimentação do arquivo; a tarefa só está concluída depois dele.
+
 ## Protocolo browser dry-run (rodadas 4 e 5)
 
 Quando a finalidade for produzir evidência sem mutar o LinkedIn, executar
@@ -182,21 +196,22 @@ A confirmação final deve ocorrer em **Publicações agendadas**, com o post e 
 
 ## Visão e rota de interação
 
-O contrato compartilhado está em `docs/browser-route-contract.md`. Use esta ordem
-obrigatória de decisão. A evidência visual vem antes de qualquer automação Playwright:
+O contrato compartilhado está em `docs/browser-route-contract.md`. A cadeia de
+browser é sequencial e o modo de visão é ortogonal a ela:
 
 ```text
-CUA embedded browser → screenshot/AX → image-analyzer (se necessário) → Playwright read-only → stop
+browser_native → playwright_mcp → playwright → stop
 ```
 
 1. Abrir ou selecionar a aba com `browser.open_url`, guardar exatamente `browser_url` e `target_id`, e capturar screenshot.
 2. Usar visão nativa para resumir conteúdo, data, hora, botões e prévia a partir do screenshot; os cliques devem seguir a localização visual confirmada.
-3. Se não houver visão nativa, delegar ao `image-analyzer` com `reason: no_native_vision`; se a visão nativa falhar, usar `reason: native_failed`, sempre passando o screenshot.
-4. Só se a rota visual não conseguir concluir a interação, tentar Playwright (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) somente como diagnóstico read-only e registrar a razão da transição.
-5. Se nenhuma rota funcionar ou a imagem estiver ilegível, registrar `stop`, relatar a limitação e não inferir o estado da tela.
+3. Se não houver visão nativa, delegar ao `image-analyzer` com `reason: no_native_vision`; se a visão nativa falhar, usar `reason: native_failed`, sempre passando o screenshot. O `image-analyzer` é um **modo de visão**, não uma rota de browser: ele lê o screenshot de qualquer rota que tenha funcionado.
+4. Se o host não tiver browser embutido (ex.: CLI), usar o **Playwright MCP** (`@playwright/mcp --cdp-endpoint http://127.0.0.1:9223`), que anexa à sessão já logada.
+5. Só se a rota visual não conseguir concluir a interação, tentar o **Playwright read-only** (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) somente como diagnóstico e registrar a razão da transição. Esse script CDP é diferente do Playwright MCP.
+6. Se nenhuma rota funcionar ou a imagem estiver ilegível, registrar `stop`, relatar a limitação e não inferir o estado da tela.
 
-Cada execução deve preservar a operação, alvo, rota tentada, rota efetiva, resultado,
-razão de fallback (`no_native_vision` ou `native_failed`),
+Cada execução deve preservar a operação, alvo, rota tentada, rota efetiva, modo de
+visão, resultado, razão de fallback (`no_native_vision` ou `native_failed`),
 evidência de verificação e classificação final. Para publicar, agendar, reagendar
 ou excluir, confirmar alvo e intenção antes do envio; após o envio, verificar o
 estado independente. Em `ambiguous_mutation`, aplicar fail-closed: não repetir,
@@ -206,14 +221,14 @@ Siga `.agents/skills/visao-nativa-primeiro/SKILL.md` como protocolo complementar
 
 ### Contrato comportamental
 
-Uma execução válida usa estes eventos na ordem indicada; `playwright_attempt`
-só aparece depois da tentativa visual:
+Uma execução válida usa estes eventos na ordem indicada; `playwright_mcp_attempt`
+e `playwright_attempt` só aparecem depois da tentativa visual:
 
 ```text
 approved_file → markdown_converted → browser_attempt → screenshot → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
 ```
 
-O screenshot é obrigatório na primeira rota; não autoriza inferência sem evidência. Os branches são `browser_native`, `image-analyzer`, `playwright` e `stop`; `browser_native` é a primeira tentativa, `image-analyzer` é usado quando necessário, `playwright` só aparece depois da tentativa visual e `stop` encerra quando não há evidência suficiente.
+O screenshot é obrigatório na primeira rota; não autoriza inferência sem evidência. As rotas de browser são `browser_native`, `playwright_mcp`, `playwright` e `stop`; `browser_native` é a primeira tentativa, `playwright_mcp` entra quando o host não tem browser embutido, `playwright` só aparece depois da tentativa visual e `stop` encerra quando não há evidência suficiente. O modo de visão (`native` ou `image-analyzer`) é registrado à parte da rota.
 
 Para reagendamento, a sequência é `existing_post_menu → alter_schedule → date_selected → time_selected`. O fluxo não contém `new_composer`: divergências usam a publicação existente.
 

@@ -20,7 +20,7 @@ BASE_EVENTS = [
 def schedule_events(route="browser_native"):
     branches = {
         "browser_native": [],
-        "image_analyzer": ["image-analyzer:reason=native_failed"],
+        "playwright_mcp": ["playwright_mcp_attempt"],
         "playwright": ["playwright_attempt"],
     }
     return BASE_EVENTS + branches[route] + [
@@ -41,6 +41,8 @@ def valid_receipt(**overrides):
         "evidence_status": "real_existing_post",
         "route": "browser_native",
         "fallback": "none",
+        "vision": "native",
+        "vision_fallback_reason": None,
         "requested_timestamp": "2026-09-20T10:00 America/Sao_Paulo",
         "displayed_timestamp": "2026-09-20T10:00 America/Sao_Paulo",
         "date_selected": "pass",
@@ -62,7 +64,7 @@ def valid_receipt(**overrides):
     return receipt
 
 
-@pytest.mark.parametrize("route", ["browser_native", "image_analyzer", "playwright"])
+@pytest.mark.parametrize("route", ["browser_native", "playwright_mcp", "playwright"])
 def test_visual_first_schedule_is_valid(route):
     assert validate_schedule_events(schedule_events(route), route) is True
 
@@ -103,15 +105,23 @@ def test_playwright_receipt_must_declare_visual_failure():
 
 def test_image_analyzer_receipt_accepts_explicit_native_failure_evidence():
     receipt = valid_receipt(
-        route="image-analyzer",
-        fallback="image-analyzer",
-        route_attempted=["browser_native", "image-analyzer"],
-        route_reasons={
-            "browser_native": "native vision failed",
-            "image-analyzer": "fallback visual analysis completed",
-        },
+        vision="image-analyzer",
+        vision_fallback_reason="native_failed",
         image_analyzer_failure=True,
-        fallback_reason="native_failed",
+    )
+    assert validate_receipt(receipt) is True
+
+
+def test_playwright_mcp_receipt_accepts_attempt_evidence():
+    receipt = valid_receipt(
+        route="playwright_mcp",
+        fallback="playwright_mcp",
+        route_attempted=["browser_native", "playwright_mcp"],
+        route_reasons={
+            "browser_native": "no_embedded_browser",
+            "playwright_mcp": "mcp inspection completed",
+        },
+        playwright_mcp_attempted=True,
     )
     assert validate_receipt(receipt) is True
 

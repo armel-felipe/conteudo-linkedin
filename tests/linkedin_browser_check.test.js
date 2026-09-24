@@ -19,7 +19,7 @@ const page = (url) => ({ url: () => url });
 test('declares the visual route as primary and Playwright as the last fallback', () => {
   assert.deepEqual(browserRouteOrder(), [
     'browser_native',
-    'image-analyzer',
+    'playwright_mcp',
     'playwright',
     'stop',
   ]);
@@ -186,19 +186,19 @@ test('uses visual route before an injected Playwright adapter', async () => {
   assert.deepEqual(events.map((event) => event.event), ['started', 'completed']);
 });
 
-test('uses image-analyzer before Playwright when native vision fails', async () => {
+test('uses playwright_mcp before Playwright when the embedded browser is unavailable', async () => {
   const calls = [];
   const result = await runBrowserCheck({
     visualAdapter: {
       inspect: async () => {
         calls.push('visual');
-        return { ok: false, reason: 'native_failed' };
+        return { ok: false, reason: 'no_embedded_browser' };
       },
     },
-    imageAnalyzerAdapter: {
+    playwrightMcpAdapter: {
       inspect: async () => {
-        calls.push('image-analyzer');
-        return { ok: true, report: { visual_state: 'analyzer_confirmed' } };
+        calls.push('playwright_mcp');
+        return { ok: true, report: { visual_state: 'mcp_confirmed' } };
       },
     },
     playwrightAdapter: {
@@ -209,9 +209,9 @@ test('uses image-analyzer before Playwright when native vision fails', async () 
     },
   });
 
-  assert.deepEqual(calls, ['visual', 'image-analyzer']);
-  assert.equal(result.effective_route, 'image-analyzer');
-  assert.deepEqual(result.attempted_routes, ['browser_native', 'image-analyzer']);
+  assert.deepEqual(calls, ['visual', 'playwright_mcp']);
+  assert.equal(result.effective_route, 'playwright_mcp');
+  assert.deepEqual(result.attempted_routes, ['browser_native', 'playwright_mcp']);
 });
 
 test('stops and preserves ambiguous state when Playwright inspection returns it', async () => {
@@ -460,7 +460,7 @@ test('documents visual fallback downstream of the selected browser route', () =>
 test('keeps the visual fallback order explicit', () => {
   assert.deepEqual(visualFallbackOrder(), [
     'browser_native',
-    'image-analyzer',
+    'playwright_mcp',
     'stop',
   ]);
 });

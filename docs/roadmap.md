@@ -39,9 +39,9 @@ Itens concluídos, adiados, bloqueados ou excluídos ficam fora do roadmap ativo
 
 - Contratos ativos alinhados: `approved` é marco editorial; o arquivo permanece em
   `content/drafts/` até o Bloco 3 confirmar a mutação no LinkedIn.
-- Rota normativa consolidada como **CUA embedded browser → screenshot/AX +
-  `browser_native` → `image-analyzer` se necessário → Playwright somente
-  read-only → stop/fail-closed**.
+- Rota normativa consolidada como **`browser_native` → `playwright_mcp` →
+  `playwright` → stop**, com o modo de visão (`native` ou `image-analyzer`)
+  ortogonal à cadeia de browser.
 - CLI e receipts verificados para `validate`, `prepare`, `receipt` e `reconcile`;
   a reconciliação atual terminou sem problemas.
 - Documentos históricos com rota antiga foram identificados como não normativos;
@@ -56,8 +56,8 @@ Itens concluídos, adiados, bloqueados ou excluídos ficam fora do roadmap ativo
 
 - O pipeline editorial está operacional do discovery ao agendamento/publicação.
 - A rota de navegador vigente é:
-  **CUA embedded browser → screenshot/AX + `browser_native` → `image-analyzer`
-  se necessário → Playwright read-only → stop**.
+  **`browser_native` → `playwright_mcp` → `playwright` → stop**, com o modo de
+  visão (`native` ou `image-analyzer`) ortogonal à cadeia de browser.
 - Execuções confirmadas: reagendamento de `topic_20260907_01` para `11/09/2026
   às 10:00` e agendamento de `topic_20260914_04` para `16/09/2026 às 10:00`.
 - Verificação mais recente: **301 testes Python** e **26 testes Node** passaram;

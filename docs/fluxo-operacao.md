@@ -47,8 +47,9 @@ flowchart TD
         SHOT[Screenshot obrigatório]
         NATIVE[Visão nativa<br/>localizar e confirmar elementos]
         IA{Visão nativa disponível?}
-        ANALYZER[image-analyzer<br/>somente se necessário]
-        PW[Playwright<br/>terceira rota]
+        ANALYZER[image-analyzer<br/>modo de visão, se necessário]
+        MCP[playwright_mcp<br/>host sem browser embutido]
+        PW[Playwright read-only<br/>terceira rota]
         MUT[Mutação autorizada<br/>publicar/agendar/reagendar]
         VERIFY[Confirmar toast + lista de<br/>Publicações agendadas]
         MOVE[(Mover arquivo para<br/>content/published/)]
@@ -56,7 +57,8 @@ flowchart TD
         IA -->|sim| MUT
         IA -->|não ou falhou| ANALYZER
         ANALYZER -->|concluiu| MUT
-        ANALYZER -->|não concluiu| PW --> MUT
+        ANALYZER -->|não concluiu| MCP --> MUT
+        MCP -->|não concluiu| PW --> MUT
         MUT --> VERIFY --> MOVE
     end
 

@@ -133,7 +133,8 @@ Agende content/drafts/topic_X.md para 2026-09-10 às 09:00 (horário de São Pau
 
 **Regras:**
 
-- Rota do browser, em ordem obrigatória: **CUA embedded browser → browser_native screenshot/AX → image-analyzer (se necessário) → Playwright read-only → stop**. O `image-analyzer` só entra quando não há visão nativa ou ela falha; Playwright é a terceira rota.
+- Cadeia de browser, em ordem obrigatória: **browser_native → playwright_mcp → playwright → stop**. O `browser_native` (CUA embedded browser + screenshot) é a rota primária no Desktop; o `playwright_mcp` entra quando o host não tem browser embutido (ex.: CLI); o `playwright` (script CDP read-only) é a terceira rota, só diagnóstico.
+- O **modo de visão** é ortogonal à cadeia: `native` (o modelo lê o screenshot) ou `image-analyzer` (leitura delegada quando não há visão nativa ou ela falha). O `image-analyzer` lê o screenshot de qualquer rota que tenha funcionado — não é um passo da cadeia.
 - **Registrar** em cada execução a rota escolhida e o **motivo**: registro de rota, razão, resultado e evidência.
 - A evidência visual ocorre na primeira rota e não é opcional; em mutação ambígua, pare em **fail-closed**, não repita.
 - Agendar exige confirmar data e hora, refazer o horário após trocar a data, conferir prévia e confirmar em "Publicações agendadas".

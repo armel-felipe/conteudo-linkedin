@@ -102,7 +102,8 @@ O histórico dos markers (`<!-- agendado: ... -->`) acompanha o arquivo. Em qual
 
 - `.env` nunca vai para o git; credenciais nunca em chat, arquivos ou commits.
 - Publicação usa apenas a sessão logada do browser do OpenWork (sem credenciais).
-- **Rota obrigatória de publicação:** começar pelo CUA embedded browser, capturar screenshot e usar visão nativa para localizar e confirmar os elementos. Se o modelo não tiver visão nativa, usar `image-analyzer`; Playwright só é a terceira rota, depois da tentativa visual.
+- **Rota obrigatória de publicação:** cadeia de browser `browser_native → playwright_mcp → playwright → stop`. Começar pelo CUA embedded browser, capturar screenshot e usar visão nativa para localizar e confirmar os elementos. Em host sem browser embutido (ex.: CLI), usar o Playwright MCP (`playwright_mcp`). O modo de visão (`native` ou `image-analyzer`) é ortogonal à cadeia; `playwright` (script CDP read-only) é a terceira rota, só diagnóstico.
+- **Encerramento do navegador (obrigatório):** ao término de qualquer execução que tenha aberto o browser (Bloco 3 / `publicar-linkedin` ou tarefas de browser em geral), encerrar a sessão do browser: fechar as abas abertas pela tarefa; quando só restar a última aba (que a ferramenta não permite fechar), navegá-la para `about:blank`. Nunca deixar a página de trabalho (ex.: LinkedIn) aberta ao concluir.
 
 ## Estados de conteúdo
 

@@ -30,7 +30,7 @@ test('embedded browser is primary without requiring Playwright', async () => {
 test('route order keeps Playwright as read-only diagnostic fallback', () => {
   assert.deepEqual(browserRouteOrder(), [
     'browser_native',
-    'image-analyzer',
+    'playwright_mcp',
     'playwright',
     'stop',
   ]);

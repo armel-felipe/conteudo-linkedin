@@ -65,6 +65,8 @@ def test_receipt_validation_can_emit_sanitized_log(tmp_path):
         "evidence_status": "simulated",
         "route": "stop",
         "fallback": "none",
+        "vision": "native",
+        "vision_fallback_reason": None,
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",

@@ -22,7 +22,7 @@ BASE_EVENTS = [
 def schedule_events(route="browser_native"):
     branches = {
         "browser_native": [],
-        "image_analyzer": ["image-analyzer:reason=native_failed"],
+        "playwright_mcp": ["playwright_mcp_attempt"],
         "playwright": ["playwright_attempt"],
     }
     return BASE_EVENTS + branches[route] + [
@@ -43,6 +43,8 @@ def valid_registration_gate(**overrides):
         "evidence_status": "real_existing_post",
         "route": "browser_native",
         "fallback": "none",
+        "vision": "native",
+        "vision_fallback_reason": None,
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -79,6 +81,8 @@ def simulated_receipt(**overrides):
         "evidence_status": "simulated",
         "route": "stop",
         "fallback": "none",
+        "vision": "native",
+        "vision_fallback_reason": None,
         "requested_timestamp": "",
         "displayed_timestamp": "",
         "date_selected": "not_run",
@@ -105,6 +109,8 @@ def real_receipt(**overrides):
         "evidence_status": "real_non_destructive",
         "route": "browser_native",
         "fallback": "none",
+        "vision": "native",
+        "vision_fallback_reason": None,
         "requested_timestamp": "01/09/2026 10:00",
         "displayed_timestamp": "01/09/2026 10:00",
         "date_selected": "pass",
@@ -126,9 +132,14 @@ def real_receipt(**overrides):
     return receipt
 
 
-@pytest.mark.parametrize("route", ["browser_native", "image_analyzer", "playwright"])
+@pytest.mark.parametrize("route", ["browser_native", "playwright_mcp", "playwright"])
 def test_validate_schedule_events_accepts_valid_routes(route):
     assert validate_schedule_events(schedule_events(route), route) is True
+
+
+def test_validate_schedule_events_rejects_image_analyzer_as_route():
+    with pytest.raises(ValueError, match="unknown route"):
+        validate_schedule_events(schedule_events("browser_native"), "image_analyzer")
 
 
 def test_visual_route_is_primary_without_playwright():
@@ -294,6 +305,46 @@ def test_playwright_route_requires_visual_failure_and_attempt_evidence():
         playwright_attempted=True,
     )
     assert validate_receipt(receipt) is True
+
+
+def test_playwright_mcp_route_requires_attempt_evidence():
+    receipt = real_receipt(
+        route="playwright_mcp",
+        fallback="playwright_mcp",
+        route_attempted=["browser_native", "playwright_mcp"],
+        route_reasons={
+            "browser_native": "no_embedded_browser",
+            "playwright_mcp": "mcp inspection completed",
+        },
+        browser_attempted=True,
+        playwright_mcp_attempted=True,
+    )
+    assert validate_receipt(receipt) is True
+
+
+def test_image_analyzer_is_a_vision_mode_not_a_route():
+    receipt = real_receipt(
+        vision="image-analyzer",
+        vision_fallback_reason="native_failed",
+        image_analyzer_failure=True,
+    )
+    assert validate_receipt(receipt) is True
+    assert receipt["route"] == "browser_native"
+
+
+def test_image_analyzer_vision_requires_failure_evidence():
+    receipt = real_receipt(
+        vision="image-analyzer",
+        vision_fallback_reason="native_failed",
+    )
+    with pytest.raises(ValueError, match="native failure evidence"):
+        validate_receipt(receipt)
+
+
+def test_native_vision_cannot_declare_fallback_reason():
+    receipt = real_receipt(vision="native", vision_fallback_reason="native_failed")
+    with pytest.raises(ValueError, match="native vision cannot declare"):
+        validate_receipt(receipt)
 
 
 def test_dry_run_stops_before_advance_after_visual_route():

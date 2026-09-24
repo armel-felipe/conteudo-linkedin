@@ -23,9 +23,11 @@ _SUCCESS = (
     "timestamp_registered",
 )
 
-_VISUAL_BRANCHES = {
+# Browser routes are the only routes in the chain. Vision is orthogonal and is
+# validated through the receipt `vision` field, never as a browser route.
+_BROWSER_BRANCHES = {
     "browser_native": (),
-    "image_analyzer": ("image-analyzer:reason=native_failed",),
+    "playwright_mcp": ("playwright_mcp_attempt",),
     "playwright": ("playwright_attempt",),
 }
 
@@ -33,6 +35,8 @@ _RECEIPT_FIELDS = (
     "evidence_status",
     "route",
     "fallback",
+    "vision",
+    "vision_fallback_reason",
     "requested_timestamp",
     "displayed_timestamp",
     "date_selected",
@@ -53,12 +57,15 @@ _RECEIPT_FIELDS = (
 _RECEIPT_FALLBACK_FIELDS = {
     "image_analyzer_failure",
     "playwright_attempted",
+    "playwright_mcp_attempted",
     "playwright_failure",
     "fallback_reason",
 }
 
-_RECEIPT_ROUTES = {"browser_native", "playwright", "image-analyzer", "stop"}
-_RECEIPT_FALLBACKS = {"none", "browser_native", "image-analyzer", "playwright"}
+_RECEIPT_ROUTES = {"browser_native", "playwright_mcp", "playwright", "stop"}
+_RECEIPT_FALLBACKS = {"none", "browser_native", "playwright_mcp", "playwright"}
+_VISION_MODES = {"native", "image-analyzer"}
+_VISION_FALLBACK_REASONS = {"no_native_vision", "native_failed"}
 _EVIDENCE_STATUSES = {
     "real_non_destructive",
     "real_existing_post",
@@ -101,14 +108,16 @@ def validate_schedule_events(events, route):
         )
     else:
         try:
-            branch = _VISUAL_BRANCHES[route]
+            branch = _BROWSER_BRANCHES[route]
         except KeyError as error:
             raise ValueError(f"unknown route: {route}") from error
         expected = _COMMON + ("visual_route",) + branch + _SUCCESS[1:]
     return _validate_exact(events, expected)
 
 
-def validate_reschedule_events(events, route, *, effective_route=None, fallback=None):
+def validate_reschedule_events(
+    events, route, *, effective_route=None, fallback=None, vision=None
+):
     if route != "existing_post":
         raise ValueError(f"unknown reschedule route: {route}")
     observed = tuple(events)
@@ -119,21 +128,23 @@ def validate_reschedule_events(events, route, *, effective_route=None, fallback=
     if effective_route == "browser_native":
         if fallback != "none":
             raise ValueError("visual reschedule requires no fallback")
-    elif effective_route == "image-analyzer":
-        if fallback != "image-analyzer":
-            raise ValueError("image-analyzer reschedule requires a valid fallback")
-        if "image-analyzer:reason=native_failed" not in observed:
-            raise ValueError("image-analyzer reschedule requires fallback evidence")
+    elif effective_route == "playwright_mcp":
+        if fallback != "playwright_mcp":
+            raise ValueError("playwright_mcp reschedule requires fallback evidence")
+        if "playwright_mcp_attempt" not in observed:
+            raise ValueError("playwright_mcp reschedule requires attempt evidence")
     elif effective_route == "playwright":
         if fallback != "playwright":
             raise ValueError("Playwright reschedule requires fallback evidence")
         if "playwright_attempt" not in observed:
             raise ValueError("Playwright reschedule requires attempt evidence")
+    if vision is not None and vision not in _VISION_MODES:
+        raise ValueError("reschedule requires a valid vision mode")
     return _validate_exact(
         observed,
         (
             "browser_attempt",
-            *(("image-analyzer:reason=native_failed",) if effective_route == "image-analyzer" else ()),
+            *(("playwright_mcp_attempt",) if effective_route == "playwright_mcp" else ()),
             *(("playwright_attempt",) if effective_route == "playwright" else ()),
             "existing_post_menu",
             "alter_schedule",
@@ -234,18 +245,32 @@ def validate_receipt(receipt):
         raise ValueError("invalid receipt route")
     if receipt["fallback"] not in _RECEIPT_FALLBACKS:
         raise ValueError("invalid receipt fallback")
+    if receipt["vision"] not in _VISION_MODES:
+        raise ValueError("invalid receipt vision")
+    vision_reason = receipt["vision_fallback_reason"]
+    if receipt["vision"] == "native":
+        if vision_reason is not None:
+            raise ValueError("native vision cannot declare a fallback reason")
+    else:
+        if vision_reason not in _VISION_FALLBACK_REASONS:
+            raise ValueError("image-analyzer vision requires a fallback reason")
+        if vision_reason == "native_failed" and receipt.get("image_analyzer_failure") is not True:
+            raise ValueError("image-analyzer vision requires native failure evidence")
     if receipt.get("browser_attempted") is not True:
         raise ValueError("receipt requires browser attempt evidence")
     attempted = receipt["route_attempted"]
     expected_orders = {
         "browser_native": [["browser_native"]],
-        "image-analyzer": [["browser_native", "image-analyzer"], ["browser_native", "image-analyzer", "playwright"]],
-        "playwright": [["browser_native", "playwright"]],
+        "playwright_mcp": [["browser_native", "playwright_mcp"]],
+        "playwright": [
+            ["browser_native", "playwright_mcp", "playwright"],
+            ["browser_native", "playwright"],
+        ],
         "stop": [
             ["browser_native"],
-            ["browser_native", "image-analyzer"],
+            ["browser_native", "playwright_mcp"],
             ["browser_native", "playwright"],
-            ["browser_native", "image-analyzer", "playwright"],
+            ["browser_native", "playwright_mcp", "playwright"],
         ],
     }
     if (
@@ -256,18 +281,21 @@ def validate_receipt(receipt):
         or attempted not in expected_orders.get(receipt["route"], [])
     ):
         raise ValueError("invalid attempted route order")
+    if receipt["route"] == "browser_native":
+        if receipt["fallback"] != "none":
+            raise ValueError("browser_native route requires no fallback")
+    if receipt["route"] == "playwright_mcp":
+        if receipt.get("playwright_mcp_attempted") is not True:
+            raise ValueError("playwright_mcp route requires attempt evidence")
+        if receipt["fallback"] != "playwright_mcp":
+            raise ValueError("receipt route and fallback are inconsistent")
     if receipt["route"] == "playwright":
         if receipt.get("playwright_attempted") is not True:
             raise ValueError("Playwright route requires attempt evidence")
         if receipt["fallback"] != "playwright":
             raise ValueError("receipt route and fallback are inconsistent")
-        if "playwright_failure" in fields or "fallback_reason" in fields:
+        if "playwright_failure" in fields:
             raise ValueError("receipt declares fallback evidence without fallback")
-    if receipt["route"] == "image-analyzer":
-        if receipt.get("image_analyzer_failure") is not True:
-            raise ValueError("image-analyzer route requires failure evidence")
-        if not isinstance(receipt.get("fallback_reason"), str) or not receipt["fallback_reason"].strip():
-            raise ValueError("image-analyzer fallback requires an explicit reason")
     reasons = receipt["route_reasons"]
     if (
         not isinstance(reasons, dict)
