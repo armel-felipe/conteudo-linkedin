@@ -347,6 +347,13 @@ def test_native_vision_cannot_declare_fallback_reason():
         validate_receipt(receipt)
 
 
+def test_legacy_receipt_without_vision_fields_still_validates():
+    receipt = real_receipt()
+    receipt.pop("vision")
+    receipt.pop("vision_fallback_reason")
+    assert validate_receipt(receipt) is True
+
+
 def test_dry_run_stops_before_advance_after_visual_route():
     events = BASE_EVENTS + [
         "date_selected",

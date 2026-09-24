@@ -234,6 +234,11 @@ def validate_dry_run_events(events):
 def validate_receipt(receipt):
     if not isinstance(receipt, dict):
         raise ValueError("receipt must be an object")
+    # Receipts written before the vision field existed used native vision.
+    # Default them so historical receipts stay valid instead of breaking.
+    receipt = dict(receipt)
+    receipt.setdefault("vision", "native")
+    receipt.setdefault("vision_fallback_reason", None)
     fields = set(receipt)
     if not set(_RECEIPT_FIELDS).issubset(fields) or not fields <= (
         set(_RECEIPT_FIELDS) | _RECEIPT_FALLBACK_FIELDS
