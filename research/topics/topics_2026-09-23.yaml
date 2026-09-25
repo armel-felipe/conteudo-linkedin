@@ -204,7 +204,7 @@ topics:
     dono explícito é onde a operação perde o prazo, e a conversa que o gestor evita é paga pelo melhor
     funcionário.'
   author_connection: strong
-  status: ready_for_research
+  status: published
   scores:
     freshness: 8
     relevance: 9
@@ -239,7 +239,7 @@ topics:
     até quem só customiza o modelo — a trilha de auditoria que ela exige é controle operacional antes
     de ser exigência regulatória.
   author_connection: medium
-  status: approved
+  status: published
   scores:
     freshness: 9
     relevance: 8
