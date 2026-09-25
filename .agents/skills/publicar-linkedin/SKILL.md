@@ -158,6 +158,23 @@ scheduled_list_confirmed → timestamp_registered → move_file → browser_sess
 
 O encerramento do navegador é tão obrigatório quanto a verificação em "Publicações agendadas" e a movimentação do arquivo; a tarefa só está concluída depois dele.
 
+## Sincronização do backlog (OBRIGATÓRIA após a movimentação)
+
+Publicar/agendar muda o status do topic para `published` no `research/topics/topics_*.yaml`, o que torna obsoleto o bloco correspondente em `content/backlog.md`. Depois de mover o arquivo para `content/published/`, sincronizar o backlog:
+
+```bash
+python scripts/sync_backlog.py --write   # pruna do backlog os topics que deixaram de ser ready_for_research
+python scripts/sync_backlog.py --check   # gate fail-closed: exit 1 se ainda houver divergência
+```
+
+O `--check` faz parte da conclusão do Bloco 3: se ele falhar, o backlog não está sincronizado e a tarefa não terminou.
+
+Sequência de conclusão:
+
+```text
+scheduled_list_confirmed → timestamp_registered → move_file → sync_backlog → browser_session_closed
+```
+
 ## Protocolo browser dry-run (rodadas 4 e 5)
 
 Quando a finalidade for produzir evidência sem mutar o LinkedIn, executar

@@ -21,7 +21,7 @@ sample_paths:
 - research/briefs/topic_20260901_03.md
 - research/briefs/topic_20260901_04.md
 - research/audits/source-quality-2026-09-06.yaml
-sample_fingerprint: sha256:785a946a9457825c0dc00ffaa52ff7bc1605f201b7eaee8ae270a30763cb4ab7
+sample_fingerprint: sha256:2a931f9e3ef30228f86e7622104bcf01f2833272ea8d89b1c043f789060f0bfb
 fingerprint_history:
 - frozen_at: '2026-09-06'
   fingerprint: sha256:09a8624dbd8441478bd5092586bf8f1c01aaef604fa090a427de726c2cbc2541
@@ -52,6 +52,12 @@ fingerprint_history:
   reason: "Gate de novidade aplicado: os 12 topics de 23/09 receberam veredito
     (4 new, 8 revisited com delta declarado) e o backlog passou a registrar a
     novidade de cada tema. Fingerprint re-registrado no estado atual."
+- frozen_at: '2026-09-23'
+  fingerprint: sha256:2a931f9e3ef30228f86e7622104bcf01f2833272ea8d89b1c043f789060f0bfb
+  reason: "Sincronização do backlog: os topics 20260923_06 e 20260923_10 já estavam
+    published, então os blocos obsoletos foram prunados do content/backlog.md e o
+    cabeçalho passou a refletir 8 temas ready_for_research. Fingerprint re-registrado
+    no estado atual."
 topics:
 - id: topic_20260901_01
   score_predicted: 67.5

@@ -2,7 +2,7 @@
 
 > Temas com `status: ready_for_research` nos arquivos `research/topics/topics_*.yaml`.
 > Temas já `approved` não aparecem aqui nem são elegíveis para o Bloco 2.
-> Leva de 2026-09-23: 12 topics candidatos pontuados; top 10 entram no backlog.
+> Leva de 2026-09-23: 12 topics candidatos pontuados; 8 entram no backlog.
 
 ## 91.00 — O agente em produção trava na operação, não no modelo
 
@@ -109,42 +109,6 @@ Por que agora: Casos de agente em pequenos negócios concentrados em follow-up, 
 Evidências disponíveis: 2
 
 Experiência pessoal relacionada: Alta
-
-Status: ready_for_research
-
-## 83.00 — Delegar não é largar: o handoff precisa de dono
-
-`topic_20260923_10`
-
-Novidade: Revisitado — delta: o handoff entre times como contrato explícito, não a delegação a agentes.
-
-Pilares: Liderança em operações
-
-Tese: Autonomia sem responsabilidade combinada não é delegação, é ausência: o handoff sem dono explícito é onde a operação perde o prazo, e a conversa que o gestor evita é paga pelo melhor funcionário.
-
-Por que agora: Tática de transformar o handoff em contrato explícito entre times, crítica ao dono que delega e se afasta, e o custo de fazer o forte compensar quem o gestor não gerencia.
-
-Evidências disponíveis: 3
-
-Experiência pessoal relacionada: Alta
-
-Status: ready_for_research
-
-## 80.50 — O EU AI Act saiu do papel e a obrigação desce a cadeia
-
-`topic_20260923_06`
-
-Novidade: Novo — nenhum post publicado sobre regulação de IA.
-
-Pilares: Riscos, compliance e resiliência
-
-Tese: A obrigação de transparência do AI Act segue o cliente, não o CNPJ, e desce a cadeia até quem só customiza o modelo — a trilha de auditoria que ela exige é controle operacional antes de ser exigência regulatória.
-
-Por que agora: Enforcement ativo desde 2 de agosto, análise jurídica de que as obrigações fluem pela cadeia, Omnibus concedendo 16 meses extras e o alerta de que a regra alcança quem tem cliente europeu.
-
-Evidências disponíveis: 5
-
-Experiência pessoal relacionada: Média
 
 Status: ready_for_research
 

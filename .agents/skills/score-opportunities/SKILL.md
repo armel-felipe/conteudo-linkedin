@@ -78,6 +78,7 @@ Status: ready_for_research
 6. Escrever o backlog com os top 5-10.
 7. Atualizar o status do topic para `ready_for_research` no arquivo `research/topics/topics_*.yaml` quando entrar no backlog.
 8. Gerar `research/topics/topics_YYYY-MM-DD.html` com a visualização navegável dos temas (obrigatório).
+9. Rodar `python scripts/sync_backlog.py --check` para confirmar que o backlog está alinhado ao status real dos topics (fail-closed).
 
 ## Regras
 

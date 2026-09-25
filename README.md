@@ -141,6 +141,7 @@ Agende content/drafts/topic_X.md para 2026-09-10 às 09:00 (horário de São Pau
 - Nunca abrir um novo composer para reagendar uma publicação existente (evita duplicata) — use `Alterar agenda`.
 - A aprovação editorial é feita no QA (bloco 2.5, skill `qa-draft`), separada da publicação (bloco 3).
 - O timestamp só é registrado no arquivo aprovado depois da confirmação na lista, sem nova aprovação textual.
+- **Sincronização do backlog (obrigatória):** publicar/agendar muda o status do topic para `published` no `topics_*.yaml` e torna obsoleto o bloco correspondente em `content/backlog.md`. Após mover o arquivo, rodar `python scripts/sync_backlog.py --write` e validar com `--check` (fail-closed). Sem isso, o Bloco 3 não está concluído.
 
 ## Estado dos artefatos do pipeline
 

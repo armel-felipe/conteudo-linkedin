@@ -62,6 +62,7 @@ Aprovar e agendar são etapas distintas: a aprovação humana marca o topic como
 
 - Mover literalmente o arquivo de onde estiver para `content/arquived/` (git mv / mv).
 - Marcar o topic como `archived` no arquivo `research/topics/topics_*.yaml`.
+- Rodar `python scripts/sync_backlog.py --write` para prunar do backlog o topic que deixou de ser `ready_for_research` (o gate `--check` é fail-closed).
 - O material sai do fluxo de aprovação e não é mais considerado.
 
 ## Regras

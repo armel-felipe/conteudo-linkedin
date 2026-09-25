@@ -44,7 +44,8 @@ O pipeline opera em **três blocos lógicos**, executados em levas. Cada bloco t
 - **Entrada:** posts com marco `approved` que ainda estão em `content/drafts/`. **Não entra post que já foi agendado** (já moveu para `published/`).
 - **Saída:** post publicado/agendado no LinkedIn; comentário `<!-- agendado: ... -->` registrado no arquivo; arquivo **movido literalmente** de `content/drafts/` para `content/published/` após a confirmação do agendamento/publicação.
 - **Regra de slot (obrigatória):** todo agendamento cai em dia útil (seg-sex), na janela 10:00–12:00 (padrão 10:00) e no máximo 1 post por dia. Consultar slots e clusters livres com `scheduling_slots.py` antes de escolher; validar a agenda com `scheduling_registry.py --check` (fail-closed). Exceções (ex.: sábado) só valem se declaradas em `config/scheduling.yaml` com motivo — nunca silenciosas.
-- **Estado fim do bloco:** publicado ou agendado com confirmação na lista; arquivo em `content/published/`.
+- **Sincronização do backlog (obrigatória):** publicar/agendar muda o status do topic para `published` no `topics_*.yaml`, o que torna obsoleto o bloco correspondente em `content/backlog.md`. Após a movimentação do arquivo, rodar `python scripts/sync_backlog.py --write` para prunar do backlog os topics que deixaram de ser `ready_for_research`. O gate `python scripts/sync_backlog.py --check` (exit 1 em divergência) é fail-closed e faz parte da conclusão do Bloco 3.
+- **Estado fim do bloco:** publicado ou agendado com confirmação na lista; arquivo em `content/published/`; backlog sincronizado com o status real dos topics.
 
 ### Regras dos blocos
 
