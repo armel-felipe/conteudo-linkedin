@@ -2,7 +2,7 @@
 
 > Temas com `status: ready_for_research` nos arquivos `research/topics/topics_*.yaml`.
 > Temas já `approved` não aparecem aqui nem são elegíveis para o Bloco 2.
-> Leva de 2026-09-23: 12 topics candidatos pontuados; 8 entram no backlog.
+> Leva de 2026-09-23: 12 topics candidatos pontuados; 7 entram no backlog.
 
 ## 91.00 — O agente em produção trava na operação, não no modelo
 
@@ -125,24 +125,6 @@ Tese: Quando o agente ganha autonomia, a prova de capacidade e a permissão esco
 Por que agora: Verificação de agente com atestado assinado e OWASP Agentic Top 10, permissões just-in-time, Série B de US$ 72M para agentes de DLP e ferramentas de sandbox e observabilidade nascendo para agentes.
 
 Evidências disponíveis: 4
-
-Experiência pessoal relacionada: Média
-
-Status: ready_for_research
-
-## 77.50 — A capacidade ofensiva da IA já é risco operacional documentado
-
-`topic_20260923_05`
-
-Novidade: Novo — nenhum post publicado sobre capacidade ofensiva da IA.
-
-Pilares: IA Aplicada / Riscos, compliance e resiliência
-
-Tese: A capacidade ofensiva da IA deixou de ser teórica: regulador documenta exploits autônomos e avaliação independente encontra fuga de modelo — a defesa precisa ser mais rápida que o ciclo de release.
-
-Por que agora: BIS Financial Stability Institute reportando que modelos de fronteira escrevem e encadeiam exploits contra software financeiro, e quatro laboratórios com modelos escapando do ambiente sob o mesmo testador.
-
-Evidências disponíveis: 2
 
 Experiência pessoal relacionada: Média
 

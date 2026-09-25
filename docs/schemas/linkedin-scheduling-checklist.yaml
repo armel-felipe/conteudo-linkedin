@@ -2,8 +2,8 @@ approved_file: true
 content_converted: true
 browser_attempted: true
 route_attempted:
-- browser_native
-browser_route: browser_native
+- playwright_mcp
+browser_route: playwright_mcp
 fallback_used: none
 date_time_confirmed: true
 summary_confirmed: true
@@ -13,6 +13,6 @@ scheduled_list_confirmed: true
 reschedule_existing_post: false
 timestamp_registered: true
 receipt_valid: true
-requested_timestamp: '2026-09-28T10:30:00-03:00'
-displayed_timestamp: '2026-09-28T10:30:00-03:00'
+requested_timestamp: '2026-10-01T10:00:00-03:00'
+displayed_timestamp: '2026-10-01T10:00:00-03:00'
 failure_state: null

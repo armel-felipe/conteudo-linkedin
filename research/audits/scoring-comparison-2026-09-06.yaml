@@ -21,7 +21,7 @@ sample_paths:
 - research/briefs/topic_20260901_03.md
 - research/briefs/topic_20260901_04.md
 - research/audits/source-quality-2026-09-06.yaml
-sample_fingerprint: sha256:2a931f9e3ef30228f86e7622104bcf01f2833272ea8d89b1c043f789060f0bfb
+sample_fingerprint: sha256:b1e954155e659623b2373405caec7475cc74fbebbfef7e5edd12ee93251a8027
 fingerprint_history:
 - frozen_at: '2026-09-06'
   fingerprint: sha256:09a8624dbd8441478bd5092586bf8f1c01aaef604fa090a427de726c2cbc2541
@@ -58,6 +58,11 @@ fingerprint_history:
     published, então os blocos obsoletos foram prunados do content/backlog.md e o
     cabeçalho passou a refletir 8 temas ready_for_research. Fingerprint re-registrado
     no estado atual."
+- frozen_at: '2026-09-25'
+  fingerprint: sha256:b1e954155e659623b2373405caec7475cc74fbebbfef7e5edd12ee93251a8027
+  reason: "Bloco 2 rodou para topic_20260923_05: o topic passou a drafted e saiu do
+    content/backlog.md, que ficou com 7 temas ready_for_research. Fingerprint
+    re-registrado no estado atual."
 topics:
 - id: topic_20260901_01
   score_predicted: 67.5

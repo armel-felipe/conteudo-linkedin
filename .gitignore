@@ -17,3 +17,4 @@ node_modules/
 .opencode/openwork/
 index.md
 research/last30days/**/*.db
+.playwright-mcp/
