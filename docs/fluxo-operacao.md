@@ -102,3 +102,12 @@ flowchart TD
 
 Nenhum bloco chama automaticamente o bloco seguinte. A pessoa invoca cada rodada,
 e o sistema só avança depois dos gates definidos para aquela fronteira.
+
+## Modo diversidade do Bloco 1
+
+Quando a rodada for executada em modo diversidade, `discover-signals` combina aproximadamente
+metade das queries atuais com metade das `exploratory_questions` configuradas em
+`config/frentes.yaml`. Cada signal/topic pode registrar contexto, mecanismo, ator e tipo de
+mudança. O scoring calcula a distância em relação aos topics recentes; esse critério ajuda a
+variar assuntos dentro da mesma frente, mas não substitui o gate de novidade. O HTML versionado
+da leva mostra a distribuição e alerta quando um mecanismo concentra a pauta.

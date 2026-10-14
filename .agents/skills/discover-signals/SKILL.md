@@ -16,18 +16,20 @@ Encontrar acontecimentos, discussões e ideias relacionadas às frentes do proje
 
 ## Entrada
 
-- `config/frentes.yaml` (frentes, prioridades, keywords, research_questions)
+- `config/frentes.yaml` (frentes, prioridades, keywords, research_questions, exploratory_questions)
 - Skill `last30days` (ferramenta primária de pesquisa)
 - Busca web manual (webfetch) para imprensa/relatórios quando necessário
 
 ## Fluxo
 
 1. Ler `config/frentes.yaml`.
-2. Para cada frente (por prioridade), rodar `last30days` com as keywords da frente (uma rodada por frente ou por keyword-chave).
-3. Complementar com busca web manual (webfetch) quando a frente exigir imprensa/relatórios (ex.: riscos/compliance, alimentos/sustentabilidade).
-4. Para a frente IA Aplicada, aplicar as perguntas de pesquisa (research_questions) da frente, conforme `config/frentes.yaml` ao avaliar cada candidato a signal.
-5. Converter cada descoberta relevante em um Signal no formato abaixo.
-6. Salvar em `research/signals/signals_YYYY-MM-DD.yaml` (data de hoje).
+2. Em modo diversidade, dividir aproximadamente metade das queries entre as keywords atuais e metade entre as `exploratory_questions` da frente. As perguntas devem buscar mudança, conflito, consequência, comportamento, redistribuição de poder ou prática contraintuitiva, sempre com recência e evidência.
+3. Para cada frente (por prioridade), rodar `last30days` com as queries selecionadas (uma rodada por frente ou por pergunta-chave).
+4. Complementar com busca web manual (webfetch) quando a frente exigir imprensa/relatórios (ex.: riscos/compliance, alimentos/sustentabilidade).
+5. Para a frente IA Aplicada, aplicar as perguntas de pesquisa (research_questions) da frente, conforme `config/frentes.yaml` ao avaliar cada candidato a signal.
+6. Classificar, quando houver evidência suficiente, `diversity.context`, `diversity.mechanism`, `diversity.actor` e `diversity.change_type`. Se não houver segurança, usar `unknown`; não inventar classificação.
+7. Converter cada descoberta relevante em um Signal no formato abaixo.
+8. Salvar em `research/signals/signals_YYYY-MM-DD.yaml` (data de hoje).
 
 ## Formato do Signal (YAML)
 
@@ -60,6 +62,11 @@ scores:
   linkedin_fit: 0-10
 created_at: YYYY-MM-DD
 status: discovered
+diversity:
+  context: [varejo]
+  mechanism: [confianca]
+  actor: [gestor]
+  change_type: [falha]
 ```
 
 ## Regras
@@ -70,6 +77,7 @@ status: discovered
 - Sinais devem incluir: acontecimentos recentes, discussões com opiniões divergentes, mudanças de comportamento, novas tecnologias, pesquisas recentes, decisões controversas, cases, falhas, aprendizados, novas práticas.
 - Para IA Aplicada: distinguir aplicações em produção, pilotos, promessas sem comprovação, resultados mensuráveis e problemas de implantação.
 - Usar `pillars` com o nome da frente (chave do YAML de frentes).
+- O modo diversidade varia o mecanismo e o recorte dentro da mesma frente; não cria sinais genéricos ou evergreen.
 
 ## Erros comuns
 

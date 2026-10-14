@@ -20,6 +20,9 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from diversity import concentration_report
 
 PILLAR_LABELS = {
     "ia_aplicada": "IA Aplicada",
@@ -171,6 +174,35 @@ def _card(topic: dict, signals: dict[str, dict], topics_file: str, signals_files
 </article>"""
 
 
+def render_diversity_summary(topics: list[dict]) -> str:
+    report = concentration_report(topics)
+
+    def counts(dimension: str) -> str:
+        values = report.get(f"by_{dimension}", {})
+        if not values:
+            return "nenhum dado"
+        return ", ".join(f"{_esc(key)}: {_esc(value)}" for key, value in values.items())
+
+    alerts = report.get("alerts") or []
+    alert_html = "".join(f"<li>{_esc(alert)}</li>" for alert in alerts)
+    if not alert_html:
+        alert_html = "<li>Nenhum alerta de concentração.</li>"
+    average = report.get("distance_average")
+    average_label = _esc(f"{average:.2f}" if isinstance(average, (int, float)) else "sem histórico")
+    return f"""
+<section class="diversity-summary">
+  <h2>Diversidade da leva</h2>
+  <div class="note">
+    <b>Mecanismos:</b> {counts("mechanism")}<br>
+    <b>Contextos:</b> {counts("context")}<br>
+    <b>Atores:</b> {counts("actor")}<br>
+    <b>Distância média dos topics recentes:</b> {average_label}<br>
+    <b>Temas sem classificação completa:</b> {_esc(report.get("unknown_count", 0))}
+    <ul>{alert_html}</ul>
+  </div>
+</section>"""
+
+
 def build_html(topics_path: Path) -> str:
     document = yaml.safe_load(topics_path.read_text(encoding="utf-8")) or {}
     topics = document.get("topics", [])
@@ -294,6 +326,7 @@ def build_html(topics_path: Path) -> str:
   </div>
 </header>
 <main>
+{render_diversity_summary(topics)}
 <h2>Fila do Bloco 2 — ready_for_research</h2>
 {cards_ready or '<div class="note">Nenhum tema ready_for_research.</div>'}
 <h2>Fora do backlog — candidate</h2>
@@ -324,7 +357,11 @@ def main() -> int:
         return 1
     output = topics_path.with_suffix(".html")
     output.write_text(build_html(topics_path), encoding="utf-8")
-    print(f"escrito: {output.relative_to(ROOT)}")
+    try:
+        display_path = output.relative_to(ROOT)
+    except ValueError:
+        display_path = output
+    print(f"escrito: {display_path}")
     return 0
 
 

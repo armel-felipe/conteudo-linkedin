@@ -6,6 +6,7 @@ o Bloco 1 não está concluído. Estes testes impedem que o contrato regrida.
 """
 
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -51,3 +52,30 @@ def test_topics_html_is_versioned_not_ignored():
     gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "topics_" not in gitignore
     assert "research/topics" not in gitignore
+
+
+def test_html_includes_diversity_summary(tmp_path):
+    source = tmp_path / "topics.yaml"
+    source.write_text(
+        "topics:\n"
+        "- id: t1\n"
+        "  title: T\n"
+        "  status: candidate\n"
+        "  pillars: [ia_aplicada]\n"
+        "  scores: {total: 80}\n"
+        "  diversity:\n"
+        "    context: [varejo]\n"
+        "    mechanism: [custo]\n"
+        "    actor: [gestor]\n"
+        "    change_type: [falha]\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["python", "scripts/generate_topics_html.py", str(source)],
+        cwd=ROOT,
+        check=True,
+    )
+    html = source.with_suffix(".html").read_text(encoding="utf-8")
+    assert "Diversidade da leva" in html
+    assert "custo" in html
+    assert "contexto" in html.lower()

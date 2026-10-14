@@ -36,6 +36,12 @@ frentes:
       - "Como o agente é avaliado depois do deploy?"
       - "Quem tem autoridade para interromper o agente?"
       - "Quanto custa cada execução e onde o custo aparece?"
+    exploratory_questions:
+      - "Que prática de IA está sendo abandonada depois de uma tentativa de adoção?"
+      - "Que efeito inesperado apareceu depois que a IA entrou no trabalho real?"
+      - "Onde eficiência e qualidade entram em conflito quando uma equipe usa IA?"
+      - "Quem ganhou ou perdeu poder de decisão depois da automação?"
+      - "Que setor resolveu um problema operacional com IA de maneira contraintuitiva?"
 
   logistica_last_mile_cx:
     name: Logística, last mile e experiência do cliente
@@ -51,6 +57,12 @@ frentes:
       - last mile cost per delivery
       - customer recovery service failure
       - delivery SLA compliance
+    exploratory_questions:
+      - "Que etapa da entrega está mudando sem aparecer na métrica de prazo?"
+      - "Onde uma promessa de conveniência criou um custo ou conflito inesperado?"
+      - "Quem absorve o trabalho invisível quando uma entrega falha?"
+      - "Que comportamento de cliente ou operador está redesenhando a última milha?"
+      - "Que setor encontrou uma solução contraintuitiva para confiabilidade de entrega?"
 
   lideranca_operacoes:
     name: Liderança em operações
@@ -66,6 +78,12 @@ frentes:
       - leader prioritization attention management
       - operational leadership under pressure
       - frontline accountability performance
+    exploratory_questions:
+      - "Que prática de liderança está sendo abandonada por não produzir autonomia?"
+      - "Que efeito inesperado surgiu quando uma equipe ganhou mais autonomia?"
+      - "Onde cobrança por eficiência entrou em conflito com confiança ou aprendizado?"
+      - "Quem ganhou ou perdeu poder depois de uma mudança no desenho das decisões?"
+      - "Que organização resolveu um problema de gestão de maneira contraintuitiva?"
 
   riscos_compliance_resiliencia:
     name: Riscos, compliance e resiliência
@@ -82,6 +100,12 @@ frentes:
       - AI agent security governance
       - AI incident response
       - AI audit evidence operational
+    exploratory_questions:
+      - "Que controle está sendo retirado ou reforçado depois de um incidente?"
+      - "Que consequência inesperada apareceu quando uma regra passou a ser aplicada?"
+      - "Onde conformidade e velocidade operacional entram em conflito?"
+      - "Quem passa a responder pelo risco quando uma decisão é automatizada?"
+      - "Que setor resolveu um problema de resiliência de maneira contraintuitiva?"
 
   alimentos_consumo_sustentabilidade:
     name: Alimentos, consumo e sustentabilidade
@@ -97,3 +121,9 @@ frentes:
       - upcycled ingredients food
       - food safety incident response
       - climate risk food supply chain
+    exploratory_questions:
+      - "Que prática de consumo ou produção está sendo abandonada por mudar o custo?"
+      - "Que efeito inesperado apareceu depois de uma mudança na cadeia de alimentos?"
+      - "Onde sustentabilidade e margem entram em conflito na operação?"
+      - "Quem absorve o custo quando uma solução sustentável muda o fluxo?"
+      - "Que empresa ou setor resolveu um problema alimentar de maneira contraintuitiva?"

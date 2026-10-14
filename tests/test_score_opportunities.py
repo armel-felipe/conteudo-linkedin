@@ -41,6 +41,67 @@ def test_empty_topics_produce_empty_output():
     assert score_topics([], {"freshness": 1.0}) == []
 
 
+def test_scoring_adds_distance_when_history_is_supplied():
+    topic = {"id": "new", "diversity": {
+        "context": ["educacao"], "mechanism": ["autoridade"],
+        "actor": ["regulador"], "change_type": ["conflito"],
+    }, "scores": {
+        "freshness": 8, "relevance": 8, "debate": 8, "evidence": 8,
+        "author_fit": 8, "originality": 8, "linkedin_fit": 8,
+        "distance_from_recent_topics": 0,
+    }}
+    result = score_topics(
+        [topic],
+        load_scoring_config(ROOT / "config/scoring.yaml"),
+        recent_topics=[{"id": "old", "diversity": {
+            "context": ["varejo"], "mechanism": ["custo"],
+            "actor": ["gestor"], "change_type": ["adocao"],
+        }}],
+    )
+    assert result[0]["scores"]["distance_from_recent_topics"] >= 8
+    assert result[0]["diversity_score"]["closest_topics"] == ["old"]
+
+
+def test_legacy_scoring_without_history_uses_neutral_distance():
+    topic = {"id": "legacy", "scores": {
+        "freshness": 8, "relevance": 8, "debate": 8, "evidence": 8,
+        "author_fit": 8, "originality": 8, "linkedin_fit": 8,
+    }}
+    result = score_topics(
+        [topic], load_scoring_config(ROOT / "config/scoring.yaml")
+    )
+    assert result[0]["scores"]["distance_from_recent_topics"] == 0
+    assert "diversity_score" not in result[0]
+
+
+def test_cli_accepts_recent_topics_for_diversity_scoring(tmp_path):
+    import score_opportunities
+
+    input_path = tmp_path / "topics.yaml"
+    recent_path = tmp_path / "recent.yaml"
+    output_path = tmp_path / "scored.yaml"
+    base_scores = {
+        "freshness": 8, "relevance": 8, "debate": 8, "evidence": 8,
+        "author_fit": 8, "originality": 8, "linkedin_fit": 8,
+        "distance_from_recent_topics": 0,
+    }
+    input_path.write_text(yaml.safe_dump({"topics": [{
+        "id": "new", "scores": base_scores,
+        "diversity": {"context": ["educacao"], "mechanism": ["autoridade"],
+                       "actor": ["regulador"], "change_type": ["conflito"]},
+    }]}), encoding="utf-8")
+    recent_path.write_text(yaml.safe_dump({"topics": [{
+        "id": "old", "diversity": {"context": ["varejo"], "mechanism": ["custo"],
+                                       "actor": ["gestor"], "change_type": ["adocao"]},
+    }]}), encoding="utf-8")
+    assert score_opportunities.main([
+        "--input", str(input_path), "--config", str(ROOT / "config/scoring.yaml"),
+        "--output", str(output_path), "--recent-topics", str(recent_path),
+    ]) == 0
+    scored = yaml.safe_load(output_path.read_text(encoding="utf-8"))["topics"][0]
+    assert scored["diversity_score"]["closest_topics"] == ["old"]
+
+
 @pytest.mark.parametrize(
     "weights",
     [
