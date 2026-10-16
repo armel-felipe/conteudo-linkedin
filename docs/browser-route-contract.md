@@ -19,9 +19,12 @@ Os nomes normativos das rotas de browser são:
   screenshot e usar visão nativa para localizar, ler e confirmar elementos antes
   de qualquer mutação; ela também resume conteúdo, data, hora, botões, menus e
   prévia.
-- `playwright_mcp`: rota primária em host sem browser embutido (CLI). Usa o
-  Playwright MCP (`@playwright/mcp --cdp-endpoint http://127.0.0.1:9223`), que
-  anexa à sessão já logada.
+- `playwright_mcp`: rota primária em host sem browser embutido (CLI) e fallback
+  de mutação após uma falha CUA comprovadamente anterior ao envio. Usa o
+  Playwright MCP (`@playwright/mcp --cdp-endpoint http://127.0.0.1:9223`) ou os
+  wrappers MCP `playwright_browser_*` expostos pelo host. Antes de mutar, confirmar
+  que a lista de abas mostra a mesma aba LinkedIn autenticada da tarefa. O MCP é
+  distinto do script `playwright` read-only abaixo.
 - `playwright`: script read-only via CDP (`scripts/linkedin_browser_check.js`),
   somente diagnóstico. Nunca é rota de mutação.
 - `stop`: encerramento fail-closed quando nenhuma rota conclui a operação.
@@ -46,16 +49,23 @@ Termos de resultado:
 1. Registrar a intenção, abrir/selecionar a aba com o navegador embutido e
    capturar `screenshot+nativa`.
 2. Se o host não tiver browser embutido, tentar `playwright_mcp`.
-3. Se a rota visual não puder concluir a operação, registrar a falha e tentar
-   `playwright` somente como diagnóstico read-only.
-4. Se nenhuma rota concluir a operação, registrar a rota efetiva e parar. Não
-   tentar uma rota adicional e não abrir uma nova composição de ação.
-5. Depois que uma mutação for enviada, fallback não é permitido para repetir
-   a ação. Primeiro é necessário verificar o estado resultante.
+3. Se o CUA falhar **antes do envio**, confirmado por `dispatched: false` e
+   `mayHaveChangedState: false`, e o host expuser Playwright MCP, confirmar pela
+   lista de abas que o MCP alcança a mesma sessão LinkedIn e continuar por ela.
+   Se o recibo não esclarecer se houve envio, fazer até duas observações novas;
+   só usar outra rota de mutação se elas confirmarem que nada mudou. Ao trocar
+   de rota, capturar screenshot/snapshot novos e usar refs recém-geradas pelo MCP.
+4. Se a ação puder ter sido enviada ou o resultado continuar incerto, não repetir
+   a mutação por outra rota. Registrar `ambiguous_mutation` e parar em
+   `fail_closed`.
+5. O script `playwright` via CDP permanece read-only e serve apenas a diagnóstico;
+   não o confundir com Playwright MCP nem usá-lo para mutação.
+6. Se nenhuma rota de mutação segura estiver disponível, registrar a rota efetiva
+   e parar. Não abrir outro composer nem inferir sucesso.
 
-Fallback é permitido somente antes de uma mutação ser confirmada. Em especial,
-uma resposta de timeout, desconexão ou erro após o envio de uma ação deve ser
-tratada como `ambiguous_mutation`, não como autorização para repetir a ação.
+Fallback mutável exige evidência de que a tentativa anterior não foi enviada e
+não alterou estado. Em especial, timeout, desconexão ou erro após o envio de uma
+ação deve ser tratado como `ambiguous_mutation`, não como autorização para repetir.
 
 Toda operação deve registrar, no artefato ou log persistente, pelo menos a rota
 efetiva (`browser_native`, `playwright_mcp`, `playwright` ou `stop`), o modo de
@@ -68,7 +78,8 @@ operação não auditável e impede sua aprovação.
 Para abrir, ler, localizar elementos, capturar estado ou inspecionar uma tela:
 
 - usar `browser_native` primeiro;
-- usar `playwright_mcp` quando o host não tiver browser embutido;
+- usar `playwright_mcp` quando o host não tiver browser embutido ou quando o CUA
+  falhar comprovadamente antes do envio e o MCP conseguir reutilizar a mesma aba;
 - permitir `playwright` somente como diagnóstico read-only, depois da tentativa visual;
 - delegar ao `image-analyzer` se o modelo não tiver visão nativa ou ela falhar;
 - registrar a rota efetiva mesmo quando a operação terminar sem dados;
@@ -85,9 +96,10 @@ uma delas:
 
 - confirmar o alvo, o conteúdo e a intenção antes do envio;
 - usar `browser_native` como rota primária e obrigatória;
-- usar `playwright_mcp` quando o host não tiver browser embutido;
+- usar `playwright_mcp` quando o host não tiver browser embutido ou quando o CUA
+  falhar comprovadamente antes do envio e o MCP conseguir reutilizar a mesma aba;
 - usar `image-analyzer` quando não houver visão nativa ou ela falhar;
-- usar `playwright` somente como diagnóstico read-only antes de qualquer mutação;
+- usar `playwright` somente como diagnóstico read-only, nunca como rota de mutação;
 - após o envio, verificar o estado no navegador ou por uma leitura independente
   antes de registrar sucesso;
 - se o estado não puder distinguir sucesso de não execução, classificar como
@@ -108,7 +120,9 @@ Cada execução deve preservar:
 
 - operação solicitada e alvo identificado;
 - rota tentada e rota efetiva;
-- modo de visão e, quando houver, a razão do fallback de visão;
+- modo de visão e, quando houver, a razão do fallback de visão (`no_native_vision`
+  ou `native_failed`) e a razão do fallback de rota (por exemplo, CUA falhou sem
+  despacho);
 - ponto em que a mutação foi ou não confirmada;
 - evidência da verificação de estado;
 - classificação final (`success`, `failed`, `ambiguous_mutation` ou `stop`);

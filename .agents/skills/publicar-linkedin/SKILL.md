@@ -26,14 +26,19 @@ Core principle: levar conteúdo APROVADO (marco lógico `approved`) de `content/
 2. Ler o arquivo Markdown e converter para texto LinkedIn (opção B): remover `# ` de título, converter/remover `**`/`__`/`*` sem vazar literal, manter quebras de linha, emojis e hashtags (`#palavra` preservadas).
 3. **Obrigatoriamente iniciar pela rota visual do CUA embedded browser:** usar `browser.open_url` para criar/selecionar a aba, guardar `browser_url` e `target_id`, e capturar screenshot antes de tentar Playwright.
 4. Usar **visão nativa** para localizar texto, botões, ícones, campos, menus e coordenadas no screenshot. Interagir pelo alvo correto da aba, inclusive atravessando `#interop-outlet.shadowRoot` quando a interface estiver encapsulada. Não inferir posições sem screenshot.
-5. Se o modelo não tiver visão nativa, invocar `image-analyzer` com o screenshot e `reason: no_native_vision`. Se a visão nativa falhar, usar `image-analyzer` com `reason: native_failed`. Só depois dessas tentativas visuais, se ainda necessário, usar Playwright.
-6. Playwright é somente diagnóstico read-only, nunca a rota de mutação: conectar ao target `linkedin.com`, registrar URL/título/estado e falhar fechado em `about:blank`, ausência de target, timeout ou seletor não encontrado.
-7. Colar o conteúdo no campo de texto.
-8. Aplicar agendamento:
+5. Se o modelo não tiver visão nativa, invocar `image-analyzer` com o screenshot e `reason: no_native_vision`. Se a visão nativa falhar, usar `image-analyzer` com `reason: native_failed`.
+6. **Fallback para Playwright MCP:** se uma ação CUA falhar antes de ser enviada (`dispatched: false` e `mayHaveChangedState: false`), verificar `playwright_browser_tabs`/a lista do MCP. Se o recibo não esclarecer se houve envio, fazer até duas observações novas; só trocar de rota para mutar se elas confirmarem que nenhuma mutação ocorreu. Se as ferramentas Playwright MCP estiverem expostas (inclusive como wrappers `playwright_browser_*`) e a lista confirmar a mesma aba LinkedIn da tarefa, continuar nessa sessão autenticada. Não concluir que o MCP está indisponível só porque o nome da ferramenta não é literalmente `playwright_mcp`.
+   - Ao trocar de rota, capturar screenshot e snapshot novos, redescobrir os controles e usar referências geradas pelo próprio Playwright MCP. Referências do CUA e do Playwright não são intercambiáveis.
+   - O Playwright MCP pode interagir e mutar a página, mas só após a tentativa CUA e conforme a autorização explícita já dada para aquela operação. Cada clique, preenchimento e tecla continua sujeito à confirmação do browser.
+   - Se não houver Playwright MCP exposto ou a aba não for a sessão autenticada correta, parar e informar a limitação.
+7. **Playwright CDP de diagnóstico** (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) é read-only. Não o confundir com o Playwright MCP nem usá-lo para clicar, preencher ou agendar.
+8. Se uma ação puder ter sido enviada ou o resultado for incerto (`mayHaveChangedState: true`, timeout após envio ou equivalente), primeiro inspecionar a confirmação e a lista de agendamentos. Não repetir a mutação por outra rota; se o estado continuar ambíguo, aplicar `fail_closed`.
+9. Colar o conteúdo no campo de texto.
+10. Aplicar agendamento:
    - Envio "agora": colar conteúdo, PAUSAR antes do clique final, informar que a pessoa pode anexar imagem manualmente, e aguardar o comando para concluir.
    - Agendado: abrir o seletor de agendamento e preencher data/hora conforme o caso (ver "Agendamento — detalhes").
-9. Verificar o agendamento (ver "Verificação pós-agendamento").
-10. Somente depois da verificação, registrar o agendamento no arquivo (ver "Registro do agendamento").
+11. Verificar o agendamento (ver "Verificação pós-agendamento").
+12. Somente depois da verificação, registrar o agendamento no arquivo (ver "Registro do agendamento").
 
 ## Conversão Markdown → texto LinkedIn (OBRIGATÓRIA, antes da colagem)
 
@@ -223,12 +228,15 @@ browser_native → playwright_mcp → playwright → stop
 1. Abrir ou selecionar a aba com `browser.open_url`, guardar exatamente `browser_url` e `target_id`, e capturar screenshot.
 2. Usar visão nativa para resumir conteúdo, data, hora, botões e prévia a partir do screenshot; os cliques devem seguir a localização visual confirmada.
 3. Se não houver visão nativa, delegar ao `image-analyzer` com `reason: no_native_vision`; se a visão nativa falhar, usar `reason: native_failed`, sempre passando o screenshot. O `image-analyzer` é um **modo de visão**, não uma rota de browser: ele lê o screenshot de qualquer rota que tenha funcionado.
-4. Se o host não tiver browser embutido (ex.: CLI), usar o **Playwright MCP** (`@playwright/mcp --cdp-endpoint http://127.0.0.1:9223`), que anexa à sessão já logada.
-5. Só se a rota visual não conseguir concluir a interação, tentar o **Playwright read-only** (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) somente como diagnóstico e registrar a razão da transição. Esse script CDP é diferente do Playwright MCP.
-6. Se nenhuma rota funcionar ou a imagem estiver ilegível, registrar `stop`, relatar a limitação e não inferir o estado da tela.
+4. Usar **Playwright MCP** (`@playwright/mcp --cdp-endpoint http://127.0.0.1:9223` ou wrappers `playwright_browser_*` do host) se não houver browser embutido **ou** se a ação CUA falhar comprovadamente antes do envio (`dispatched: false`, `mayHaveChangedState: false`). Antes de mutar, confirmar pela lista de abas que o MCP alcança a mesma aba LinkedIn autenticada.
+5. Ao trocar para Playwright MCP, capturar screenshot/snapshot novos, redescobrir os controles e usar somente refs dessa rota. O Playwright MCP é mutável; confirme a autorização da operação e verifique cada resultado.
+6. Se uma ação puder ter sido enviada ou o resultado for incerto, inspecionar o estado antes de qualquer mutação. Não repetir por outra rota; persistindo ambiguidade, aplicar `fail_closed`.
+7. O script **Playwright read-only** (`npm run linkedin:check` ou `node scripts/linkedin_browser_check.js`) serve só para diagnóstico; não é o Playwright MCP e nunca é rota de mutação.
+8. Se nenhuma rota de mutação segura funcionar ou a imagem estiver ilegível, registrar `stop`, relatar a limitação e não inferir o estado da tela.
 
 Cada execução deve preservar a operação, alvo, rota tentada, rota efetiva, modo de
-visão, resultado, razão de fallback (`no_native_vision` ou `native_failed`),
+visão, resultado, razão de fallback visual (`no_native_vision` ou `native_failed`)
+e, quando houver, razão de fallback de rota (por exemplo, CUA falhou sem despacho),
 evidência de verificação e classificação final. Para publicar, agendar, reagendar
 ou excluir, confirmar alvo e intenção antes do envio; após o envio, verificar o
 estado independente. Em `ambiguous_mutation`, aplicar fail-closed: não repetir,
@@ -245,7 +253,7 @@ e `playwright_attempt` só aparecem depois da tentativa visual:
 approved_file → markdown_converted → browser_attempt → screenshot → visual_route → date_selected → time_selected → summary_confirmed → advance → final_preview_confirmed → schedule → confirmation → scheduled_list_confirmed → timestamp_registered
 ```
 
-O screenshot é obrigatório na primeira rota; não autoriza inferência sem evidência. As rotas de browser são `browser_native`, `playwright_mcp`, `playwright` e `stop`; `browser_native` é a primeira tentativa, `playwright_mcp` entra quando o host não tem browser embutido, `playwright` só aparece depois da tentativa visual e `stop` encerra quando não há evidência suficiente. O modo de visão (`native` ou `image-analyzer`) é registrado à parte da rota.
+O screenshot é obrigatório na primeira rota; não autoriza inferência sem evidência. As rotas são `browser_native`, `playwright_mcp`, `playwright` e `stop`: `browser_native` é sempre a primeira tentativa; `playwright_mcp` entra quando não há browser embutido ou após falha CUA comprovadamente anterior ao envio; `playwright` é read-only e só diagnóstico; `stop` encerra quando não há rota de mutação segura disponível. Registre ambas as rotas quando houver fallback. O modo de visão (`native` ou `image-analyzer`) é registrado à parte da rota.
 
 Para reagendamento, a sequência é `existing_post_menu → alter_schedule → date_selected → time_selected`. O fluxo não contém `new_composer`: divergências usam a publicação existente.
 
@@ -263,6 +271,9 @@ Para reagendamento, a sequência é `existing_post_menu → alter_schedule → d
 - Agendar sem confirmar o valor exibido no seletor — o LinkedIn pode manter data/hora padrão; confirmar antes de clicar em "Agendar".
 - Concluir como sucesso sem verificar "Ver publicações agendadas" — o agendamento pode ter falhado silenciosamente.
 - Pular o navegador embutido e começar por Playwright — CUA embedded browser + screenshot + visão é a rota obrigatória inicial.
+- Declarar Playwright indisponível sem consultar as ferramentas MCP/wrappers e a lista de abas. Se `playwright_browser_*` estiver exposto e enxergar a mesma aba autenticada, pode ser o fallback MCP após falha CUA segura.
+- Reusar no Playwright uma referência obtida pelo CUA, ou vice-versa. Após trocar de rota, capturar snapshot e refs novos.
+- Usar o script Playwright CDP read-only para mutar. Scripts de diagnóstico não são o Playwright MCP.
 - Tratar a confirmação visual como fallback — screenshot/AX (ou image-analyzer) é a primeira evidência.
 - Não selecionar novamente o horário depois de trocar a data.
 - Reagendar abrindo um compositor novo em vez de usar `... → Alterar agenda`.
